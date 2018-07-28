@@ -70,6 +70,9 @@ cp -f /etc/group.orig /etc/group
 groupadd --force --gid ${FHEM_GID} fhem
 useradd --home /opt/fhem --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem
 usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem
+adduser --quiet fhem bluetooth
+adduser --quiet fhem dialout
+adduser --quiet fhem tty
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/
 
 # Function to print FHEM log in incremental steps to the docker log.
