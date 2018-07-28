@@ -39,14 +39,15 @@ else
   # Update docker module data
   if [ -s /image_info ]; then
     FHEMCMD="my \$n;;if(defined(\$modules{'DockerImageInfo'}{defptr})){\$n = \$modules{'DockerImageInfo'}{defptr}{NAME}}else{fhem 'define DockerImageInfo DockerImageInfo';;\$n = 'DockerImageInfo';;}\$defs{\$n}{STATE} = 'ok';;readingsBeginUpdate(\$defs{\$n});;"
-    while read LINE; do
+    touch /info_image.tmp
+    for LINE in $( sort -k1,1 -t'=' --stable --unique /info_image.* /info_image ); do
       [ -z "$( echo "$LINE" | grep -P '^org\.opencontainers\..+=.+$' )" ] && continue
       LINE=${LINE#org.opencontainers.}
       NAME=$(echo "${LINE}" | cut -d = -f 1)
       VAL=$(echo "${LINE}" | cut -d = -f 2)
       [ "${NAME}" == "image.authors" ] && continue
       FHEMCMD="${FHEMCMD}readingsBulkUpdateIfChanged(\$defs{\$n},'${NAME}','${VAL}');;"
-    done </image_info
+    done
     FHEMCMD="${FHEMCMD}readingsEndUpdate(\$defs{\$n},1)"
     RET=$( cd /opt/fhem; perl fhem.pl 7072 "{${FHEMCMD}}" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:FAILED;" || RETURN="${RETURN} DockerImageInfo:OK;"
