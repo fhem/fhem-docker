@@ -11,6 +11,8 @@ TIMEOUT="${TIMEOUT:-10}"
 RESTART="${RESTART:-1}"
 CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
+FHEM_UID="${FHEM_UID:-6061}"
+FHEM_GID="${FHEM_GID:-6061}"
 
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
@@ -57,6 +59,19 @@ elif [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
   exit 1
 fi
 
+# creating user environment
+echo "Preparing user environment ..."
+[ ! -s /etc/passwd.orig ] && cp -f /etc/passwd /etc/passwd.orig
+[ ! -s /etc/shadow.orig ] && cp -f /etc/shadow /etc/shadow.orig
+[ ! -s /etc/group.orig ] && cp -f /etc/group /etc/group.orig
+cp -f /etc/passwd.orig /etc/passwd
+cp -f /etc/shadow.orig /etc/shadow
+cp -f /etc/group.orig /etc/group
+groupadd --force --gid ${FHEM_GID} fhem
+useradd --home /opt/fhem --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem
+usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem
+chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/
+
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0
 NEWLINES=$OLDLINES
@@ -69,12 +84,11 @@ function PrintNewLines {
       	OLDLINES=$NEWLINES
 }
 
-## Docker stop signal handler
+# Docker stop signal handler
 function StopFHEM {
 	echo -e '\n\nSIGTERM signal received, sending "shutdown" command to FHEM!\n'
 	PID=$(<"$PIDFILE")
-	cd ${FHEM_DIR}
-	perl fhem.pl 7072 shutdown
+  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl 7072 shutdown"
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
   # Wait for FHEM to complete shutdown
@@ -92,7 +106,7 @@ function StopFHEM {
 	exit 0
 }
 
-## Start FHEM
+# Start FHEM
 function StartFHEM {
   echo -e '\n\n'
 
@@ -102,14 +116,13 @@ function StartFHEM {
   fi
 
   # Update system environment
-  echo 'Updating environment ...'
+  echo 'Preparing configuration ...'
   sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P 'define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
 
   echo 'Starting FHEM ...'
-  cd "${FHEM_DIR}"
   trap "StopFHEM" SIGTERM
-  perl fhem.pl "$CONFIGTYPE"
+  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
   RET=$?
 
   # If process was unable to restart,

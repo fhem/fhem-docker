@@ -1,4 +1,4 @@
-# Basic Docker container for FHEM
+# Basic Docker image for FHEM
 A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Stretch.
 
 
@@ -81,6 +81,14 @@ You may then derive the device path from it and add the following parameter to y
 
 
 #### Tweak container settings using environment variables
+To set a different UID for the user 'fhem' (default is 6062):
+
+    -e FHEM_UID=6062
+
+To set a different GID for the group 'fhem' (default is 6062):
+
+    -e FHEM_GID=6062
+
 To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
     -e TIMEOUT=10
