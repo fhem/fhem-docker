@@ -81,13 +81,13 @@ You may then derive the device path from it and add the following parameter to y
 
 
 #### Tweak container settings using environment variables
-To set a different UID for the user 'fhem' (default is 6062):
+To set a different UID for the user 'fhem' (default is 6061):
 
-    -e FHEM_UID=6062
+    -e FHEM_UID=6061
 
-To set a different GID for the group 'fhem' (default is 6062):
+To set a different GID for the group 'fhem' (default is 6061):
 
-    -e FHEM_GID=6062
+    -e FHEM_GID=6061
 
 To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
