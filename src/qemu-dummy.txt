@@ -1,0 +1,1 @@
+This is just a dummy file as a workaround for Dockerfile COPY command if no other qemu-* files would be here.

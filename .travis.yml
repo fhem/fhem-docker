@@ -1,0 +1,142 @@
+language: bash
+services: docker
+
+# amd64 toolchain (used as a base for non-sudo compilation, which is faster) 
+include: &toolchain_amd64
+  sudo: false
+  addons:
+    apt:
+      # sources:
+      #   - ubuntu-toolchain-r-test
+      packages:
+        - curl
+        - docker-ce
+        - jq
+        # - gcc-4.9
+        # - g++-4.9
+        # - gcc-4.9-multilib
+        # - g++-4.9-multilib
+        # - zip
+        # - libgtk2.0-0
+        # - libx11-dev
+        # - libxkbfile-dev
+
+# linux i386 toolchain
+include: &toolchain_linux_i386
+  <<: *toolchain_amd64
+  env:
+    - LABEL=i386_linux
+    - ARCH=i386
+    - GPP_COMPILER=g++-4.9
+    - GCC_COMPILER=gcc-4.9
+
+# linux amd64 toolchain
+include: &toolchain_linux_amd64
+  <<: *toolchain_amd64
+  env:
+    - LABEL=amd64_linux
+    - ARCH=amd64
+    - GPP_COMPILER=g++-4.9
+    - GCC_COMPILER=gcc-4.9
+        
+# cross toolchain (used as a base for multiarch cross-compilation configurations below) 
+include: &toolchain_linux_cross
+  dist: trusty
+  sudo: required # for dpkg --add-architecture locking
+  addons:
+    apt:
+      packages:
+        - curl
+        - docker-ce
+        - jq
+
+# arm32v5 toolchain
+include: &toolchain_linux_arm32v5
+  <<: *toolchain_linux_cross
+  env:
+    - LABEL=arm32v5_linux
+    - CROSS_TOOLCHAIN=true
+    - ARCH=arm32v5
+    - DPKG_ARCH=armel
+    - QEMU_ARCH=arm
+    - NPM_ARCH=arm
+    - GNU_TRIPLET=arm-linux-gnueabihf
+    - GNU_MULTILIB_TRIPLET=arm-linux-gnueabihf
+    - GPP_COMPILER=arm-linux-gnueabihf-g++
+    - GCC_COMPILER=arm-linux-gnueabihf-gcc
+
+# arm32v7 toolchain
+include: &toolchain_linux_arm32v7
+  <<: *toolchain_linux_cross
+  env:
+    - LABEL=arm32v7_linux
+    - CROSS_TOOLCHAIN=true
+    - ARCH=arm32v7
+    - DPKG_ARCH=armhf
+    - QEMU_ARCH=arm
+    - NPM_ARCH=arm
+    - GNU_TRIPLET=arm-linux-gnueabihf
+    - GNU_MULTILIB_TRIPLET=arm-linux-gnueabihf
+    - GPP_COMPILER=arm-linux-gnueabihf-g++
+    - GCC_COMPILER=arm-linux-gnueabihf-gcc
+  
+# arm64v8 toolchain
+include: &toolchain_linux_arm64v8
+  <<: *toolchain_linux_cross
+  env:
+    - LABEL=arm64v8_linux
+    - CROSS_TOOLCHAIN=true
+    - ARCH=arm64v8
+    - DPKG_ARCH=arm64
+    - QEMU_ARCH=aarch64
+    - NPM_ARCH=arm
+    - GNU_TRIPLET=aarch64-linux-gnu
+    - GNU_MULTILIB_TRIPLET=arm-linux-gnueabihf
+    - GPP_COMPILER=aarch64-linux-gnu-g++
+    - GCC_COMPILER=aarch64-linux-gnu-gcc
+
+# Travis CI build matrix.  Each entry below will trigger an extra, parallel build on Travis.
+matrix:
+  include:
+  - os: linux
+    <<: *toolchain_linux_amd64
+  - os: linux
+    <<: *toolchain_linux_i386
+  - os: linux
+    <<: *toolchain_linux_arm32v5
+  - os: linux
+    <<: *toolchain_linux_arm32v7
+  - os: linux
+    <<: *toolchain_linux_arm64v8
+
+notifications:
+  email: false
+
+before_install:
+  - export CXX="${GPP_COMPILER}" CC="${GCC_COMPILER}" DOCKER_CONFIG="./";
+  - if [[ "${CROSS_TOOLCHAIN}" == "true" ]]; then
+      sudo rm -rf /etc/apt/sources.list.d/**;
+      sudo rm /etc/apt/sources.list;
+      echo "deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee /etc/apt/sources.list;
+      echo "deb [arch=${DPKG_ARCH}] http://ports.ubuntu.com/ubuntu-ports xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
+      echo "deb-src http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
+      sudo dpkg --add-architecture ${DPKG_ARCH};
+      sudo apt-get update -yq;
+      curl -sSL https://github.com/multiarch/qemu-user-static/releases/download/v2.12.0/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
+    fi
+  # Update FHEM repository
+  - svn co https://svn.fhem.de/fhem/ ./src/fhem >/dev/null;
+
+install:
+  - travis_wait 120 sleep infinity & ./scripts/build.sh;
+
+script:
+  - ./scripts/test-integration.sh;
+
+cache:
+  directories:
+    - $TRAVIS_BUILD_DIR/src/fhem/
+  
+after_success:
+  - ./scripts/push-docker.sh;
+  - ./scripts/push-docker-manifest.sh;
