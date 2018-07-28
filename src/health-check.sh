@@ -39,8 +39,8 @@ else
   # Update docker module data
   if [ -s /image_info ]; then
     FHEMCMD="my \$n;;if(defined(\$modules{'DockerImageInfo'}{defptr})){\$n = \$modules{'DockerImageInfo'}{defptr}{NAME}}else{fhem 'define DockerImageInfo DockerImageInfo';;\$n = 'DockerImageInfo';;}\$defs{\$n}{STATE} = 'ok';;readingsBeginUpdate(\$defs{\$n});;"
-    touch /info_image.tmp
-    for LINE in $( sort -k1,1 -t'=' --stable --unique /info_image.* /info_image ); do
+    touch /image_info.tmp
+    for LINE in $( sort -k1,1 -t'=' --stable --unique /image_info.* /image_info ); do
       [ -z "$( echo "$LINE" | grep -P '^org\.opencontainers\..+=.+$' )" ] && continue
       LINE=${LINE#org.opencontainers.}
       NAME=$(echo "${LINE}" | cut -d = -f 1)
