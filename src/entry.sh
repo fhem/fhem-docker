@@ -26,12 +26,12 @@ if [ -d "/fhem" ]; then
 
   if [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
     echo "$i. Installing FHEM to /opt/fhem"
-    shopt -s dotglob nullglob
-    mv -f /fhem/* ${FHEM_DIR}/
-    cd ${FHEM_DIR}
-    mv ./controls_fhem.txt ./FHEM/
-    perl ./contrib/commandref_modular.pl
-    cd -
+    shopt -s dotglob nullglob 2>&1>/dev/null
+    mv -f /fhem/* ${FHEM_DIR}/ 2>&1>/dev/null
+    cd ${FHEM_DIR} 2>&1>/dev/null
+    mv ./controls_fhem.txt ./FHEM/ 2>&1>/dev/null
+    perl ./contrib/commandref_modular.pl 2>&1>/dev/null
+    cd - 2>&1>/dev/null
   else
     echo "$i. Updating existing FHEM installation in /opt/fhem"
     cp -f /fhem/FHEM/99_DockerImageInfo.pm /opt/fhem/FHEM/
@@ -40,6 +40,7 @@ if [ -d "/fhem" ]; then
   rm -rf /fhem/
 
   echo "$i. Updating fhem.cfg for Docker container compatibility"
+  cp -n ${FHEM_DIR}/fhem.cfg ${FHEM_DIR}/fhem.cfg.default
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global nofork 0')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global commandref')" ] && echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
@@ -67,13 +68,13 @@ echo "Preparing user environment ..."
 cp -f /etc/passwd.orig /etc/passwd
 cp -f /etc/shadow.orig /etc/shadow
 cp -f /etc/group.orig /etc/group
-groupadd --force --gid ${FHEM_GID} fhem
-useradd --home /opt/fhem --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem
-usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem
-adduser --quiet fhem bluetooth
-adduser --quiet fhem dialout
-adduser --quiet fhem tty
-chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/
+groupadd --force --gid ${FHEM_GID} fhem 2>&1>/dev/null
+useradd --home /opt/fhem --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
+usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem 2>&1>/dev/null
+adduser --quiet fhem bluetooth 2>&1>/dev/null
+adduser --quiet fhem dialout 2>&1>/dev/null
+adduser --quiet fhem tty 2>&1>/dev/null
+chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/ 2>&1>/dev/null
 
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0

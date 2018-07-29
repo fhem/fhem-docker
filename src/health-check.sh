@@ -44,7 +44,7 @@ else
       [ -z "$( echo "$LINE" | grep -P '^org\.opencontainers\..+=.+$' )" ] && continue
       LINE=${LINE#org.opencontainers.}
       NAME=$(echo "${LINE}" | cut -d = -f 1)
-      VAL=$(echo "${LINE}" | cut -d = -f 2)
+      VAL=$(echo "${LINE}" | cut -d = -f 2-)
       [ "${NAME}" == "image.authors" ] && continue
       FHEMCMD="${FHEMCMD}readingsBulkUpdateIfChanged(\$defs{\$n},'${NAME}','${VAL}');;"
     done

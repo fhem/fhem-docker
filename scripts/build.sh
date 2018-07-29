@@ -50,7 +50,7 @@ for REVISION in ${FHEM_REVISION_CURRENT} ${FHEM_REVISION_LATEST}; do
 
   cd ./src/fhem
   svn up -r ${REVISION} >/dev/null
-  cd -
+  cd - 2>&1>/dev/null
 
   # Detect rolling tag for this build
   if [ -n "${TRAVIS_BRANCH}" ]; then
