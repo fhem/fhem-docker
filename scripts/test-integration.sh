@@ -10,7 +10,7 @@ RETURNCODE=0
 
 for ID in $( docker images | grep '^fhem/*' | grep -v "<none>" | grep -P ' +[0-9]+\.[0-9]+.+' | awk '{print $3}' | uniq ); do
   echo "Booting up container for variant $ID ..."
-  CONTAINER=$( docker run -d -ti $ID )
+  CONTAINER=$( docker run -d -ti --health-interval=60s --health-timeout=10s --health-start-period=150s --health-retries=5 $ID )
   docker container ls | grep 'fhem/.*'
 
   echo -ne "Waiting for container ..."
