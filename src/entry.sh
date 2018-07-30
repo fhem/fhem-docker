@@ -160,7 +160,7 @@ while true; do
 		PrintNewLines
 		COUNTDOWN="$TIMEOUT"
 		echo -ne "\n\nAbrupt daemon termination, starting $COUNTDOWN""s countdown ..."
-		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" ) && (( COUNTDOWN > 0 )); do
+		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null ) && (( COUNTDOWN > 0 )); do
 			echo -n " $COUNTDOWN"
 			(( COUNTDOWN-- ))
 			sleep 1
