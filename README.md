@@ -26,7 +26,7 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 
 
 ### Image flavors
-This image provides 3 different variants:
+This image provides 2 different variants:
 
 - `latest` (default)
 - `dev`
