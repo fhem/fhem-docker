@@ -22,8 +22,7 @@ fi
 IMAGE_VERSION=$(git describe --tags --dirty --match "v[0-9]*")
 IMAGE_VERSION=${IMAGE_VERSION:1}
 IMAGE_BRANCH=$( [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" && "${TRAVIS_BRANCH}" != "${TRAVIS_TAG}" ]] && echo -n "${TRAVIS_BRANCH}" || echo -n "" )
-FHEM_FHEM_REVISION_LATEST=$( [[ "${FHEM_REVISION_LATEST}" == "$FHEM_FHEM_REVISION_LATEST_LATEST" && "$FHEM_FHEM_REVISION_LATEST_LATEST" != "$FHEM_FHEM_REVISION_LATEST_CURRENT" ]] && echo -n "$FHEM_FHEM_REVISION_LATEST_LATEST" || echo -n "" )
-VARIANT_FHEM="${FHEM_VERSION}$( [ -n "${FHEM_FHEM_REVISION_LATEST}" ] && echo -n "-s${FHEM_FHEM_REVISION_LATEST}" || echo -n "" )"
+VARIANT_FHEM="${FHEM_VERSION}-s${FHEM_REVISION_LATEST}"
 VARIANT_IMAGE="${IMAGE_VERSION}$( [ -n "${IMAGE_BRANCH}" ] && echo -n "-${IMAGE_BRANCH}" || echo -n "" )"
 VARIANT="${VARIANT_FHEM}_${VARIANT_IMAGE}"
 
@@ -41,10 +40,6 @@ if docker_tag_exists ${BASE} ${VARIANT}; then
   echo "Variant ${VARIANT} already existig on Docker Hub - skipping build."
   continue
 fi
-
-cd ./src/fhem
-svn up -r ${FHEM_REVISION_LATEST} >/dev/null
-cd - 2>&1>/dev/null
 
 # Detect rolling tag for this build
 if [[ -n "${TRAVIS_BRANCH}" || "${TRAVIS_BRANCH}" == "master" || "${TRAVIS_BRANCH}" == "${TRAVIS_TAG}" ]]; then
