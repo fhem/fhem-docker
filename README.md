@@ -29,7 +29,6 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 This image provides 3 different variants:
 
 - `latest` (default)
-- `beta`
 - `dev`
 
 You can use one of those variants by adding them to the docker image name like this:
@@ -38,9 +37,8 @@ You can use one of those variants by adding them to the docker image name like t
 
 If you do not specify any variant, `latest` will always be the default.
 
-`latest` will give you the current FHEM stable release, running on the current stable Docker image.
-`beta` will give you the bleeding-edge FHEM sources, running on the current stable Docker image.
-`dev` will give you the bleeding-edge FHEM sources, running on the latest development Docker image.
+`latest` will give you the current stable Docker image, including up-to-date FHEM.
+`dev` will give you the latest development Docker image, including up-to-date FHEM.
 
 
 ### Supported platforms
@@ -64,7 +62,7 @@ Windows:
 The main repository will allow you to install on any of these platforms.
 In case you would like to specifically choose your platform, go to the platform-related repository by clicking on the respective link above.
 
-The platform repositories will also allow you to choose more specific build tags beside the rolling tags latest, beta, and dev.
+The platform repositories will also allow you to choose more specific build tags beside the rolling tags latest or dev.
 
 
 ## Customize your container configuration

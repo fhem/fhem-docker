@@ -8,7 +8,7 @@ fi
 echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 sleep $[ ( $RANDOM % 10 )  + 1 ]s
 
-for VARIANT in $( docker images | grep '^fhem/*' | grep -v "<none>" | grep -P ' dev|beta|latest ' | awk '{print $2}' | uniq | sort ); do
+for VARIANT in $( docker images | grep '^fhem/*' | grep -v "<none>" | grep -P ' dev|latest ' | awk '{print $2}' | uniq | sort ); do
   echo "Creating manifest file fhem/fhem:${VARIANT} ..."
   docker manifest create fhem/fhem:${VARIANT} \
     fhem/fhem-amd64_linux:${VARIANT} \
