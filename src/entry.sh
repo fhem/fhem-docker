@@ -156,7 +156,7 @@ StartFHEM
 while true; do
 
   # FHEM isn't running
-	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")"; then
+	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
 		PrintNewLines
 		COUNTDOWN="$TIMEOUT"
 		echo -ne "\n\nAbrupt daemon termination, starting $COUNTDOWN""s countdown ..."
@@ -167,20 +167,20 @@ while true; do
 		done
 
     # FHEM didn't reappear
-    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")"; then
+    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
 
       # Container should be stopped
       if [ "$RESTART" == "0" ]; then
-        echo -e ' 0\n\nStopping Container. Bye!'
+        echo -e ' 0\nStopping Container. Bye!\n'
 		    exit 1
 
       # Automatic restart is enabled
       else
-        echo -e ' 0\n\nAutomatic restart ...\n'
+        echo -e ' 0\nAutomatic restart ...\n'
 
         # Cleanup
         if [ -s "$PIDFILE" ]; then
-           kill -9 "$(<"$PIDFILE")"
+           kill -9 "$(<"$PIDFILE")" 2>&1>/dev/null
            rm -f "$PIDFILE"
         fi
 
@@ -189,7 +189,7 @@ while true; do
 
     # FHEM reappeared
 		else
-			echo 'FHEM process reappeared ...'
+			echo -e '\nFHEM process reappeared ...\n'
 		fi
 	fi
 
