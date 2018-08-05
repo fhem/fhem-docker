@@ -3,20 +3,23 @@
 #	Credits for the initial script to Joscha Middendorf:
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
-FHEM_DIR="/opt/fhem"
-LOGFILE="${FHEM_DIR}/log/fhem-%Y-%m.log"
-PIDFILE="${FHEM_DIR}/log/fhem.pid"
-SLEEPINTERVAL=0.5
-TIMEOUT="${TIMEOUT:-10}"
-RESTART="${RESTART:-1}"
-CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
-DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
-FHEM_UID="${FHEM_UID:-6061}"
-FHEM_GID="${FHEM_GID:-6061}"
+export FHEM_DIR="/opt/fhem"
+export LOGFILE="${FHEM_DIR}/log/fhem-%Y-%m.log"
+export PIDFILE="${FHEM_DIR}/log/fhem.pid"
+export SLEEPINTERVAL=0.5
+export TIMEOUT="${TIMEOUT:-10}"
+export RESTART="${RESTART:-1}"
+export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
+export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
+export FHEM_UID="${FHEM_UID:-6061}"
+export FHEM_GID="${FHEM_GID:-6061}"
+export FHEM_CLEANINSTALL=1
 
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
   i=1
+
+  [ -s "${FHEM_DIR}/fhem.pl" ] && FHEM_CLEANINSTALL=0
 
   if [ -s /pre-init.sh ]; then
     echo "$i. Running pre-init script"
@@ -24,7 +27,7 @@ if [ -d "/fhem" ]; then
     (( i++ ))
   fi
 
-  if [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
+  if [ "${FHEM_CLEANINSTALL}" = '1' ]; then
     echo "$i. Installing FHEM to /opt/fhem"
     shopt -s dotglob nullglob 2>&1>/dev/null
     mv -f /fhem/* ${FHEM_DIR}/ 2>&1>/dev/null
