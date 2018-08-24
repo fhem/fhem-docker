@@ -94,6 +94,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         netcat \
         perl \
         python \
+        snmp \
         sqlite3 \
         sudo \
         telnet \
@@ -132,13 +133,17 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmail-imapclient-perl \
         libmail-sendmail-perl \
         libmime-base64-perl \
+        libmime-lite-perl \
         libmodule-pluggable-perl \
         libnet-jabber-perl \
         libnet-server-perl \
+        libnet-snmp-perl \
         libnet-ssleay-perl \
         libnet-telnet-perl \
         libnet-xmpp-perl \
         librpc-xml-perl \
+        libsnmp-perl \
+        libsnmp-session-perl \
         libsoap-lite-perl \
         libsocket-perl \
         libsocket6-perl \
@@ -151,6 +156,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-diff-perl \
         libtimedate-perl \
         libusb-1.0-0-dev \
+        libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
         libxml-simple-perl \
