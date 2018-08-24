@@ -130,39 +130,39 @@ Follow initial setup steps:
 
 2. Being in /docker/home, run command to start your Docker stack:
 
-		   cd /docker/home; sudo docker-compose up -d
+		cd /docker/home; sudo docker-compose up -d
 
 	All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
 	You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
 
 3. Create a local Git repository and add all files as an initial commit:
 
-		   cd /docker/home
-		   sudo git init
-		   sudo git add -A
-		   sudo git commit -m "Initial commit"
+		cd /docker/home
+		sudo git init
+		sudo git add -A
+		sudo git commit -m "Initial commit"
 
 	Run the following command whenever you would like to mark changes as permanent:
 
-			cd /docker/home; sudo git add -A; sudo git commit -m "FHEM update"
+		cd /docker/home; sudo git add -A; sudo git commit -m "FHEM update"
 	
 	Note: This will also add any new files within your whole Docker Stack outside of the ./fhem/ folder.
 	Please see Git documentation for details and further commands.
 
 4. Optional - Add remote repository for external backup. Using BitBucket is recommended because it supports private repositories:
 
-		   sudo git remote add origin git@bitbucket.org:user/repo.git
-		   sudo git push --force --set-upstream origin master
+		sudo git remote add origin git@bitbucket.org:user/repo.git
+		sudo git push --force --set-upstream origin master
 
 	Note that after updating your local repository as described above, you also	want to push those changes to the remote server:
 
-		   cd /docker/home; sudo git push
+		cd /docker/home; sudo git push
 
 	To restore your Docker Stack from remote Git backup on a fresh Docker host installation:
 
-			sudo mkdir -p /docker
-			cd /docker; sudo git clone git@bitbucket.org:user/repo.git
-			cd /docker/home; sudo docker-compose up -d
+		sudo mkdir -p /docker
+		cd /docker; sudo git clone git@bitbucket.org:user/repo.git
+		cd /docker/home; sudo docker-compose up -d
 
 
 ___
