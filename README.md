@@ -152,8 +152,7 @@ Follow initial setup steps:
 4. Optional - Add remote repository for external backup. Using BitBucket is recommended because it supports private repositories:
 
 		   sudo git remote add origin git@bitbucket.org:user/repo.git
-		   sudo git push -f origin master
-		   sudo git branch --set-upstream-to=origin/master master
+		   sudo git push --force --set-upstream origin master
 
 	Note that after updating your local repository as described above, you also	want to push those changes to the remote server:
 
