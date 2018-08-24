@@ -69,39 +69,102 @@ The platform repositories will also allow you to choose more specific build tags
 
 
 #### Map USB devices to your container
-Find out the USB device path/address from your Docker host machine first:
+1. Find out the USB device path/address from your Docker host machine first:
 
-    lsusb -v | grep -E '\<(Bus|iProduct|bDeviceClass|bDeviceProtocol)' 2>/dev/null
+		lsusb -v | grep -E '\<(Bus|iProduct|bDeviceClass|bDeviceProtocol)' 2>/dev/null
 
-You may then derive the device path from it and add the following parameter to your container run command:
+2. You may then derive the device path from it and add the following parameter to your container run command:
 
-    --device=/dev/bus/usb/001/002
+		--device=/dev/bus/usb/001/002
 
 
 #### Tweak container settings using environment variables
-To set a different UID for the user 'fhem' (default is 6061):
 
-    -e FHEM_UID=6061
+* Change FHEM system user ID:
+	To set a different UID for the user 'fhem' (default is 6061):
 
-To set a different GID for the group 'fhem' (default is 6061):
+		-e FHEM_UID=6061
 
-    -e FHEM_GID=6061
+* Change FHEM group ID:
+	To set a different GID for the group 'fhem' (default is 6061):
 
-To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
+    	-e FHEM_GID=6061
 
-    -e TIMEOUT=10
+* Change shutdown timeout:
+	To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
-Set a specific timezone in [POSIX format](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
+    	-e TIMEOUT=10
 
-    -e TZ=Europe/Berlin
+* Set timezone:
+	Set a specific timezone in [POSIX format](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
 
-Should you be using FHEM config type [`configDB`](https://fhem.de/commandref.html#configdb), you need to change the FHEM configuration source for correct startup by setting the following environment variable:
+    	-e TZ=Europe/Berlin
 
-    -e CONFIGTYPE=configDB
+* Using configDB:
+	Should you be using FHEM config type [`configDB`](https://fhem.de/commandref.html#configdb), you need to change the FHEM configuration source for correct startup by setting the following environment variable:
 
-To start the demo environment:
+    	-e CONFIGTYPE=configDB
 
-    -e CONFIGTYPE=fhem.cfg.demo
+* Starting the demo:
+	To start the demo environment:
+
+    	-e CONFIGTYPE=fhem.cfg.demo
+
+
+## Adding Git for version control of your Home Automation Docker containers
+
+Prerequisites on your Docker host:
+
+1. Ensure docker-compose is installed: See [Install Docker Compose](https://docs.docker.com/compose/install/)
+2. Ensure Git command is installed, e.g. run `sudo apt install git`
+
+Follow initial setup steps:
+
+1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
+
+		sudo mkdir -p /docker/home
+		sudo curl -o /docker/home/docker-compose.yml https://raw.githubusercontent.com/docker-home-automation-stack/fhem-docker/master/docker-compose.yml
+		sudo curl -o /docker/home/.gitignore https://raw.githubusercontent.com/docker-home-automation-stack/fhem-docker/master/.gitignore
+
+	Note that the sub-directory "home" will be the base prefix name for all	your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
+
+2. Being in /docker/home, run command to start your Docker stack:
+
+		   cd /docker/home; sudo docker-compose up -d
+
+	All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
+	You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
+
+3. Create a local Git repository and add all files as an initial commit:
+
+		   cd /docker/home
+		   sudo git init
+		   sudo git add -A
+		   sudo git commit -m "Initial commit"
+
+	Run the following command whenever you would like to mark changes as permanent:
+
+			cd /docker/home; sudo git add -A; sudo git commit -m "FHEM update"
+	
+	Note: This will also add any new files within your whole Docker Stack outside of the ./fhem/ folder.
+	Please see Git documentation for details and further commands.
+
+4. Optional - Add remote repository for external backup. Using BitBucket is recommended because it supports private repositories:
+
+		   sudo git remote add origin git@bitbucket.org:user/repo.git
+		   sudo git push -f origin master
+		   sudo git branch --set-upstream-to=origin/master master
+
+	Note that after updating your local repository as described above, you also	want to push those changes to the remote server:
+
+		   cd /docker/home; sudo git push
+
+	To restore your Docker Stack from remote Git backup on a fresh Docker host installation:
+
+			sudo mkdir -p /docker
+			cd /docker; sudo git clone git@bitbucket.org:user/repo.git
+			cd /docker/home; sudo docker-compose up -d
+
 
 ___
 [Production ![Build Status](https://travis-ci.com/docker-home-automation-stack/fhem-docker.svg?branch=master)](https://travis-ci.com/docker-home-automation-stack/fhem-docker)

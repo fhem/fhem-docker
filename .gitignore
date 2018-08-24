@@ -1,4 +1,7 @@
 .DS_Store
 .idea
 !.gitkeep
-
+fhem/backup/*
+fhem/cache/*
+fhem/log/*
+fhem/restoreDir/*
