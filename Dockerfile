@@ -94,6 +94,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         netcat \
         perl \
         python \
+        sendemail \
         snmp \
         sqlite3 \
         sudo \
