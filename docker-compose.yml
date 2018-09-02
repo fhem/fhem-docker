@@ -1,0 +1,38 @@
+# This is an exmaple Docker Compose file to start your own Docker Stack
+
+version: '2.3'
+
+networks:
+  net:
+    driver: bridge
+    # enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.27.0.0/24
+          gateway: 172.27.0.1
+        # - subnet: fd00:0:0:0:27::/80
+        #   gateway: fd00:0:0:0:27::1
+
+services:
+  fhem:
+    image: fhem/fhem:latest
+    restart: always
+    # privileged: true
+    networks:
+      - net
+    ports:
+      - "7072:7072"
+      - "8083:8083"
+      - "8084:8084"
+      - "8085:8085"
+    volumes:
+      - ./fhem/:/opt/fhem/
+      # - /dev/ttyUSB0:/dev/ttyUSB0
+    environment:
+      - FHEM_UID=6061
+      - FHEM_GID=6061
+      - TIMEOUT=10
+      - RESTART=1
+      - TZ=Europe/Berlin
+      # - CONFIGTYPE=configDB
