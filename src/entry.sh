@@ -4,8 +4,8 @@
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
-export LOGFILE="${FHEM_DIR}/log/fhem-%Y-%m.log"
-export PIDFILE="${FHEM_DIR}/log/fhem.pid"
+export LOGFILE="${FHEM_DIR}/log/${LOGFILE:-fhem-%Y-%m.log}"
+export PIDFILE="${FHEM_DIR}/log/${PIDFILE:-fhem.pid}"
 export SLEEPINTERVAL=0.5
 export TIMEOUT="${TIMEOUT:-10}"
 export RESTART="${RESTART:-1}"
@@ -84,11 +84,13 @@ chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/ 2>
 NEWLINES=$OLDLINES
 FOUND=false
 function PrintNewLines {
-      	NEWLINES=$(wc -l < "$(date +"$LOGFILE")")
-      	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=$NEWLINES
-      	tail -n "$LINES" "$(date +"$LOGFILE")"
-      	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"$LOGFILE")") && FOUND=true || FOUND=false
-      	OLDLINES=$NEWLINES
+  if [ -s "$( date +"$LOGFILE" )" ]; then
+  	NEWLINES=$(wc -l < "$(date +"$LOGFILE")")
+  	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=$NEWLINES
+  	tail -n "$LINES" "$(date +"$LOGFILE")"
+  	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"$LOGFILE")") && FOUND=true || FOUND=false
+  	OLDLINES=$NEWLINES
+  fi
 }
 
 # Docker stop signal handler
@@ -159,18 +161,18 @@ StartFHEM
 while true; do
 
   # FHEM isn't running
-	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
+	if [ ! -s "$PIDFILE" ] || [ ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ]; then
 		PrintNewLines
 		COUNTDOWN="$TIMEOUT"
 		echo -ne "\n\nAbrupt daemon termination, starting $COUNTDOWN""s countdown ..."
-		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null ) && (( COUNTDOWN > 0 )); do
+		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ) && (( COUNTDOWN > 0 )); do
 			echo -n " $COUNTDOWN"
 			(( COUNTDOWN-- ))
 			sleep 1
 		done
 
     # FHEM didn't reappear
-    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
+    if [ ! -s "$PIDFILE" ] || [ ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ]; then
 
       # Container should be stopped
       if [ "$RESTART" == "0" ]; then

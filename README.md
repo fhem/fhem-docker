@@ -80,6 +80,11 @@ The platform repositories will also allow you to choose more specific build tags
 
 #### Tweak container settings using environment variables
 
+* Change FHEM logfile format:
+	To set a different logfile path and format (default is fhem-%Y-%m.log):
+
+		-e LOGFILE=fhem-%Y-%m.log
+
 * Change FHEM system user ID:
 	To set a different UID for the user 'fhem' (default is 6061):
 
