@@ -82,6 +82,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        avahi-daemon \
         bluez \
         build-essential \
         cpanminus \
@@ -156,6 +157,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libterm-readline-perl-perl \
         libtext-csv-perl \
         libtext-diff-perl \
+        libtime-period-perl \
         libtimedate-perl \
         libusb-1.0-0-dev \
         libwww-curl-perl \
