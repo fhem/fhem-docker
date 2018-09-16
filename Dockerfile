@@ -116,6 +116,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libdatetime-format-strptime-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
+        libdevel-size-perl \
         libdevice-serialport-perl \
         libdigest-*-perl \
         libdpkg-perl \
