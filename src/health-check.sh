@@ -39,18 +39,7 @@ else
 
   # Update docker module data
   if [ -s /image_info ]; then
-    FHEMCMD="my \$n;;if(defined(\$modules{'DockerImageInfo'}{defptr})){\$n = \$modules{'DockerImageInfo'}{defptr}{NAME}}else{fhem 'define DockerImageInfo DockerImageInfo';;\$n = 'DockerImageInfo';;}\$defs{\$n}{STATE} = 'ok';;readingsBeginUpdate(\$defs{\$n});;"
-    touch /image_info.tmp
-    for LINE in "$( sort -k1,1 -t'=' --stable --unique /image_info.* /image_info )"; do
-      [ -z "$( echo "$LINE" | grep -P '^org\.opencontainers\..+=.+$' )" ] && continue
-      LINE=${LINE#org.opencontainers.}
-      NAME=$(echo "${LINE}" | cut -d = -f 1)
-      VAL=$(echo "${LINE}" | cut -d = -f 2-)
-      [ "${NAME}" == "image.authors" ] && continue
-      FHEMCMD="${FHEMCMD}readingsBulkUpdateIfChanged(\$defs{\$n},'${NAME}','${VAL}');;"
-    done
-    FHEMCMD="${FHEMCMD}readingsEndUpdate(\$defs{\$n},1)"
-    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{${FHEMCMD}}" 2>/dev/null )
+    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{ DockerImageInfo_GetImageInfo();; }" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:FAILED;" || RETURN="${RETURN} DockerImageInfo:OK;"
   fi
 

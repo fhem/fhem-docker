@@ -15,24 +15,104 @@ networks:
         #   gateway: fd00:0:0:0:27::1
 
 services:
+
+  ####
+  # HINT: use only ONE of the example "fhem:" service
+  # definitions below !
+  #
+
+  # Minimum example w/o any custom environment variables
   fhem:
     image: fhem/fhem:latest
     restart: always
-    # privileged: true
     networks:
       - net
     ports:
       - "7072:7072"
       - "8083:8083"
-      - "8084:8084"
-      - "8085:8085"
     volumes:
-      - ./fhem/:/opt/fhem/
-      # - /dev/ttyUSB0:/dev/ttyUSB0
+      - "./fhem/:/opt/fhem/"
+
+  # Example w/ custom environment variables
+  fhem:
+    image: fhem/fhem:latest
+    restart: always
+    networks:
+      - net
+    ports:
+      - "7072:7072"
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
     environment:
-      - FHEM_UID=6061
-      - FHEM_GID=6061
-      - TIMEOUT=10
-      - RESTART=1
-      - TZ=Europe/Berlin
-      # - CONFIGTYPE=configDB
+      FHEM_UID: 6061
+      FHEM_GID: 6061
+      TIMEOUT: 10
+      RESTART: 1
+      TELNETPORT: 7072
+      TZ: Europe/Berlin
+      # CONFIGTYPE: configDB
+
+  # Example to connect USB to the container w/o
+  # privileged mode (preferred method)
+  fhem:
+    image: fhem/fhem:latest
+    restart: always
+    networks:
+      - net
+    ports:
+      - "7072:7072"
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    environment:
+      FHEM_UID: 6061
+      FHEM_GID: 6061
+      TIMEOUT: 10
+      RESTART: 1
+      TELNETPORT: 7072
+      TZ: Europe/Berlin
+
+  # Example to connect USB to the container w/
+  # privileged mode (not recommended for security reasons)
+  fhem:
+    image: fhem/fhem:latest
+    restart: always
+    privileged: true
+    networks:
+      - net
+    ports:
+      - "7072:7072"
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    environment:
+      FHEM_UID: 6061
+      FHEM_GID: 6061
+      TIMEOUT: 10
+      RESTART: 1
+      TELNETPORT: 7072
+      TZ: Europe/Berlin
+
+  # Example for privileged container w/
+  # host network (not recommended for security reasons)
+  fhem:
+    image: fhem/fhem:latest
+    restart: always
+    privileged: true
+    network_mode: "host"
+    ports:
+      - "7072:7072"
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+    environment:
+      FHEM_UID: 6061
+      FHEM_GID: 6061
+      TIMEOUT: 10
+      RESTART: 1
+      TELNETPORT: 7072
+      TZ: Europe/Berlin
