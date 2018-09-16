@@ -85,6 +85,11 @@ The platform repositories will also allow you to choose more specific build tags
 
 		-e LOGFILE=fhem-%Y-%m.log
 
+* Change FHEM local Telnet port for health check:
+	To set a different Telnet port for local connection during health check (default is 7072):
+
+		-e TELNETPORT=7072
+
 * Change FHEM system user ID:
 	To set a different UID for the user 'fhem' (default is 6061):
 
