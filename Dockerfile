@@ -192,7 +192,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 
-EXPOSE 7072 8083 8084 8085
+EXPOSE 7072 8083
 
 HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
 

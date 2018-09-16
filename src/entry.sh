@@ -9,6 +9,7 @@ export PIDFILE="${FHEM_DIR}/log/${PIDFILE:-fhem.pid}"
 export SLEEPINTERVAL=0.5
 export TIMEOUT="${TIMEOUT:-10}"
 export RESTART="${RESTART:-1}"
+export TELNETPORT="${TELNETPORT:-7072}"
 export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
 export FHEM_UID="${FHEM_UID:-6061}"
@@ -49,6 +50,8 @@ if [ -d "/fhem" ]; then
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep ' telnet ${TELNETPORT}')" ] && echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
   sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
   (( i++ ))
 
