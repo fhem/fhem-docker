@@ -30,6 +30,37 @@ sub DockerImageInfo_Define($$) {
     return undef;
 }
 
+sub DockerImageInfo_GetImageInfo() {
+    my $n = 'DockerImageInfo';
+
+    if ( defined( $modules{'DockerImageInfo'}{defptr} ) ) {
+        $n = $modules{'DockerImageInfo'}{defptr}{NAME};
+    }
+    else {
+        fhem "defmod $n DockerImageInfo";
+    }
+
+    $defs{$n}{STATE} = 'ok';
+    readingsBeginUpdate( $defs{$n} );
+
+    my @LINES = split( "\n",
+        `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info`
+    );
+
+    foreach my $LINE (@LINES) {
+        next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/ );
+        my @NV = split( "=", $LINE );
+        my $NAME = shift @NV;
+        $NAME =~ s/^org\.opencontainers\.//;
+        my $VAL = join( "=", @NV );
+        next if ( $NAME eq "image.authors" );
+        readingsBulkUpdateIfChanged( $defs{$n}, $NAME, $VAL );
+    }
+
+    readingsEndUpdate( $defs{$n}, 1 );
+    return undef;
+}
+
 1;
 
 =pod
