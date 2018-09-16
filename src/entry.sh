@@ -161,7 +161,7 @@ StartFHEM
 while true; do
 
   # FHEM isn't running
-	if [ ! -s "$PIDFILE" ] || [ ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ]; then
+	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null; then
 		PrintNewLines
 		COUNTDOWN="$TIMEOUT"
 		echo -ne "\n\nAbrupt daemon termination, starting $COUNTDOWN""s countdown ..."
@@ -172,7 +172,7 @@ while true; do
 		done
 
     # FHEM didn't reappear
-    if [ ! -s "$PIDFILE" ] || [ ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ]; then
+    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null; then
 
       # Container should be stopped
       if [ "$RESTART" == "0" ]; then
