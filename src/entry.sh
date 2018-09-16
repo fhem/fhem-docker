@@ -4,11 +4,12 @@
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
-export LOGFILE="${FHEM_DIR}/log/fhem-%Y-%m.log"
-export PIDFILE="${FHEM_DIR}/log/fhem.pid"
+export LOGFILE="${FHEM_DIR}/log/${LOGFILE:-fhem-%Y-%m.log}"
+export PIDFILE="${FHEM_DIR}/log/${PIDFILE:-fhem.pid}"
 export SLEEPINTERVAL=0.5
 export TIMEOUT="${TIMEOUT:-10}"
 export RESTART="${RESTART:-1}"
+export TELNETPORT="${TELNETPORT:-7072}"
 export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
 export FHEM_UID="${FHEM_UID:-6061}"
@@ -49,6 +50,8 @@ if [ -d "/fhem" ]; then
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep ' telnet ${TELNETPORT}')" ] && echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
   sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
   (( i++ ))
 
@@ -84,11 +87,13 @@ chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/ 2>
 NEWLINES=$OLDLINES
 FOUND=false
 function PrintNewLines {
-      	NEWLINES=$(wc -l < "$(date +"$LOGFILE")")
-      	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=$NEWLINES
-      	tail -n "$LINES" "$(date +"$LOGFILE")"
-      	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"$LOGFILE")") && FOUND=true || FOUND=false
-      	OLDLINES=$NEWLINES
+  if [ -s "$( date +"$LOGFILE" )" ]; then
+  	NEWLINES=$(wc -l < "$(date +"$LOGFILE")")
+  	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=$NEWLINES
+  	tail -n "$LINES" "$(date +"$LOGFILE")"
+  	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"$LOGFILE")") && FOUND=true || FOUND=false
+  	OLDLINES=$NEWLINES
+  fi
 }
 
 # Docker stop signal handler
@@ -159,18 +164,18 @@ StartFHEM
 while true; do
 
   # FHEM isn't running
-	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
+	if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null; then
 		PrintNewLines
 		COUNTDOWN="$TIMEOUT"
 		echo -ne "\n\nAbrupt daemon termination, starting $COUNTDOWN""s countdown ..."
-		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null ) && (( COUNTDOWN > 0 )); do
+		while ( [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null ) && (( COUNTDOWN > 0 )); do
 			echo -n " $COUNTDOWN"
 			(( COUNTDOWN-- ))
 			sleep 1
 		done
 
     # FHEM didn't reappear
-    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1>/dev/null; then
+    if [ ! -s "$PIDFILE" ] || ! kill -0 "$(<"$PIDFILE")" 2>&1 >/dev/null; then
 
       # Container should be stopped
       if [ "$RESTART" == "0" ]; then

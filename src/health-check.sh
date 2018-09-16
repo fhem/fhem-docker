@@ -1,13 +1,14 @@
 #!/bin/bash
 
 STATE=0
+TELNETPORT="${TELNETPORT:-7072}"
 
-FHEMWEB=$( cd /opt/fhem; perl fhem.pl 7072 "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1" 2>/dev/null )
+FHEMWEB=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1" 2>/dev/null )
 if [ $? -ne 0 ] || [ -z "${FHEMWEB}" ]; then
-  RETURN="Telnet(7072): FAILED;"
+  RETURN="Telnet(${TELNETPORT}): FAILED;"
   STATE=1
 else
-  RETURN="Telnet(7072): OK;"
+  RETURN="Telnet(${TELNETPORT}): OK;"
 
   LEN=$( echo ${FHEMWEB} | jq -r '.Results | length' )
   i=0
@@ -49,7 +50,7 @@ else
       FHEMCMD="${FHEMCMD}readingsBulkUpdateIfChanged(\$defs{\$n},'${NAME}','${VAL}');;"
     done
     FHEMCMD="${FHEMCMD}readingsEndUpdate(\$defs{\$n},1)"
-    RET=$( cd /opt/fhem; perl fhem.pl 7072 "{${FHEMCMD}}" 2>/dev/null )
+    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{${FHEMCMD}}" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:FAILED;" || RETURN="${RETURN} DockerImageInfo:OK;"
   fi
 

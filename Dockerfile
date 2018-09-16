@@ -82,6 +82,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        avahi-daemon \
         bluez \
         build-essential \
         cpanminus \
@@ -116,6 +117,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libdatetime-format-strptime-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
+        libdevel-size-perl \
         libdevice-serialport-perl \
         libdigest-*-perl \
         libdpkg-perl \
@@ -155,6 +157,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libterm-readline-perl-perl \
         libtext-csv-perl \
         libtext-diff-perl \
+        libtime-period-perl \
         libtimedate-perl \
         libusb-1.0-0-dev \
         libwww-curl-perl \
@@ -189,7 +192,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 
-EXPOSE 7072 8083 8084 8085
+EXPOSE 7072 8083
 
 HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
 
