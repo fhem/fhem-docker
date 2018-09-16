@@ -44,7 +44,7 @@ sub DockerImageInfo_GetImageInfo() {
     readingsBeginUpdate( $defs{$n} );
 
     my @LINES = split( "\n",
-        `touch /image_info.tmp; /sort -k1,1 -t'=' --stable --unique /image_info.* /image_info; rm /image_info.tmp`
+        `touch /image_info.tmp; sort -k1,1 -t'=' --stable --unique /image_info.* /image_info; rm /image_info.tmp`
     );
 
     foreach my $LINE (@LINES) {
