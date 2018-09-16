@@ -47,8 +47,10 @@ else
       NAME=$(echo "${LINE}" | cut -d = -f 1)
       VAL=$(echo "${LINE}" | cut -d = -f 2-)
       [ "${NAME}" == "image.authors" ] && continue
+      VAL=$(echo "${VAL}" | sed -e "s/'/\\\'/")
       FHEMCMD="${FHEMCMD}readingsBulkUpdateIfChanged(\$defs{\$n},'${NAME}','${VAL}');;"
     done
+    rm -f /image_info.tmp
     FHEMCMD="${FHEMCMD}readingsEndUpdate(\$defs{\$n},1)"
     RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{${FHEMCMD}}" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:FAILED;" || RETURN="${RETURN} DockerImageInfo:OK;"
