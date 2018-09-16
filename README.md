@@ -10,17 +10,15 @@ We recommend pulling from the [main repository](https://hub.docker.com/r/fhem/fh
 
 To start your container right away:
 
-    docker run -d --name fhem -p 7072:7072 -p 8083:8083 -p 8084:8084 -p 8085:8085 fhem/fhem
+    docker run -d --name fhem -p 8083:8083 fhem/fhem
 
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
-    docker run -d --name fhem -p 7072:7072 -p 8083:8083 -p 8084:8084 -p 8085:8085 fhem/fhem -v /some/host/directory:/opt/fhem
+    docker run -d --name fhem -p 8083:8083 fhem/fhem -v /some/host/directory:/opt/fhem
 
 After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants:
 
 	http://xxx.xxx.xxx.xxx:8083/
-	http://xxx.xxx.xxx.xxx:8084/
-	http://xxx.xxx.xxx.xxx:8085/
 
 You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information.
 
