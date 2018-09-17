@@ -51,7 +51,7 @@ if [ -d "/fhem" ]; then
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
   [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep ' telnet ${TELNETPORT}')" ] && echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep " telnet ${TELNETPORT}")" ] && [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep '^define telnetPort telnet ')" ] && echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
   sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
   (( i++ ))
 

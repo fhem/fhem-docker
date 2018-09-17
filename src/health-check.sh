@@ -1,7 +1,17 @@
 #!/bin/bash
 
-STATE=0
+FHEM_DIR="/opt/fhem"
 TELNETPORT="${TELNETPORT:-7072}"
+STATE=0
+
+if [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep " telnet ${TELNETPORT}")" ]; then
+  TELNETPORT="$(cat ${FHEM_DIR}/fhem.cfg | grep '^define telnetPort telnet ' | cut -d ' ' -f 4)"
+
+  if [ -z "${TELNETPORT}"]; then
+    echo "Telnet(undefined): FAILED;"
+    exit 1
+  fi
+fi
 
 FHEMWEB=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1" 2>/dev/null )
 if [ $? -ne 0 ] || [ -z "${FHEMWEB}" ]; then
@@ -39,8 +49,10 @@ else
 
   # Update docker module data
   if [ -s /image_info ]; then
+    touch /image_info.tmp
     RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{ DockerImageInfo_GetImageInfo();; }" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:FAILED;" || RETURN="${RETURN} DockerImageInfo:OK;"
+    rm /image_info.tmp
   fi
 
 fi
