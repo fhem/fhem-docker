@@ -57,6 +57,11 @@ else
   echo "No prior build found for ${BASE}:${TAG} on Docker Hub registry"
 fi
 
+# Download dependencies if not existing
+if [ ! -d ./src/fhem ]; then
+  svn co https://svn.fhem.de/fhem/ ./src/fhem;
+fi
+
 docker build \
   $( [ -n "${CACHE_TAG}" ] && echo -n "--cache-from "${BASE}:${CACHE_TAG}"" ) \
   --tag "${BASE}:${VARIANT}" \
