@@ -1,7 +1,8 @@
 #!/bin/bash
 #
 #	Credits for the initial script to Joscha Middendorf:
-#    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
+#	Copyright (c) 2018 Joscha Middendorf
+#    	https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
 export LOGFILE="${FHEM_DIR}/log/${LOGFILE:-fhem-%Y-%m.log}"
