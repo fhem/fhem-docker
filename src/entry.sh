@@ -16,6 +16,8 @@ export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
 export FHEM_CLEANINSTALL=1
 
+[ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
+
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
   i=1
