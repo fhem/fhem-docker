@@ -83,6 +83,7 @@ adduser --quiet fhem tty 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 
 # SSH key: Ed25519
+mkdir -p ${FHEM_DIR}/.ssh
 if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
   echo -e "  - Generating SSH Ed25519 client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_ed25519*
