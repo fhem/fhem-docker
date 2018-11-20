@@ -131,8 +131,8 @@ Follow initial setup steps:
 1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
 
 		sudo mkdir -p /docker/home
-		sudo curl -o /docker/home/docker-compose.yml https://raw.githubusercontent.com/docker-home-automation-stack/fhem-docker/master/docker-compose.yml
-		sudo curl -o /docker/home/.gitignore https://raw.githubusercontent.com/docker-home-automation-stack/fhem-docker/master/.gitignore
+		sudo curl -o /docker/home/docker-compose.yml https://raw.githubusercontent.com/fhem/fhem-docker/master/docker-compose.yml
+		sudo curl -o /docker/home/.gitignore https://raw.githubusercontent.com/fhem/fhem-docker/master/.gitignore
 
 	Note that the sub-directory "home" will be the base prefix name for all	your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
 
@@ -174,6 +174,6 @@ Follow initial setup steps:
 
 
 ___
-[Production ![Build Status](https://travis-ci.com/docker-home-automation-stack/fhem-docker.svg?branch=master)](https://travis-ci.com/docker-home-automation-stack/fhem-docker)
+[Production ![Build Status](https://travis-ci.com/fhem/fhem-docker.svg?branch=master)](https://travis-ci.com/fhem/fhem-docker)
 
-[Development ![Build Status](https://travis-ci.com/docker-home-automation-stack/fhem-docker.svg?branch=dev)](https://travis-ci.com/docker-home-automation-stack/fhem-docker)
+[Development ![Build Status](https://travis-ci.com/fhem/fhem-docker.svg?branch=dev)](https://travis-ci.com/fhem/fhem-docker)
