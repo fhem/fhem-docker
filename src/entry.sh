@@ -88,6 +88,7 @@ if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
   echo -e "  - Generating SSH Ed25519 client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_ed25519*
   ssh-keygen -t ed25519 -f ${FHEM_DIR}/.ssh/id_ed25519 -q -N "" -o -a 100
+  sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_ed25519.pub
 fi
 chmod -v 600 ${FHEM_DIR}/.ssh/id_ed25519
 chmod -v 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
@@ -98,6 +99,7 @@ if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
   echo -e "  - Generating SSH RSA client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_rsa*
   ssh-keygen -t rsa -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
+  sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_rsa.pub
 fi
 chmod -v 600 ${FHEM_DIR}/.ssh/id_rsa
 chmod -v 644 ${FHEM_DIR}/.ssh/id_rsa.pub
