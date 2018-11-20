@@ -170,7 +170,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
-    && if [ [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ]; then \
+    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          cpanm \
            Crypt::Cipher::AES \
        ; fi \
