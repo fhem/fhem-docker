@@ -4,8 +4,8 @@ FHEM_DIR="/opt/fhem"
 TELNETPORT="${TELNETPORT:-7072}"
 STATE=0
 
-if [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep " telnet ${TELNETPORT}")" ]; then
-  TELNETPORT="$(cat ${FHEM_DIR}/fhem.cfg | grep '^define telnetPort telnet ' | cut -d ' ' -f 4)"
+if [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^define .+ telnet ${TELNETPORT}")" ]; then
+  TELNETPORT="$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
 
   if [ -z "${TELNETPORT}"]; then
     echo "Telnet(undefined): FAILED;"
@@ -25,6 +25,8 @@ else
   until [ "$i" == "${LEN}" ]; do
     NAME=$( echo ${FHEMWEB} | jq -r ".Results[$i].Internals.NAME" )
     PORT=$( echo ${FHEMWEB} | jq -r ".Results[$i].Internals.PORT" )
+    WEBNAME=$( echo ${FHEMWEB} | jq -r ".Results[$i].Attributes.webname" )
+    [[ -z "${WEBNAME}" ]] && WEBNAME="fhem"
     HTTPS=$( echo ${FHEMWEB} | jq -r ".Results[$i].Attributes.HTTPS" )
     [[ -n "${HTTPS}" && "${HTTPS}" == "1" ]] && PROTO=https || PROTO=http
 
@@ -34,7 +36,7 @@ else
                       --output /dev/null \
                       --write-out "%{http_code}" \
                       --user-agent 'FHEM-Docker/1.0 Health Check' \
-                      "${PROTO}://localhost:${PORT}/" )
+                      "${PROTO}://localhost:${PORT}/${WEBNAME}/healthcheck" )
     if [ $? -ne 0 ] ||
        [ -z "${FHEMWEB_STATE}" ] ||
        [ "${FHEMWEB_STATE}" == "000" ] ||
