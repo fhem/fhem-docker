@@ -93,6 +93,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         inetutils-ping \
         jq \
         netcat \
+        openssh-client \
         perl \
         python \
         sendemail \
@@ -164,11 +165,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libwww-perl \
         libxml-parser-lite-perl \
         libxml-simple-perl \
+        libnet-sip-perl \
         libxml-stream-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
-    && if [ "${ARCH}" == "amd64" ] || [ "${ARCH}" == "i386" ]; then \
+    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          cpanm \
            Crypt::Cipher::AES \
        ; fi \

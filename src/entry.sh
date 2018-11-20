@@ -31,31 +31,29 @@ if [ -d "/fhem" ]; then
   fi
 
   if [ "${FHEM_CLEANINSTALL}" = '1' ]; then
-    echo "$i. Installing FHEM to /opt/fhem"
+    echo "$i. Installing FHEM to ${FHEM_DIR}"
     shopt -s dotglob nullglob 2>&1>/dev/null
     mv -f /fhem/* ${FHEM_DIR}/ 2>&1>/dev/null
     cd ${FHEM_DIR} 2>&1>/dev/null
     mv ./controls_fhem.txt ./FHEM/ 2>&1>/dev/null
     perl ./contrib/commandref_modular.pl 2>&1>/dev/null
+    cp -f ./fhem.cfg ./fhem.cfg.default
+    (( i++ ))
+
+    echo "$i. Patching fhem.cfg default configuration"
+    [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
+    [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global commandref')" ] && echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
+    [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
+
     cd - 2>&1>/dev/null
   else
-    echo "$i. Updating existing FHEM installation in /opt/fhem"
-    cp -f /fhem/FHEM/99_DockerImageInfo.pm /opt/fhem/FHEM/
+    echo "$i. Updating existing FHEM installation in ${FHEM_DIR}"
+    cp -f ${FHEM_DIR}/fhem.cfg ${FHEM_DIR}/fhem.cfg.bak
+    cp -f /fhem/FHEM/99_DockerImageInfo.pm ${FHEM_DIR}/FHEM/
   fi
   (( i++ ))
-  rm -rf /fhem/
 
-  echo "$i. Updating fhem.cfg for Docker container compatibility"
-  cp -n ${FHEM_DIR}/fhem.cfg ${FHEM_DIR}/fhem.cfg.default
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global nofork 0')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global commandref')" ] && echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep 'attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep " telnet ${TELNETPORT}")" ] && [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep '^define telnetPort telnet ')" ] && echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
-  sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
-  (( i++ ))
+  rm -rf /fhem/
 
   if [ -s /post-init.sh ]; then
     echo "$i. Running post-init script"
@@ -77,12 +75,33 @@ cp -f /etc/passwd.orig /etc/passwd
 cp -f /etc/shadow.orig /etc/shadow
 cp -f /etc/group.orig /etc/group
 groupadd --force --gid ${FHEM_GID} fhem 2>&1>/dev/null
-useradd --home /opt/fhem --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
+useradd --home ${FHEM_DIR} --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
 usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem 2>&1>/dev/null
 adduser --quiet fhem bluetooth 2>&1>/dev/null
 adduser --quiet fhem dialout 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
-chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} /opt/fhem/ 2>&1>/dev/null
+chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
+
+# SSH key: Ed25519
+mkdir -p ${FHEM_DIR}/.ssh
+if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
+  echo -e "  - Generating SSH Ed25519 client certificate for user 'fhem' ..."
+  rm -f ${FHEM_DIR}/.ssh/id_ed25519*
+  ssh-keygen -t ed25519 -f ${FHEM_DIR}/.ssh/id_ed25519 -q -N "" -o -a 100
+fi
+chmod -v 600 ${FHEM_DIR}/.ssh/id_ed25519
+chmod -v 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
+chown fhem.root ${FHEM_DIR}/.ssh/id_ed25519*
+
+# SSH key: RSA
+if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
+  echo -e "  - Generating SSH RSA client certificate for user 'fhem' ..."
+  rm -f ${FHEM_DIR}/.ssh/id_rsa*
+  ssh-keygen -t rsa -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
+fi
+chmod -v 600 ${FHEM_DIR}/.ssh/id_rsa
+chmod -v 644 ${FHEM_DIR}/.ssh/id_rsa.pub
+chown fhem.root ${FHEM_DIR}/.ssh/id_rsa*
 
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0
@@ -130,9 +149,43 @@ function StartFHEM {
   fi
 
   # Update system environment
+  #
   echo 'Preparing configuration ...'
+
+  # Mandatory
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
+  sed -i "s,attr global nofork.*,attr global nofork 0," ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global nofork')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/fhem.cfg
+  sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
+  sed -i "s,attr global pidfilename.*,attr global pidfilename .${PIDFILE#${FHEM_DIR}}," ${FHEM_DIR}/fhem.cfg
+  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
+
+  ## Find Telnet access details
+  if [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
+    CUSTOMPORT="$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
+    if [ -z "${CUSTOMPORT}"]; then
+      echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
+    else
+      TELNETPORT=${CUSTOMPORT}
+    fi
+  fi
+  TELNETDEV="$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^define .* telnet ${TELNETPORT}" | cut -d " " -f 2)"
+  TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr .* validFor .*${TELNETDEV}.*" | cut -d " " -f 2)"
+
+  ## Enforce local telnet access w/o password
+  if [ -n "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
+    if [ -n "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
+      echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
+      sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/fhem.cfg
+    else
+      echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
+      sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/fhem.cfg
+    fi
+  fi
+
+  # Optional
   sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P 'define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
 
   echo 'Starting FHEM ...'
   trap "StopFHEM" SIGTERM

@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"
+echo "TRAVIS_TAG = ${TRAVIS_TAG}"
 [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" ]] && set -x
 
 cd "$(readlink -f "$(dirname "${BASH_SOURCE}")")"/..
@@ -42,7 +44,7 @@ if docker_tag_exists ${BASE} ${VARIANT}; then
 fi
 
 # Detect rolling tag for this build
-if [[ -n "${TRAVIS_BRANCH}" || "${TRAVIS_BRANCH}" == "master" || "${TRAVIS_BRANCH}" == "${TRAVIS_TAG}" ]]; then
+if [[ -z "${TRAVIS_BRANCH}" || "${TRAVIS_BRANCH}" == "master" || "${TRAVIS_BRANCH}" == "${TRAVIS_TAG}" ]]; then
       TAG="latest"
 else
   TAG="${TRAVIS_BRANCH}"

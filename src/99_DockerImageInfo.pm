@@ -57,6 +57,9 @@ sub DockerImageInfo_GetImageInfo() {
         readingsBulkUpdateIfChanged( $defs{$n}, $NAME, $VAL );
     }
 
+    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_ed25519.pub",  `cat ./.ssh/id_ed25519.pub` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub", `cat ./.ssh/id_rsa.pub` );
+
     readingsEndUpdate( $defs{$n}, 1 );
     return undef;
 }
