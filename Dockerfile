@@ -93,6 +93,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         inetutils-ping \
         jq \
         netcat \
+        openssh-client \
         perl \
         python \
         sendemail \

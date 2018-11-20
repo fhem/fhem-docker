@@ -82,6 +82,26 @@ adduser --quiet fhem dialout 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 
+# SSH key: Ed25519
+if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
+  echo -e "  - Generating SSH Ed25519 client certificate for user 'fhem' ..."
+  rm -f ${FHEM_DIR}/.ssh/id_ed25519*
+  ssh-keygen -t ed25519 -f ${FHEM_DIR}/.ssh/id_ed25519 -q -N "" -o -a 100
+fi
+chmod -v 600 ${FHEM_DIR}/.ssh/id_ed25519
+chmod -v 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
+chown fhem.root ${FHEM_DIR}/.ssh/id_ed25519*
+
+# SSH key: RSA
+if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
+  echo -e "  - Generating SSH RSA client certificate for user 'fhem' ..."
+  rm -f ${FHEM_DIR}/.ssh/id_rsa*
+  ssh-keygen -t rsa -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
+fi
+chmod -v 600 ${FHEM_DIR}/.ssh/id_rsa
+chmod -v 644 ${FHEM_DIR}/.ssh/id_rsa.pub
+chown fhem.root ${FHEM_DIR}/.ssh/id_rsa*
+
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0
 NEWLINES=$OLDLINES
