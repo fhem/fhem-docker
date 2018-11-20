@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"
+echo "TRAVIS_TAG = ${TRAVIS_TAG}"
 [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" ]] && set -x
 
 cd "$(readlink -f "$(dirname "${BASH_SOURCE}")")"/..
