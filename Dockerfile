@@ -102,6 +102,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         sudo \
         telnet \
         telnet-ssl \
+        unzip \
         usbutils \
         wget \
         \
@@ -168,6 +169,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libnet-sip-perl \
         libxml-stream-perl \
     && cpanm \
+        Crypt::Random \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
     && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
@@ -178,6 +180,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
+        unzip \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
