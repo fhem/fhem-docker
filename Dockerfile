@@ -112,6 +112,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libcgi-pm-perl \
         libclass-dbi-mysql-perl \
         libclass-isa-perl \
+        libclass-loader-perl \
         libcommon-sense-perl \
         libconvert-base32-perl \
         libcrypt-*-perl \
@@ -169,9 +170,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libnet-sip-perl \
         libxml-stream-perl \
     && cpanm \
-        Crypt::Random \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
+    && if [ "${ARCH}" != "i386" ]; then \
+         cpanm \
+           Crypt::Random \
+       ; fi \
     && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          cpanm \
            Crypt::Cipher::AES \
