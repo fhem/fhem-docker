@@ -167,6 +167,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-simple-perl \
         libnet-sip-perl \
         libxml-stream-perl \
+        libhtml-strip-perl \
+        libxml-xpath-perl \
+        libxml-treebuilder-perl \
+        libhtml-treebuilder-xpath-perl \
+        libxml-parser-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
@@ -194,7 +199,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 
-EXPOSE 7072 8083
+EXPOSE 7072 8083 1883
 
 HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
 
