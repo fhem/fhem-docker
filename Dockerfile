@@ -99,6 +99,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         sendemail \
         snmp \
         sox \
+        subversion \
         sqlite3 \
         sudo \
         telnet \
@@ -181,9 +182,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
            Crypt::Cipher::AES \
        ; fi \
     && rm -rf /root/.cpanm \
+    && svn co https://svn.fhem.de/fhem/ ./src/fhem \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
+        subversion \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
