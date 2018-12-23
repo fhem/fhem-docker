@@ -98,6 +98,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         python \
         sendemail \
         snmp \
+        sox \
         sqlite3 \
         sudo \
         telnet \
@@ -123,6 +124,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libdigest-*-perl \
         libdpkg-perl \
         liberror-perl \
+        libev-perl \
         libfile-copy-recursive-perl \
         libfile-fcntllock-perl \
         libgd-graph-perl \
@@ -139,8 +141,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmime-base64-perl \
         libmime-lite-perl \
         libmodule-pluggable-perl \
+        libmojolicious-perl \
+        libnet-bonjour-perl \
         libnet-jabber-perl \
         libnet-server-perl \
+        libnet-sip-perl \
         libnet-snmp-perl \
         libnet-ssleay-perl \
         libnet-telnet-perl \
@@ -151,6 +156,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libsoap-lite-perl \
         libsocket-perl \
         libsocket6-perl \
+        libsox-fmt-mp3 \
         libswitch-perl \
         libsys-hostname-long-perl \
         libsys-statistics-linux-perl \
@@ -160,12 +166,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-diff-perl \
         libtime-period-perl \
         libtimedate-perl \
+        liburi-escape-xs-perl \
         libusb-1.0-0-dev \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
         libxml-simple-perl \
-        libnet-sip-perl \
         libxml-stream-perl \
     && cpanm \
         Net::MQTT::Constants \
