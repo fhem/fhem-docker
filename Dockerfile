@@ -182,7 +182,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
            Crypt::Cipher::AES \
        ; fi \
     && rm -rf /root/.cpanm \
-    && svn co https://svn.fhem.de/fhem/ ./src/fhem \
+    && if [ -d ./src/fhem/ ]; then \
+         svn up ./src/fhem >/dev/null \
+       ; else \
+         svn co https://svn.fhem.de/fhem/ ./src/fhem \
+       ; fi \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
