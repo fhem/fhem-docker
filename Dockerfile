@@ -104,6 +104,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         sudo \
         telnet \
         telnet-ssl \
+        unzip \
         usbutils \
         wget \
         \
@@ -113,6 +114,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libcgi-pm-perl \
         libclass-dbi-mysql-perl \
         libclass-isa-perl \
+        libclass-loader-perl \
         libcommon-sense-perl \
         libconvert-base32-perl \
         libcrypt-*-perl \
@@ -130,6 +132,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libfile-fcntllock-perl \
         libgd-graph-perl \
         libgd-text-perl \
+        libhtml-strip-perl \
+        libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-file-withpath-perl \
@@ -172,11 +176,18 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
+        libxml-parser-perl \
         libxml-simple-perl \
         libxml-stream-perl \
+        libxml-treebuilder-perl \
+        libxml-xpath-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
+    && if [ "${ARCH}" != "i386" ]; then \
+         cpanm \
+           Crypt::Random \
+       ; fi \
     && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          cpanm \
            Crypt::Cipher::AES \
@@ -190,6 +201,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
+        unzip \
         subversion \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
