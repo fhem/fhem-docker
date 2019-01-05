@@ -127,6 +127,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libfile-fcntllock-perl \
         libgd-graph-perl \
         libgd-text-perl \
+        libhtml-strip-perl \
+        libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-file-withpath-perl \
@@ -141,6 +143,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmodule-pluggable-perl \
         libnet-jabber-perl \
         libnet-server-perl \
+        libnet-sip-perl \
         libnet-snmp-perl \
         libnet-ssleay-perl \
         libnet-telnet-perl \
@@ -164,14 +167,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
-        libxml-simple-perl \
-        libnet-sip-perl \
-        libxml-stream-perl \
-        libhtml-strip-perl \
-        libxml-xpath-perl \
-        libxml-treebuilder-perl \
-        libhtml-treebuilder-xpath-perl \
         libxml-parser-perl \
+        libxml-simple-perl \
+        libxml-stream-perl \
+        libxml-treebuilder-perl \
+        libxml-xpath-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
@@ -199,7 +199,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 
-EXPOSE 7072 8083 1883
+EXPOSE 7072 8083
 
 HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
 
