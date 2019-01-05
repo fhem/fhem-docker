@@ -132,6 +132,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libfile-fcntllock-perl \
         libgd-graph-perl \
         libgd-text-perl \
+        libhtml-strip-perl \
+        libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-file-withpath-perl \
@@ -174,8 +176,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
+        libxml-parser-perl \
         libxml-simple-perl \
         libxml-stream-perl \
+        libxml-treebuilder-perl \
+        libxml-xpath-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
