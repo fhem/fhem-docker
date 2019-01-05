@@ -28,7 +28,6 @@ services:
     networks:
       - net
     ports:
-      - "7072:7072"
       - "8083:8083"
     volumes:
       - "./fhem/:/opt/fhem/"
@@ -40,7 +39,6 @@ services:
     networks:
       - net
     ports:
-      - "7072:7072"
       - "8083:8083"
     volumes:
       - "./fhem/:/opt/fhem/"
@@ -61,7 +59,6 @@ services:
     networks:
       - net
     ports:
-      - "7072:7072"
       - "8083:8083"
     volumes:
       - "./fhem/:/opt/fhem/"
@@ -84,7 +81,6 @@ services:
     networks:
       - net
     ports:
-      - "7072:7072"
       - "8083:8083"
     volumes:
       - "./fhem/:/opt/fhem/"
@@ -105,7 +101,6 @@ services:
     privileged: true
     network_mode: "host"
     ports:
-      - "7072:7072"
       - "8083:8083"
     volumes:
       - "./fhem/:/opt/fhem/"
