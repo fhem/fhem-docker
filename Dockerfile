@@ -92,6 +92,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         etherwake \
         inetutils-ping \
         jq \
+        libssl-dev \
         netcat \
         openssh-client \
         perl \
@@ -193,7 +194,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && cpanm \
         Crypt::Mode \
         Crypt::OpenSSL::AES \
-        Crypt::OTR \
         Device::SMBus \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
