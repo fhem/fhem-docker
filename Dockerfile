@@ -205,6 +205,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
          cpanm \
            Crypt::Cipher::AES \
        ; fi \
+    && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+         cpanm \
+           HiPi \
+           RPi::WiringPi \
+       ; fi \
     && rm -rf /root/.cpanm \
     && if [ -d ./src/fhem/ ]; then \
          svn up ./src/fhem >/dev/null \
