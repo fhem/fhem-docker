@@ -2,7 +2,8 @@
 
 # Find missing Perl modules that are in use by official modules
 
-FPATH="${1:-.}"
+FPATH="${1:-/opt/fhem}"
+[ ! -d "$FPATH" ] && echo FPATH="."
 
 for module in `find $FPATH/FHEM -type f -name "*.pm" -print0 | xargs -0 grep -oP "[^\w#](?:(?:use|require) (?:[A-Z\'\"$][\w:./{}()$\->\"\']+))" | sed 's|[;"'\'']||g' | sed 's/FHEM\///g' | sed 's/.*\///g' | sed 's/$attr{global}{modpath}//g' | sed 's/$main::attr{global}{modpath}//g' | sort -u -f -k2,2 | cut -d : -f 2- | cut -d " " -f 2 | grep -v -i -E "^(use|require|warnings|vars|feature|inline|strict|constant|POSIX|utf8)" | grep -v "[(){}$]" | grep -v "[.:]$"`; do
   NAME=`echo $module | cut -d " " -f 1 | cut -d ";" -f 1 | cut -d ":" -f 1`

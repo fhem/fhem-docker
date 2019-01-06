@@ -230,6 +230,7 @@ ENV LC_ALL en_US.UTF-8
 
 COPY src/entry.sh /entry.sh
 COPY src/health-check.sh /health-check.sh
+COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
 COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
 ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
