@@ -214,7 +214,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && if [ -d ./src/fhem/ ]; then \
          svn up ./src/fhem >/dev/null \
        ; else \
-         svn co https://svn.fhem.de/fhem/ ./src/fhem \
+         svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk \
        ; fi \
     && apt-get purge -qqy \
         build-essential \

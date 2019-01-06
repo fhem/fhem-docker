@@ -125,7 +125,7 @@ before_install:
       curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.0.0/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
     fi
   # Update FHEM repository
-  - svn co https://svn.fhem.de/fhem/ ./src/fhem >/dev/null;
+  - svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
 
 install:
   - travis_wait 120 sleep infinity & ./scripts/build.sh;
