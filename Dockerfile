@@ -132,6 +132,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libfile-fcntllock-perl \
         libgd-graph-perl \
         libgd-text-perl \
+        libgnupg-interface-perl \
         libhtml-strip-perl \
         libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
@@ -141,20 +142,25 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
+        libmail-gnupg-perl \
         libmail-imapclient-perl \
         libmail-sendmail-perl \
         libmime-base64-perl \
         libmime-lite-perl \
         libmodule-pluggable-perl \
         libmojolicious-perl \
+        libmoox-late-perl \
         libnet-bonjour-perl \
         libnet-jabber-perl \
+        libnet-oauth-perl \
+        libnet-oauth2-perl \
         libnet-server-perl \
         libnet-sip-perl \
         libnet-snmp-perl \
         libnet-ssleay-perl \
         libnet-telnet-perl \
         libnet-xmpp-perl \
+        librivescript-perl \
         librpc-xml-perl \
         libsnmp-perl \
         libsnmp-session-perl \
@@ -181,6 +187,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-stream-perl \
         libxml-treebuilder-perl \
         libxml-xpath-perl \
+        libxml-xpathengine-perl \
+        libyaml-libyaml-perl \
+        libyaml-perl \
     && cpanm \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
