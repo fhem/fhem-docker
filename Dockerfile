@@ -191,6 +191,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libyaml-libyaml-perl \
         libyaml-perl \
     && cpanm \
+        Crypt::Mode \
+        Crypt::OpenSSL::AES \
+        Crypt::OTR \
+        Device::SMBus \
         Net::MQTT::Constants \
         Net::MQTT::Simple \
     && if [ "${ARCH}" != "i386" ]; then \
