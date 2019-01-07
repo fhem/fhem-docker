@@ -83,30 +83,45 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         avahi-daemon \
+        avrdude \
         bluez \
         build-essential \
         cpanminus \
         curl \
         dfu-programmer \
         dnsutils \
+        espeak \
         etherwake \
+        git-core \
+        i2c-tools \
         inetutils-ping \
         jq \
+        lame \
+        libpopt-dev \
         libssl-dev \
+        libttspico-utils \
+        mp3wrap \
+        mplayer \
+        mysql-client \
         netcat \
+        nmap \
         openssh-client \
         perl \
         python \
+        python-dev \
+        python-enum34 \
+        python3-pip \
         sendemail \
         snmp \
         sox \
-        subversion \
         sqlite3 \
+        subversion \
         sudo \
         telnet \
         telnet-ssl \
         unzip \
         usbutils \
+        youtube-dl \
         wget \
         \
         libalgorithm-merge-perl \
@@ -121,16 +136,21 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libcrypt-*-perl \
         libdata-dump-perl \
         libdatetime-format-strptime-perl \
+        libdbd-mysql \
+        libdbd-pg-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
         libdevel-size-perl \
         libdevice-serialport-perl \
+        libdevice-usb-perl \
         libdigest-*-perl \
         libdpkg-perl \
+        libencode-perl \
         liberror-perl \
         libev-perl \
         libfile-copy-recursive-perl \
         libfile-fcntllock-perl \
+        libfinance-quote-perl \
         libgd-graph-perl \
         libgd-text-perl \
         libgnupg-interface-perl \
@@ -138,6 +158,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
+        libinline-python-perl \
         libio-file-withpath-perl \
         libio-socket-*-perl \
         libjson-perl \
@@ -161,6 +182,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libnet-ssleay-perl \
         libnet-telnet-perl \
         libnet-xmpp-perl \
+        libnmap-parser-perl \
         librivescript-perl \
         librpc-xml-perl \
         libsnmp-perl \
@@ -191,6 +213,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
+    && pip3 install \
+        pychromecast \
     && cpanm \
         Crypt::Mode \
         Crypt::OpenSSL::AES \
@@ -209,6 +233,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
          cpanm \
            HiPi \
            RPi::WiringPi \
+         && git clone git://git.drogon.net/wiringPi \
+           && cd ./wiringPi \
+           && ./build \
+           && cd .. \
+           && rm -rf ./wiringPi \
        ; fi \
     && rm -rf /root/.cpanm \
     && if [ -d ./src/fhem/ ]; then \
@@ -219,6 +248,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
+        libpopt-dev \
+        libssl-dev \
+        python-dev \
         unzip \
         subversion \
     && apt-get autoremove -qqy && apt-get clean \
@@ -230,6 +262,7 @@ ENV LC_ALL en_US.UTF-8
 
 COPY src/entry.sh /entry.sh
 COPY src/health-check.sh /health-check.sh
+COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
 COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
 COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
