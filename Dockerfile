@@ -117,7 +117,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         python-setuptools \
         python3 \
         python3-dev \
-        python3-enum34 \
         python3-pip \
         python3-setuptools \
         sendemail \
