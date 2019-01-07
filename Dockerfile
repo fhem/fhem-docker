@@ -103,9 +103,9 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libpopt-dev \
         libssl-dev \
         libttspico-utils \
+        mariadb-client \
         mp3wrap \
         mplayer \
-        mysql-client \
         netcat \
         nmap \
         openssh-client \
