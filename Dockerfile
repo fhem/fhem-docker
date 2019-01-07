@@ -110,7 +110,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         python \
         python-dev \
         python-enum34 \
-        python3-pip \
+        python-pip \
         sendemail \
         snmp \
         sox \
