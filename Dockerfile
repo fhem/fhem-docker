@@ -216,7 +216,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
-    && pip3 install \
+    && pip install \
         pychromecast \
     && cpanm \
         Crypt::Mode \
