@@ -110,14 +110,10 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         nmap \
         openssh-client \
         perl \
-        python \
-        python-dev \
-        python-enum34 \
-        python-pip \
-        python-setuptools \
         python3 \
         python3-dev \
         python3-pip \
+        python3-pychromecast \
         python3-setuptools \
         sendemail \
         snmp \
@@ -221,7 +217,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libyaml-libyaml-perl \
         libyaml-perl \
     && pip3 install \
-        pychromecast \
         youtube-dl \
     && cpanm \
         Crypt::Mode \
@@ -258,7 +253,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         cpanminus \
         libpopt-dev \
         libssl-dev \
-        python-dev \
         python3-dev \
         subversion \
         unzip \
