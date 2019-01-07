@@ -115,6 +115,11 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         python-enum34 \
         python-pip \
         python-setuptools \
+        python3 \
+        python3-dev \
+        python3-enum34 \
+        python3-pip \
+        python3-setuptools \
         sendemail \
         snmp \
         sox \
@@ -125,8 +130,8 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         telnet-ssl \
         unzip \
         usbutils \
-        youtube-dl \
         wget \
+        youtube-dl \
         \
         libalgorithm-merge-perl \
         libauthen-*-perl \
@@ -217,7 +222,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
-    && pip install \
+    && pip3 install \
         pychromecast \
     && cpanm \
         Crypt::Mode \
@@ -255,9 +260,9 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libpopt-dev \
         libssl-dev \
         python-dev \
-        python-setuptools \
-        unzip \
+        python3-dev \
         subversion \
+        unzip \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
