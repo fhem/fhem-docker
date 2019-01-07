@@ -100,6 +100,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         inetutils-ping \
         jq \
         lame \
+        libav-tools \
         libpopt-dev \
         libssl-dev \
         libttspico-utils \
@@ -111,10 +112,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         openssh-client \
         perl \
         python3 \
-        python3-dev \
-        python3-pip \
         python3-pychromecast \
-        python3-setuptools \
         sendemail \
         snmp \
         sox \
@@ -126,6 +124,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         unzip \
         usbutils \
         wget \
+        youtube-dl \
         \
         libalgorithm-merge-perl \
         libauthen-*-perl \
@@ -216,8 +215,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
-    && pip3 install \
-        youtube-dl \
     && cpanm \
         Crypt::Mode \
         Crypt::OpenSSL::AES \
@@ -253,7 +250,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         cpanminus \
         libpopt-dev \
         libssl-dev \
-        python3-dev \
         subversion \
         unzip \
     && apt-get autoremove -qqy && apt-get clean \
