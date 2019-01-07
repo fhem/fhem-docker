@@ -114,6 +114,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         python-dev \
         python-enum34 \
         python-pip \
+        python-setuptools \
         sendemail \
         snmp \
         sox \
@@ -254,6 +255,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libpopt-dev \
         libssl-dev \
         python-dev \
+        python-setuptools \
         unzip \
         subversion \
     && apt-get autoremove -qqy && apt-get clean \
