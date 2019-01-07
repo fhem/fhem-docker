@@ -131,7 +131,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         unzip \
         usbutils \
         wget \
-        youtube-dl \
         \
         libalgorithm-merge-perl \
         libauthen-*-perl \
@@ -224,6 +223,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libyaml-perl \
     && pip3 install \
         pychromecast \
+        youtube-dl \
     && cpanm \
         Crypt::Mode \
         Crypt::OpenSSL::AES \
