@@ -232,12 +232,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
     && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
          cpanm \
            HiPi \
-           RPi::WiringPi \
-         && git clone git://git.drogon.net/wiringPi \
-           && cd ./wiringPi \
-           && ./build \
-           && cd .. \
-           && rm -rf ./wiringPi \
        ; fi \
     && rm -rf /root/.cpanm \
     && if [ -d ./src/fhem/ ]; then \
