@@ -69,6 +69,7 @@ RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.ima
 RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
+    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
@@ -109,6 +110,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         mplayer \
         netcat \
         nmap \
+        nodejs \
         openssh-client \
         perl \
         python3 \
@@ -234,6 +236,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
            HiPi \
        ; fi \
     && rm -rf /root/.cpanm \
+    && npm install -g alexa-fhem \
     && if [ -d ./src/fhem/ ]; then \
          svn up ./src/fhem >/dev/null \
        ; else \
