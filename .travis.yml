@@ -1,6 +1,11 @@
 language: bash
 services: docker
 
+branches:
+  only:
+    - dev
+    - /v\d+.\d+.*/
+
 # amd64 toolchain (used as a base for non-sudo compilation, which is faster) 
 include: &toolchain_amd64
   sudo: false
@@ -112,31 +117,55 @@ matrix:
 notifications:
   email: false
 
-before_install:
-  - export CXX="${GPP_COMPILER}" CC="${GCC_COMPILER}" DOCKER_CONFIG="./";
-  - if [[ "${CROSS_TOOLCHAIN}" == "true" ]]; then
-      sudo rm -rf /etc/apt/sources.list.d/**;
-      sudo rm /etc/apt/sources.list;
-      echo "deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee /etc/apt/sources.list;
-      echo "deb [arch=${DPKG_ARCH}] http://ports.ubuntu.com/ubuntu-ports xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
-      echo "deb-src http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
-      sudo dpkg --add-architecture ${DPKG_ARCH};
-      sudo apt-get update -yq;
-      curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.0.0/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
+before_install: |
+  export CXX="${GPP_COMPILER}" CC="${GCC_COMPILER}" DOCKER_CONFIG="./";
+  if [[ "${CROSS_TOOLCHAIN}" == "true" ]]; then
+    sudo rm -rf /etc/apt/sources.list.d/**;
+    sudo rm /etc/apt/sources.list;
+    echo "deb [arch=amd64,i386] http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee /etc/apt/sources.list;
+    echo "deb [arch=${DPKG_ARCH}] http://ports.ubuntu.com/ubuntu-ports xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
+    echo "deb-src http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
+    sudo dpkg --add-architecture ${DPKG_ARCH};
+    sudo apt-get update -yq;
+    curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.1.0-2/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
+  fi
+  svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
+
+install: |
+  export BUILD_STATUS="incomplete";
+  cd "$TRAVIS_BUILD_DIR/src/fhem-mirror";
+  timeout 2790 travis_wait 120 sleep infinity & ./scripts/build.sh;
+  RET=$? ;
+  if [[ $RET == 0 ]]; then
+    export BUILD_STATUS="complete";
+  elif [[ $RET != 124 ]]; then
+    export BUILD_STATUS="error";
+  fi
+
+script: |
+  if [[ "$BUILD_STATUS" == "error" ]]; then
+    echo "A permanent error occured"
+    exit 1
+  elif [[ "$BUILD_STATUS" != "complete" ]]; then
+    if [[ -n "$TRAVIS_API_TOKEN" ]]; then
+      body="{\"request\":{\"branch\":\"$TRAVIS_BRANCH\",\"message\":\"Extend build runtime\"}}";
+      curl -s -X POST \
+         -H "Content-Type: application/json" -H "Accept: application/json" -H "Travis-API-Version: 3" -H "Authorization: token $TRAVIS_API_TOKEN" -d "$body" https://api.travis-ci.com/repo/fhem%2Ffhem-docker/requests ;
+    else
+      echo "TRAVIS_API_TOKEN missing - unable to automatically trigger next build run"
     fi
-  # Update FHEM repository
-  - svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
-
-install:
-  - travis_wait 120 sleep infinity & ./scripts/build.sh;
-
-script:
-  - ./scripts/test-integration.sh;
+  else
+    ./scripts/test-integration.sh;
+  fi
 
 cache:
   directories:
     - $TRAVIS_BUILD_DIR/src/fhem/
-  
-after_success:
-  - ./scripts/push-docker.sh;
-  - ./scripts/push-docker-manifest.sh;
+
+after_success: |
+  if [[ "$BUILD_STATUS" != "complete" ]]; then
+    echo "Maximum runtime reached - will continue next run!";
+  else
+    ./scripts/push-docker.sh;
+    ./scripts/push-docker-manifest.sh;
+  fi
