@@ -73,6 +73,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
+        curl \
         locales \
     && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
     \
@@ -89,7 +90,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         avahi-daemon \
         avrdude \
         bluez \
-        curl \
         dfu-programmer \
         dnsutils \
         espeak \
