@@ -217,7 +217,8 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Build additional Perl modules w/o pre-compiled packages
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         build-essential \
         cpanminus \
         libpopt-dev \
