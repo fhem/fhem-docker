@@ -69,13 +69,12 @@ RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.ima
 RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && echo 'deb https://deb.nodesource.com/node_10.x stretch main' > /etc/apt/sources.list.d/nodesource.list \
-    && echo 'deb-src https://deb.nodesource.com/node_10.x stretch main' >> /etc/apt/sources.list.d/nodesource.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
         locales \
+    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
