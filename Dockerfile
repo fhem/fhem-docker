@@ -73,9 +73,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
-        curl \
         locales \
-    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
@@ -90,6 +88,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         avahi-daemon \
         avrdude \
         bluez \
+        curl \
         dfu-programmer \
         dnsutils \
         espeak \
@@ -106,11 +105,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         mplayer \
         netcat \
         nmap \
-        nodejs \
         openssh-client \
-        perl \
-        python3 \
-        python3-pychromecast \
         sendemail \
         snmp \
         sox \
@@ -122,8 +117,13 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         unzip \
         usbutils \
         wget \
-        youtube-dl \
-        \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add Perl app layer for pre-compiled packages
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        perl \
         libalgorithm-merge-perl \
         libauthen-*-perl \
         libavahi-compat-libdnssd-dev \
@@ -158,7 +158,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libhtml-treebuilder-xpath-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
-        libinline-python-perl \
         libio-file-withpath-perl \
         libio-socket-*-perl \
         libjson-perl \
@@ -216,7 +215,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Build additional Perl modules w/o pre-compiled packages
+# Add Perl app layer for self-compiled software
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         build-essential \
@@ -251,8 +250,23 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add nodejs app layer
-RUN npm install -g \
-        alexa-fhem
+RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        nodejs \
+    && npm install -g \
+        alexa-fhem \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add Python app layer
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        libinline-python-perl \
+        python3 \
+        python3-pychromecast \
+        youtube-dl \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # prepare FHEM app layer
 RUN if [ -d ./src/fhem/ ]; then \
