@@ -69,7 +69,8 @@ RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.ima
 RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+    && echo 'deb https://deb.nodesource.com/node_10.x stretch main' > /etc/apt/sources.list.d/nodesource.list \
+    && echo 'deb-src https://deb.nodesource.com/node_10.x stretch main' >> /etc/apt/sources.list.d/nodesource.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
@@ -251,7 +252,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add nodejs app layer
-RUN /usr/bin/npm install -g \
+RUN npm install -g \
         alexa-fhem
 
 # prepare FHEM app layer
