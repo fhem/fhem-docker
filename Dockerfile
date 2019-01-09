@@ -89,8 +89,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         avahi-daemon \
         avrdude \
         bluez \
-        build-essential \
-        cpanminus \
         curl \
         dfu-programmer \
         dnsutils \
@@ -102,8 +100,6 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         jq \
         lame \
         libav-tools \
-        libpopt-dev \
-        libssl-dev \
         libttspico-utils \
         mariadb-client \
         mp3wrap \
@@ -217,6 +213,15 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Build additional Perl modules w/o pre-compiled packages
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        build-essential \
+        cpanminus \
+        libpopt-dev \
+        libssl-dev \
     && cpanm \
         Crypt::Mode \
         Crypt::OpenSSL::AES \
@@ -236,21 +241,24 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
            HiPi \
        ; fi \
     && rm -rf /root/.cpanm \
-    && /usr/bin/npm install -g alexa-fhem \
-    && if [ -d ./src/fhem/ ]; then \
-         svn up ./src/fhem >/dev/null \
-       ; else \
-         svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk \
-       ; fi \
     && apt-get purge -qqy \
         build-essential \
         cpanminus \
         libpopt-dev \
         libssl-dev \
-        subversion \
-        unzip \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add nodejs app layer
+RUN /usr/bin/npm install -g \
+        alexa-fhem
+
+# prepare FHEM app layer
+RUN if [ -d ./src/fhem/ ]; then \
+         svn up ./src/fhem >/dev/null \
+       ; else \
+         svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk \
+       ; fi
 
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
