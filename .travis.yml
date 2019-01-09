@@ -133,7 +133,6 @@ before_install: |
 
 install: |
   export BUILD_STATUS="incomplete";
-  cd "$TRAVIS_BUILD_DIR/src/fhem-docker";
   travis_wait 120 sleep infinity & timeout 2790 ./scripts/build.sh;
   RET=$? ;
   if [[ $RET == 0 ]]; then
