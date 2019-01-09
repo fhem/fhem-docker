@@ -236,7 +236,7 @@ RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.lis
            HiPi \
        ; fi \
     && rm -rf /root/.cpanm \
-    && npm install -g alexa-fhem \
+    && /usr/bin/npm install -g alexa-fhem \
     && if [ -d ./src/fhem/ ]; then \
          svn up ./src/fhem >/dev/null \
        ; else \
