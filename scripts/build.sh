@@ -10,6 +10,11 @@ BUILD_DATE=$( date --iso-8601=seconds --utc )
 BASE="fhem/fhem-${LABEL}"
 BASE_IMAGE="debian"
 BASE_IMAGE_TAG="stretch"
+
+# Download dependencies if not existing
+if [ ! -d ./src/fhem ]; then
+  svn co https://svn.fhem.de/fhem/ ./src/fhem;
+fi
 FHEM_VERSION="$( cd ./src/fhem; svn log -v ./tags | grep "A /tags/FHEM_" | sort | tail -n 1 | cut -d / -f 3 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
 FHEM_REVISION_LATEST="$( cd ./src/fhem; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
 
@@ -57,11 +62,6 @@ if docker_tag_exists ${BASE} ${TAG}; then
   docker pull "${BASE}:${CACHE_TAG}"
 else
   echo "No prior build found for ${BASE}:${TAG} on Docker Hub registry"
-fi
-
-# Download dependencies if not existing
-if [ ! -d ./src/fhem ]; then
-  svn co https://svn.fhem.de/fhem/ ./src/fhem;
 fi
 
 docker build \

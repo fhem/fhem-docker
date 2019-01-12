@@ -59,14 +59,21 @@ LABEL org.fhem.licenses=${L_LICENSES_FHEM}
 LABEL org.fhem.description=${L_DESCR_FHEM}
 
 ENV TERM xterm
-
-# Configure environment
-COPY ./src/qemu-* /usr/bin/
-
-RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
 # Install base environment
-RUN sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
+COPY ./src/qemu-* /usr/bin/
+COPY src/entry.sh /entry.sh
+COPY src/health-check.sh /health-check.sh
+COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
+COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
+COPY src/99_DockerImageInfo.pm /fhem/FHEM/
+ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
+RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
+    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
+    && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -156,6 +163,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libgnupg-interface-perl \
         libhtml-strip-perl \
         libhtml-treebuilder-xpath-perl \
+        libimage-imlib2-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-file-withpath-perl \
@@ -250,13 +258,23 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add nodejs app layer
-RUN curl -sL https://deb.nodesource.com/setup_10.x | bash - \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        nodejs \
-    && npm install -g \
-        alexa-fhem \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN if [ "${ARCH}" = "i386" ]; then \
+        curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            nodejs \
+        && npm install -g \
+            alexa-fhem \
+        && apt-get autoremove -qqy && apt-get clean \
+        && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    ; else \
+        curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            nodejs \
+        && npm install -g \
+            alexa-fhem \
+        && apt-get autoremove -qqy && apt-get clean \
+        && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    ; fi \
 
 # Add Python app layer
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -275,18 +293,7 @@ RUN if [ -d ./src/fhem/ ]; then \
          svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk \
        ; fi
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
-
-COPY src/entry.sh /entry.sh
-COPY src/health-check.sh /health-check.sh
-COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
-COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
 COPY src/fhem/trunk/fhem/ /fhem/
-COPY src/99_DockerImageInfo.pm /fhem/FHEM/
-ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
-RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 
