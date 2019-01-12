@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 TRAVIS_BRANCH=${TRAVIS_BRANCH:-`git branch | sed -n -e 's/^\* \(.*\)/\1/p'`}
+LABEL=${LABEL:-`uname -m`_linux}
 echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"
 echo "TRAVIS_TAG = ${TRAVIS_TAG}"
 [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" ]] && set -x
