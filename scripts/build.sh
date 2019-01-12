@@ -16,7 +16,7 @@ BASE_IMAGE_TAG="stretch"
 if [ ! -d ./src/fhem ]; then
   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
 fi
-FHEM_VERSION="$( cd ./src/fhem; svn log -v ./tags | grep "A /tags/FHEM_" | sort | tail -n 1 | cut -d / -f 3 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+FHEM_VERSION="$( cd ./src/fhem; svn log -v ./trunk | head -n 2 | tail -n 1 | cut -d / -f 3 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
 FHEM_REVISION_LATEST="$( cd ./src/fhem; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
 
 if [[ -n "${ARCH}" && "${ARCH}" != "amd64" ]]; then
