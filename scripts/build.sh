@@ -38,6 +38,9 @@ echo -e "\n\nNow building variant ${VARIANT} ...\n\n"
 
 # Only run build if not existing on Docker hub yet
 function docker_tag_exists() {
+  if [[ "x${DOCKER_USER}" == "x" || "x${DOCKER_PASS}" == "x" ]]; then
+    return 1
+  fi
   set +x
   TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${DOCKER_USER}'", "password": "'${DOCKER_PASS}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
   EXISTS=$(curl -s -H "Authorization: JWT ${TOKEN}" https://hub.docker.com/v2/repositories/$1/tags/?page_size=10000 | jq -r "[.results | .[] | .name == \"$2\"] | any")
