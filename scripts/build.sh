@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+TRAVIS_BRANCH=${TRAVIS_BRANCH:-`git branch | sed -n -e 's/^\* \(.*\)/\1/p'`}
 echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"
 echo "TRAVIS_TAG = ${TRAVIS_TAG}"
 [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" ]] && set -x
@@ -27,7 +28,7 @@ if [[ -n "${ARCH}" && "${ARCH}" != "amd64" ]]; then
 fi
 
 IMAGE_VERSION=$(git describe --tags --dirty --match "v[0-9]*")
-IMAGE_VERSION=${IMAGE_VERSION:1}
+IMAGE_VERSION=${IMAGE_VERSION:-1}
 IMAGE_BRANCH=$( [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" && "${TRAVIS_BRANCH}" != "${TRAVIS_TAG}" ]] && echo -n "${TRAVIS_BRANCH}" || echo -n "" )
 VARIANT_FHEM="${FHEM_VERSION}-s${FHEM_REVISION_LATEST}"
 VARIANT_IMAGE="${IMAGE_VERSION}$( [ -n "${IMAGE_BRANCH}" ] && echo -n "-${IMAGE_BRANCH}" || echo -n "" )"
