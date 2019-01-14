@@ -249,8 +249,6 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
           cpanminus \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-    ; else \
-    \
     ; fi
 
 # Add nodejs app layer
