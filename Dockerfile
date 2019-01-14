@@ -66,6 +66,7 @@ ENV LC_ALL en_US.UTF-8
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
 COPY src/entry.sh /entry.sh
+COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
 COPY src/health-check.sh /health-check.sh
 COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
 COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
@@ -224,54 +225,59 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add Perl app layer for self-compiled software
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        build-essential \
-        cpanminus \
-        libpopt-dev \
-        libssl-dev \
-    && cpanm \
-        Crypt::Mode \
-        Crypt::OpenSSL::AES \
-        Device::SMBus \
-        Net::MQTT::Constants \
-        Net::MQTT::Simple \
-    && if [ "${ARCH}" != "i386" ]; then \
-         cpanm \
-           Crypt::Random \
-       ; fi \
-    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
-         cpanm \
-           Crypt::Cipher::AES \
-       ; fi \
-    && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-         cpanm \
-           HiPi \
-       ; fi \
-    && rm -rf /root/.cpanm \
-    && apt-get purge -qqy \
-        build-essential \
-        cpanminus \
-        libpopt-dev \
-        libssl-dev \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+#  * exclude any ARM platforms due too long build time
+#  * manually pre-compiled ARM packages may be applied here
+RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          build-essential \
+          cpanminus \
+      && cpanm \
+          Crypt::OpenSSL::AES \
+          CryptX \
+          Device::SMBus \
+          Net::MQTT::Constants \
+          Net::MQTT::Simple \
+      && if [ "${ARCH}" = "amd64" ]; then \
+           cpanm \
+             Crypt::Random \
+             Math::Pari \
+         ; fi \
+      && rm -rf /root/.cpanm \
+      && apt-get purge -qqy \
+          build-essential \
+          cpanminus \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    ; else \
+    \
+    ; fi
 
 # Add nodejs app layer
 RUN if [ "${ARCH}" = "i386" ]; then \
         curl -sL https://deb.nodesource.com/setup_8.x | bash - \
         && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            build-essential \
+            libssl-dev \
             nodejs \
         && npm install -g \
             alexa-fhem \
+        && apt-get purge -qqy \
+            build-essential \
+            libssl-dev \
         && apt-get autoremove -qqy && apt-get clean \
         && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     ; else \
         curl -sL https://deb.nodesource.com/setup_10.x | bash - \
         && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            build-essential \
+            libssl-dev \
             nodejs \
         && npm install -g \
             alexa-fhem \
+        && apt-get purge -qqy \
+            build-essential \
+            libssl-dev \
         && apt-get autoremove -qqy && apt-get clean \
         && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     ; fi \

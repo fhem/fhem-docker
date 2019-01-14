@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+echo "Building for platform: `uname -a`"
 TRAVIS_BRANCH=${TRAVIS_BRANCH:-`git branch | sed -n -e 's/^\* \(.*\)/\1/p'`}
 LABEL=${LABEL:-`uname -m`_linux}
 echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"

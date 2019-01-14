@@ -92,18 +92,34 @@ if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
 fi
 chmod -v 600 ${FHEM_DIR}/.ssh/id_ed25519
 chmod -v 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
-chown fhem.root ${FHEM_DIR}/.ssh/id_ed25519*
 
 # SSH key: RSA
 if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
   echo -e "  - Generating SSH RSA client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_rsa*
-  ssh-keygen -t rsa -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
+  ssh-keygen -t rsa -b 4096 -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
   sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_rsa.pub
 fi
 chmod -v 600 ${FHEM_DIR}/.ssh/id_rsa
 chmod -v 644 ${FHEM_DIR}/.ssh/id_rsa.pub
-chown fhem.root ${FHEM_DIR}/.ssh/id_rsa*
+
+# SSH client hardening
+if [ ! -f ${FHEM_DIR}/.ssh/config ]; then
+echo "IdentityFile ~/.ssh/id_ed25519
+IdentityFile ~/.ssh/id_rsa
+
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+HostKeyAlgorithms ssh-ed25519,ssh-rsa
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group-exchange-sha256
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,umac-128-etm@openssh.com
+" > ${FHEM_DIR}/.ssh/config
+fi
+
+# SSH key pinning
+touch ${FHEM_DIR}/.ssh/known_hosts
+cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k2,3 > ${FHEM_DIR}/.ssh/known_hosts.tmp
+mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
+chown -R fhem.fhem ${FHEM_DIR}/.ssh/
 
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0

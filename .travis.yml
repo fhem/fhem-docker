@@ -147,7 +147,7 @@ script: |
     exit 1
   elif [[ "$BUILD_STATUS" != "complete" ]]; then
     if [[ -n "$TRAVIS_API_TOKEN" ]]; then
-      body="{\"request\":{\"branch\":\"$TRAVIS_BRANCH\",\"message\":\"Extend build runtime\"}}";
+      body="{\"request\":{\"branch\":\"$TRAVIS_BRANCH\",\"message\":\"Extend ${LABEL} build runtime\"}}";
       curl -s -X POST \
          -H "Content-Type: application/json" -H "Accept: application/json" -H "Travis-API-Version: 3" -H "Authorization: token $TRAVIS_API_TOKEN" -d "$body" https://api.travis-ci.com/repo/fhem%2Ffhem-docker/requests ;
     else
