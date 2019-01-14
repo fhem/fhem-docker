@@ -232,6 +232,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           build-essential \
           cpanminus \
+          libssl-dev \
       && cpanm \
           Crypt::OpenSSL::AES \
           CryptX \
@@ -247,6 +248,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       && apt-get purge -qqy \
           build-essential \
           cpanminus \
+          libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     ; fi
