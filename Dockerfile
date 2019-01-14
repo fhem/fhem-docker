@@ -254,33 +254,18 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
     ; fi
 
 # Add nodejs app layer
-RUN if [ "${ARCH}" = "i386" ]; then \
-        curl -sL https://deb.nodesource.com/setup_8.x | bash - \
-        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-            build-essential \
-            libssl-dev \
-            nodejs \
-        && npm install -g \
-            alexa-fhem \
-        && apt-get purge -qqy \
-            build-essential \
-            libssl-dev \
-        && apt-get autoremove -qqy && apt-get clean \
-        && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    ; else \
-        curl -sL https://deb.nodesource.com/setup_10.x | bash - \
-        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-            build-essential \
-            libssl-dev \
-            nodejs \
-        && npm install -g \
-            alexa-fhem \
-        && apt-get purge -qqy \
-            build-essential \
-            libssl-dev \
-        && apt-get autoremove -qqy && apt-get clean \
-        && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    ; fi
+RUN curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        build-essential \
+        libssl-dev \
+        nodejs \
+    && npm install -g \
+        alexa-fhem \
+    && apt-get purge -qqy \
+        build-essential \
+        libssl-dev \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Add Python app layer
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
