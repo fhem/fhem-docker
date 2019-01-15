@@ -59,14 +59,25 @@ LABEL org.fhem.licenses=${L_LICENSES_FHEM}
 LABEL org.fhem.description=${L_DESCR_FHEM}
 
 ENV TERM xterm
-
-# Configure environment
-COPY ./src/qemu-* /usr/bin/
-
-RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
 
 # Install base environment
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+COPY ./src/qemu-* /usr/bin/
+COPY src/entry.sh /entry.sh
+COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
+COPY src/health-check.sh /health-check.sh
+COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
+COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
+COPY src/99_DockerImageInfo.pm /fhem/FHEM/
+ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
+RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
+    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
+    && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
@@ -83,31 +94,45 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         avahi-daemon \
+        avrdude \
         bluez \
-        build-essential \
-        cpanminus \
         curl \
         dfu-programmer \
         dnsutils \
+        espeak \
         etherwake \
+        git-core \
+        i2c-tools \
         inetutils-ping \
         jq \
+        lame \
+        libav-tools \
+        libttspico-utils \
+        lsb-release \
+        mariadb-client \
+        mp3wrap \
+        mplayer \
         netcat \
+        nmap \
         openssh-client \
-        perl \
-        python \
         sendemail \
         snmp \
         sox \
-        subversion \
         sqlite3 \
+        subversion \
         sudo \
         telnet \
         telnet-ssl \
         unzip \
         usbutils \
         wget \
-        \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add Perl app layer for pre-compiled packages
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        perl \
         libalgorithm-merge-perl \
         libauthen-*-perl \
         libavahi-compat-libdnssd-dev \
@@ -120,20 +145,27 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libcrypt-*-perl \
         libdata-dump-perl \
         libdatetime-format-strptime-perl \
+        libdbd-mysql \
+        libdbd-pg-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
         libdevel-size-perl \
         libdevice-serialport-perl \
+        libdevice-usb-perl \
         libdigest-*-perl \
         libdpkg-perl \
+        libencode-perl \
         liberror-perl \
         libev-perl \
         libfile-copy-recursive-perl \
         libfile-fcntllock-perl \
+        libfinance-quote-perl \
         libgd-graph-perl \
         libgd-text-perl \
+        libgnupg-interface-perl \
         libhtml-strip-perl \
         libhtml-treebuilder-xpath-perl \
+        libimage-imlib2-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-file-withpath-perl \
@@ -141,20 +173,26 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
+        libmail-gnupg-perl \
         libmail-imapclient-perl \
         libmail-sendmail-perl \
         libmime-base64-perl \
         libmime-lite-perl \
         libmodule-pluggable-perl \
         libmojolicious-perl \
+        libmoox-late-perl \
         libnet-bonjour-perl \
         libnet-jabber-perl \
+        libnet-oauth-perl \
+        libnet-oauth2-perl \
         libnet-server-perl \
         libnet-sip-perl \
         libnet-snmp-perl \
         libnet-ssleay-perl \
         libnet-telnet-perl \
         libnet-xmpp-perl \
+        libnmap-parser-perl \
+        librivescript-perl \
         librpc-xml-perl \
         libsnmp-perl \
         libsnmp-session-perl \
@@ -181,41 +219,81 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-stream-perl \
         libxml-treebuilder-perl \
         libxml-xpath-perl \
-    && cpanm \
-        Net::MQTT::Constants \
-        Net::MQTT::Simple \
-    && if [ "${ARCH}" != "i386" ]; then \
-         cpanm \
-           Crypt::Random \
-       ; fi \
-    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
-         cpanm \
-           Crypt::Cipher::AES \
-       ; fi \
-    && rm -rf /root/.cpanm \
-    && if [ -d ./src/fhem/ ]; then \
-         svn up ./src/fhem >/dev/null \
-       ; else \
-         svn co https://svn.fhem.de/fhem/ ./src/fhem \
-       ; fi \
-    && apt-get purge -qqy \
-        build-essential \
-        cpanminus \
-        unzip \
-        subversion \
+        libxml-xpathengine-perl \
+        libyaml-libyaml-perl \
+        libyaml-perl \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
+# Add Perl app layer for self-compiled software
+#  * exclude any ARM platforms due too long build time
+#  * manually pre-compiled ARM packages may be applied here
+RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          build-essential \
+          cpanminus \
+          libssl-dev \
+      && cpanm \
+          Crypt::OpenSSL::AES \
+          CryptX \
+          Device::SMBus \
+          Net::MQTT::Constants \
+          Net::MQTT::Simple \
+      && if [ "${ARCH}" = "amd64" ]; then \
+          cpanm \
+           Crypt::Random \
+           Math::Pari \
+         ; fi \
+      && rm -rf /root/.cpanm \
+      && apt-get purge -qqy \
+          build-essential \
+          cpanminus \
+          libssl-dev \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    ; fi
 
-COPY src/entry.sh /entry.sh
-COPY src/health-check.sh /health-check.sh
+# Add nodejs app layer
+RUN if [ "${ARCH}" != "arm32v5" ]; then \
+      if [ "${ARCH}" = "i386" ]; then \
+          curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+        ; else \
+          curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+        ; fi \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          build-essential \
+          libssl-dev \
+          nodejs \
+      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+           NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+            alexa-fhem \
+         ; else \
+           npm install -g \
+            alexa-fhem \
+         ; fi \
+      && rm -rf ~/.npm* \
+      && apt-get purge -qqy \
+          build-essential \
+          libssl-dev \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    ; fi
+
+# Add Python app layer
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        libinline-python-perl \
+        python3 \
+        python3-pychromecast \
+        youtube-dl \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add FHEM app layer
+# Note: Manual checkout is required if build is not run by Travis:
+#   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 COPY src/fhem/trunk/fhem/ /fhem/
-COPY src/99_DockerImageInfo.pm /fhem/FHEM/
-ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
-RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli
 
 VOLUME [ "/opt/fhem" ]
 

@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
+echo "Building for platform: `uname -a`"
+TRAVIS_BRANCH=${TRAVIS_BRANCH:-`git branch | sed -n -e 's/^\* \(.*\)/\1/p'`}
+LABEL=${LABEL:-`uname -m`_linux}
 echo "TRAVIS_BRANCH = ${TRAVIS_BRANCH}"
 echo "TRAVIS_TAG = ${TRAVIS_TAG}"
 [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" ]] && set -x
@@ -10,7 +13,12 @@ BUILD_DATE=$( date --iso-8601=seconds --utc )
 BASE="fhem/fhem-${LABEL}"
 BASE_IMAGE="debian"
 BASE_IMAGE_TAG="stretch"
-FHEM_VERSION="$( cd ./src/fhem; svn log -v ./tags | grep "A /tags/FHEM_" | sort | tail -n 1 | cut -d / -f 3 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+
+# Download dependencies if not existing
+if [ ! -d ./src/fhem ]; then
+  svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
+fi
+FHEM_VERSION="$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
 FHEM_REVISION_LATEST="$( cd ./src/fhem; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
 
 if [[ -n "${ARCH}" && "${ARCH}" != "amd64" ]]; then
@@ -22,7 +30,7 @@ if [[ -n "${ARCH}" && "${ARCH}" != "amd64" ]]; then
 fi
 
 IMAGE_VERSION=$(git describe --tags --dirty --match "v[0-9]*")
-IMAGE_VERSION=${IMAGE_VERSION:1}
+IMAGE_VERSION=${IMAGE_VERSION:-1}
 IMAGE_BRANCH=$( [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" && "${TRAVIS_BRANCH}" != "${TRAVIS_TAG}" ]] && echo -n "${TRAVIS_BRANCH}" || echo -n "" )
 VARIANT_FHEM="${FHEM_VERSION}-s${FHEM_REVISION_LATEST}"
 VARIANT_IMAGE="${IMAGE_VERSION}$( [ -n "${IMAGE_BRANCH}" ] && echo -n "-${IMAGE_BRANCH}" || echo -n "" )"
@@ -32,6 +40,9 @@ echo -e "\n\nNow building variant ${VARIANT} ...\n\n"
 
 # Only run build if not existing on Docker hub yet
 function docker_tag_exists() {
+  if [[ "x${DOCKER_USER}" == "x" || "x${DOCKER_PASS}" == "x" ]]; then
+    return 1
+  fi
   set +x
   TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${DOCKER_USER}'", "password": "'${DOCKER_PASS}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
   EXISTS=$(curl -s -H "Authorization: JWT ${TOKEN}" https://hub.docker.com/v2/repositories/$1/tags/?page_size=10000 | jq -r "[.results | .[] | .name == \"$2\"] | any")
@@ -57,11 +68,6 @@ if docker_tag_exists ${BASE} ${TAG}; then
   docker pull "${BASE}:${CACHE_TAG}"
 else
   echo "No prior build found for ${BASE}:${TAG} on Docker Hub registry"
-fi
-
-# Download dependencies if not existing
-if [ ! -d ./src/fhem ]; then
-  svn co https://svn.fhem.de/fhem/ ./src/fhem;
 fi
 
 docker build \
