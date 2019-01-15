@@ -256,17 +256,21 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
 
 # Add nodejs app layer
 RUN if [ "${ARCH}" != "arm32v5" ]; then \
-      curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+      if [ "${ARCH}" = "i386" ]; then \
+          curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+        ; else \
+          curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+        ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           build-essential \
           libssl-dev \
           nodejs \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
            NPM_CONFIG_UNSAFE_PERM=true npm install -g \
-              alexa-fhem \
+            alexa-fhem \
          ; else \
            npm install -g \
-             alexa-fhem \
+            alexa-fhem \
          ; fi \
       && rm -rf ~/.npm* \
       && apt-get purge -qqy \
