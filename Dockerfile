@@ -267,16 +267,15 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           nodejs \
           python \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-           NPM_CONFIG_UNSAFE_PERM=true npm update -g \
-           && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+           npm update -g --unsafe-perm \
+           && npm install -g --unsafe-perm \
             alexa-fhem \
             homebridge \
-            git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
          ; else \
            npm update -g \
            && npm install -g \
             alexa-fhem \
-           && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+           && npm install -g --unsafe-perm \
             homebridge \
             git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
          ; fi \
