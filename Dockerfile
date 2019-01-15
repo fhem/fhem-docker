@@ -290,13 +290,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# prepare FHEM app layer
-RUN if [ -d ./src/fhem/ ]; then \
-         svn up ./src/fhem >/dev/null \
-       ; else \
-         svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk \
-       ; fi
-
+# Add FHEM app layer
+# Note: Manual checkout is required if build is not run by Travis:
+#   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 COPY src/fhem/trunk/fhem/ /fhem/
 
 VOLUME [ "/opt/fhem" ]
