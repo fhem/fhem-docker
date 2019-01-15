@@ -240,9 +240,9 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
           Net::MQTT::Constants \
           Net::MQTT::Simple \
       && if [ "${ARCH}" = "amd64" ]; then \
-           cpanm \
-             Crypt::Random \
-             Math::Pari \
+          cpanm \
+           Crypt::Random \
+           Math::Pari \
          ; fi \
       && rm -rf /root/.cpanm \
       && apt-get purge -qqy \
@@ -260,9 +260,15 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           build-essential \
           libssl-dev \
           nodejs \
-      && npm update -g \
+     && npm update -g \
+      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+           npm config set unsafe-perm true \
+         ; fi \
       && npm install -g \
           alexa-fhem \
+      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+          npm config set unsafe-perm false \
+         ; fi \
       && apt-get purge -qqy \
           build-essential \
           libssl-dev \
