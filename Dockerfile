@@ -127,7 +127,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         usbutils \
         wget \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl app layer for pre-compiled packages
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -222,7 +222,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libyaml-libyaml-perl \
         libyaml-perl \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl app layer for self-compiled software
 #  * exclude any ARM platforms due too long build time
@@ -250,7 +250,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
           cpanminus \
           libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add nodejs app layer
@@ -265,25 +265,27 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
+          python \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-           NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+           NPM_CONFIG_UNSAFE_PERM=true npm update -g \
+           && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
             alexa-fhem \
             homebridge \
          ; else \
-           npm install -g \
+           npm update -g \
+           && npm install -g \
             alexa-fhem \
            && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
             homebridge \
          ; fi \
       && npm install -g \
           homebridge-fhem \
-      && rm -rf ~/.npm* \
       && apt-get purge -qqy \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Python app layer
@@ -294,7 +296,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         python3-pychromecast \
         youtube-dl \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Travis:
