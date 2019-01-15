@@ -266,21 +266,12 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libssl-dev \
           nodejs \
           python \
-      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-           npm update -g --unsafe-perm \
-           && npm install -g --unsafe-perm \
-            alexa-fhem \
-            homebridge \
-         ; else \
-           npm update -g \
-           && npm install -g \
-            alexa-fhem \
-           && npm install -g --unsafe-perm \
-            homebridge \
-            git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
-         ; fi \
-      && npm install -g \
+      && npm update -g --unsafe-perm \
+      && npm install -g --unsafe-perm \
+          alexa-fhem \
+          homebridge \
           homebridge-fhem \
+          git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
       && apt-get purge -qqy \
           build-essential \
           libavahi-compat-libdnssd-dev \
