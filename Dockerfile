@@ -256,7 +256,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
 
 # Add nodejs app layer
 RUN if [ "${ARCH}" != "arm32v5" ]; then \
-      curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+      curl -sL https://deb.nodesource.com/setup_10.x | bash - \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           build-essential \
           libssl-dev \
