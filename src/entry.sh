@@ -90,8 +90,8 @@ if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
   ssh-keygen -t ed25519 -f ${FHEM_DIR}/.ssh/id_ed25519 -q -N "" -o -a 100
   sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_ed25519.pub
 fi
-chmod -v 600 ${FHEM_DIR}/.ssh/id_ed25519
-chmod -v 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
+chmod 600 ${FHEM_DIR}/.ssh/id_ed25519
+chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
 
 # SSH key: RSA
 if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
@@ -100,8 +100,8 @@ if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
   ssh-keygen -t rsa -b 4096 -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
   sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_rsa.pub
 fi
-chmod -v 600 ${FHEM_DIR}/.ssh/id_rsa
-chmod -v 644 ${FHEM_DIR}/.ssh/id_rsa.pub
+chmod 600 ${FHEM_DIR}/.ssh/id_rsa
+chmod 644 ${FHEM_DIR}/.ssh/id_rsa.pub
 
 # SSH client hardening
 if [ ! -f ${FHEM_DIR}/.ssh/config ]; then

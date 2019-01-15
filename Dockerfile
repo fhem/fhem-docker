@@ -108,6 +108,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         lame \
         libav-tools \
         libttspico-utils \
+        lsb-release \
         mariadb-client \
         mp3wrap \
         mplayer \
@@ -261,10 +262,12 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libssl-dev \
           nodejs \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-           npm config set unsafe-perm true \
+          && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+              alexa-fhem \
+         ; else \
+          && npm install -g \
+              alexa-fhem \
          ; fi \
-      && npm install -g \
-          alexa-fhem \
       && rm -rf ~/.npm* \
       && apt-get purge -qqy \
           build-essential \
