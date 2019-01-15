@@ -79,7 +79,7 @@ include: &toolchain_linux_arm32v7
     - ARCH=arm32v7
     - DPKG_ARCH=armhf
     - QEMU_ARCH=arm
-    - NPM_ARCH=arm
+    - NPM_ARCH=armhf
     - GNU_TRIPLET=arm-linux-gnueabihf
     - GNU_MULTILIB_TRIPLET=arm-linux-gnueabihf
     - GPP_COMPILER=arm-linux-gnueabihf-g++
@@ -94,7 +94,7 @@ include: &toolchain_linux_arm64v8
     - ARCH=arm64v8
     - DPKG_ARCH=arm64
     - QEMU_ARCH=aarch64
-    - NPM_ARCH=arm
+    - NPM_ARCH=arm64
     - GNU_TRIPLET=aarch64-linux-gnu
     - GNU_MULTILIB_TRIPLET=arm-linux-gnueabihf
     - GPP_COMPILER=aarch64-linux-gnu-g++
@@ -132,39 +132,15 @@ before_install: |
   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
 
 install: |
-  export BUILD_STATUS="incomplete";
-  travis_wait 120 sleep infinity & timeout 2790 ./scripts/build.sh;
-  RET=$? ;
-  if [[ $RET == 0 ]]; then
-    export BUILD_STATUS="complete";
-  elif [[ $RET != 124 ]]; then
-    export BUILD_STATUS="error";
-  fi
+  travis_wait 120 sleep infinity & ./scripts/build.sh;
 
 script: |
-  if [[ "$BUILD_STATUS" == "error" ]]; then
-    echo "A permanent error occured"
-    exit 1
-  elif [[ "$BUILD_STATUS" != "complete" ]]; then
-    if [[ -n "$TRAVIS_API_TOKEN" ]]; then
-      body="{\"request\":{\"branch\":\"$TRAVIS_BRANCH\",\"message\":\"Extend ${LABEL} build runtime\"}}";
-      curl -s -X POST \
-         -H "Content-Type: application/json" -H "Accept: application/json" -H "Travis-API-Version: 3" -H "Authorization: token $TRAVIS_API_TOKEN" -d "$body" https://api.travis-ci.com/repo/fhem%2Ffhem-docker/requests ;
-    else
-      echo "TRAVIS_API_TOKEN missing - unable to automatically trigger next build run"
-    fi
-  else
-    ./scripts/test-integration.sh;
-  fi
+  ./scripts/test-integration.sh;
 
 cache:
   directories:
     - $TRAVIS_BUILD_DIR/src/fhem/
 
 after_success: |
-  if [[ "$BUILD_STATUS" != "complete" ]]; then
-    echo "Maximum runtime reached - will continue next run!";
-  else
-    ./scripts/push-docker.sh;
-    ./scripts/push-docker-manifest.sh;
-  fi
+  ./scripts/push-docker.sh;
+  ./scripts/push-docker-manifest.sh;

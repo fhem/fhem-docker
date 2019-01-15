@@ -254,18 +254,21 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
     ; fi
 
 # Add nodejs app layer
-RUN curl -sL https://deb.nodesource.com/setup_8.x | bash - \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        build-essential \
-        libssl-dev \
-        nodejs \
-    && npm install -g \
-        alexa-fhem \
-    && apt-get purge -qqy \
-        build-essential \
-        libssl-dev \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN if [ "${ARCH}" != "arm32v5" ]; then \
+      curl -sL https://deb.nodesource.com/setup_8.x | bash - \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          build-essential \
+          libssl-dev \
+          nodejs \
+      && npm update -g \
+      && npm install -g \
+          alexa-fhem \
+      && apt-get purge -qqy \
+          build-essential \
+          libssl-dev \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    ; fi
 
 # Add Python app layer
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
