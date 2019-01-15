@@ -135,7 +135,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         perl \
         libalgorithm-merge-perl \
         libauthen-*-perl \
-        libavahi-compat-libdnssd-dev \
         libcgi-pm-perl \
         libclass-dbi-mysql-perl \
         libclass-isa-perl \
@@ -263,18 +262,25 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           build-essential \
+          libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
            NPM_CONFIG_UNSAFE_PERM=true npm install -g \
             alexa-fhem \
+            homebridge \
          ; else \
            npm install -g \
             alexa-fhem \
+           && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+            homebridge \
          ; fi \
+      && npm install -g \
+          homebridge-fhem \
       && rm -rf ~/.npm* \
       && apt-get purge -qqy \
           build-essential \
+          libavahi-compat-libdnssd-dev \
           libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
