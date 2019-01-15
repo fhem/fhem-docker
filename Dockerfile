@@ -262,11 +262,11 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libssl-dev \
           nodejs \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-          && NPM_CONFIG_UNSAFE_PERM=true npm install -g \
+           NPM_CONFIG_UNSAFE_PERM=true npm install -g \
               alexa-fhem \
          ; else \
-          && npm install -g \
-              alexa-fhem \
+           npm install -g \
+             alexa-fhem \
          ; fi \
       && rm -rf ~/.npm* \
       && apt-get purge -qqy \
