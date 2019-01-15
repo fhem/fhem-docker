@@ -260,15 +260,12 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           build-essential \
           libssl-dev \
           nodejs \
-     && npm update -g \
       && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
            npm config set unsafe-perm true \
          ; fi \
       && npm install -g \
           alexa-fhem \
-      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-          npm config set unsafe-perm false \
-         ; fi \
+      && rm -rf ~/.npm* \
       && apt-get purge -qqy \
           build-essential \
           libssl-dev \
