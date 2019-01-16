@@ -81,6 +81,8 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
+        ca-certificates \
+        gnupg \
         locales \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
