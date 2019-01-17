@@ -113,9 +113,11 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         lsb-release \
         mariadb-client \
         mp3wrap \
+        mpg123 \
         mplayer \
         netcat \
         nmap \
+        normalize-audio \
         openssh-client \
         sendemail \
         snmp \
@@ -127,6 +129,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         telnet-ssl \
         unzip \
         usbutils \
+        vorbis-tools \
         wget \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
