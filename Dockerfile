@@ -86,6 +86,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         locales \
     \
     && sed -i "s,http://deb.debian.org,https://deb.debian.org,g" /etc/apt/sources.list \
+    && sed -i "s,http://security.debian.org,https://deb.debian.org,g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen \
