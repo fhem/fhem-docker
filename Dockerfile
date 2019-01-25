@@ -237,6 +237,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         autoconf \
+        automake \
         build-essential \
         cpanminus \
         libssl-dev \
@@ -252,6 +253,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /usr/local/src/* \
     && apt-get purge -qqy \
         autoconf \
+        automake \
         build-essential \
         cpanminus \
         libssl-dev \
@@ -266,6 +268,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           autoconf \
+          automake \
           build-essential \
           cpanminus \
           libssl-dev \
@@ -285,6 +288,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       && rm -rf /root/.cpanm \
       && apt-get purge -qqy \
           autoconf \
+          automake \
           build-essential \
           cpanminus \
           libssl-dev \
@@ -302,6 +306,7 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           autoconf \
+          automake \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
@@ -317,6 +322,7 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
       && apt-get purge -qqy \
           autoconf \
+          automake \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
