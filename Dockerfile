@@ -313,6 +313,7 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           alexa-fhem \
           homebridge \
           homebridge-fhem \
+          tradfri-fhem \
           git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
       && apt-get purge -qqy \
           autoconf \
