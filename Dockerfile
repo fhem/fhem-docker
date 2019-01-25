@@ -81,6 +81,8 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
+        ca-certificates \
+        gnupg \
         locales \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
@@ -92,6 +94,9 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
     && echo "Europe/Berlin" > /etc/timezone \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
+    && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
+    && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
+    && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         avahi-daemon \
         avrdude \
@@ -111,9 +116,11 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         lsb-release \
         mariadb-client \
         mp3wrap \
+        mpg123 \
         mplayer \
         netcat \
         nmap \
+        normalize-audio \
         openssh-client \
         sendemail \
         snmp \
@@ -125,9 +132,10 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         telnet-ssl \
         unzip \
         usbutils \
+        vorbis-tools \
         wget \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl app layer for pre-compiled packages
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -135,7 +143,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         perl \
         libalgorithm-merge-perl \
         libauthen-*-perl \
-        libavahi-compat-libdnssd-dev \
         libcgi-pm-perl \
         libclass-dbi-mysql-perl \
         libclass-isa-perl \
@@ -223,7 +230,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libyaml-libyaml-perl \
         libyaml-perl \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl app layer for self-compiled software
 #  * exclude any ARM platforms due too long build time
@@ -251,7 +258,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
           cpanminus \
           libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add nodejs app layer
@@ -263,21 +270,22 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           build-essential \
+          libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
-      && if [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-           NPM_CONFIG_UNSAFE_PERM=true npm install -g \
-            alexa-fhem \
-         ; else \
-           npm install -g \
-            alexa-fhem \
-         ; fi \
-      && rm -rf ~/.npm* \
+          python \
+      && npm update -g --unsafe-perm \
+      && npm install -g --unsafe-perm \
+          alexa-fhem \
+          homebridge \
+          homebridge-fhem \
+          git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
       && apt-get purge -qqy \
           build-essential \
+          libavahi-compat-libdnssd-dev \
           libssl-dev \
       && apt-get autoremove -qqy && apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Python app layer
@@ -288,7 +296,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         python3-pychromecast \
         youtube-dl \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Travis:
