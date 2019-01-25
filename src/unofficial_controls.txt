@@ -13,7 +13,6 @@ https://raw.githubusercontent.com/klein0r/fhem-style-haus-automatisierung/versio
 https://raw.githubusercontent.com/klein0r/fhem-tasmota/master/controls_tasmota.txt
 https://raw.githubusercontent.com/knowthelist/fhem-tablet-ui/master/controls_fhemtabletui.txt
 https://raw.githubusercontent.com/mumpitzstuff/fhem-BleTagBattery/master/controls_bletagbattery.txt
-https://raw.githubusercontent.com/nesges/Widgets-for-fhem-tablet-ui/master/controls_widgets-for-fhem-tablet-ui.txt
 https://raw.githubusercontent.com/oskarn97/fhem-xiaomi-mqtt/master/controls_xiaomi-zb2mqtt.txt
 https://raw.githubusercontent.com/patrickjahns/esp_rgbww_fhemmodule/develop/controls_ledcontroller.txt
 https://raw.githubusercontent.com/peterkappelt/Tradfri-FHEM/dev-cf/src/controls_tradfri.txt
@@ -30,3 +29,6 @@ https://raw.githubusercontent.com/uniqueck/fhem-abfall/master/controls_fhemabfal
 #https://raw.githubusercontent.com/ddtlabs/ESPEasy/master/controls_ESPEasy.txt
 #https://raw.githubusercontent.com/RettungsTim/fhem-rollo/master/controls_fhemrollo.txt
 #https://raw.githubusercontent.com/RFD-FHEM/RFFHEM/dev-r33/controls_signalduino.txt
+
+# Deprecated
+#https://raw.githubusercontent.com/nesges/Widgets-for-fhem-tablet-ui/master/controls_widgets-for-fhem-tablet-ui.txt
