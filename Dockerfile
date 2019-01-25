@@ -98,6 +98,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        alsa-utils \
         avahi-daemon \
         avrdude \
         bluez \
@@ -124,6 +125,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         openssh-client \
         sendemail \
         snmp \
+        snmp-mibs-downloader \
         sox \
         sqlite3 \
         subversion \
