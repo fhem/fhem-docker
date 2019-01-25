@@ -249,6 +249,7 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
           Device::SMBus \
           Net::MQTT::Constants \
           Net::MQTT::Simple \
+          Net::WebSocket::Server \
       && if [ "${ARCH}" = "amd64" ]; then \
           cpanm \
            Crypt::Random \
