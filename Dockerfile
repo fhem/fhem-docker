@@ -233,15 +233,43 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
+# Add app layer for self-compiled software
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        autoconf \
+        build-essential \
+        cpanminus \
+        libssl-dev \
+        libtool \
+    && git clone --recursive https://github.com/obgm/libcoap.git /usr/local/src/libcoap \
+        && cd /usr/local/src/libcoap \
+        && git checkout dtls \
+        && git submodule update --init --recursive \
+        && ./autogen.sh \
+        && ./configure --disable-documentation --disable-shared \
+        && make \
+        && make install \
+    && rm -rf /usr/local/src/* \
+    && apt-get purge -qqy \
+        autoconf \
+        build-essential \
+        cpanminus \
+        libssl-dev \
+        libtool \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+
 # Add Perl app layer for self-compiled software
 #  * exclude any ARM platforms due too long build time
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          autoconf \
           build-essential \
           cpanminus \
           libssl-dev \
+          libtool \
       && cpanm \
           Crypt::OpenSSL::AES \
           CryptX \
@@ -256,9 +284,11 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          ; fi \
       && rm -rf /root/.cpanm \
       && apt-get purge -qqy \
+          autoconf \
           build-essential \
           cpanminus \
           libssl-dev \
+          libtool \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
@@ -271,11 +301,13 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           curl -sL https://deb.nodesource.com/setup_10.x | bash - \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          autoconf \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
           python \
+          libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
           alexa-fhem \
@@ -283,9 +315,11 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           homebridge-fhem \
           git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
       && apt-get purge -qqy \
+          autoconf \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
+          libtool \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
