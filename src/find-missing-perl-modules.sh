@@ -5,6 +5,8 @@
 FPATH="${1:-/opt/fhem}"
 [ ! -d "$FPATH" ] && echo FPATH="."
 
+echo -e "The following Perl modules might be missing:\n\n"
+
 for module in `find $FPATH/FHEM -type f -name "*.pm" -print0 | xargs -0 grep -oP "[^\w#](?:(?:use|require) (?:[A-Z\'\"$][\w:./{}()$\->\"\']+))" | sed 's|[;"'\'']||g' | sed 's/FHEM\///g' | sed 's/.*\///g' | sed 's/$attr{global}{modpath}//g' | sed 's/$main::attr{global}{modpath}//g' | sort -u -f -k2,2 | cut -d : -f 2- | cut -d " " -f 2 | grep -v -i -E "^(use|require|warnings|vars|feature|inline|strict|constant|POSIX|utf8)" | grep -v "[(){}$]" | grep -v "[.:]$"`; do
   NAME=`echo $module | cut -d " " -f 1 | cut -d ";" -f 1 | cut -d ":" -f 1`
   if [[ -e "$FPATH/$NAME" || -e "$FPATH/FHEM/$NAME" || -f "$FPATH/FHEM/lib/$NAME" || -e "$FPATH/$NAME.pm" || -e "$FPATH/FHEM/$NAME.pm" || -f "$FPATH/FHEM/lib/$NAME.pm" ]]; then

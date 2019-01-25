@@ -68,8 +68,7 @@ COPY ./src/qemu-* /usr/bin/
 COPY src/entry.sh /entry.sh
 COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
 COPY src/health-check.sh /health-check.sh
-COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
-COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
+COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
 ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
 RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \

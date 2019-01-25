@@ -1,0 +1,32 @@
+# (incomplete) list of unofficial FHEM module repositories
+# Search: https://www.google.de/search?q="FHEM"+"update add"
+#
+
+http://www.rp-dev.de/fhem/connair/controls_connair.txt
+https://raw.githubusercontent.com/byterazor/Fhem-NetworkDevice/master/controls_byterazor-fhem-networkdevice.txt
+https://raw.githubusercontent.com/ChrisD70/FHEM-Modules/master/autoupdate/sb/controls_squeezebox.txt
+https://raw.githubusercontent.com/dsgrafiniert/fhem-InfluxDBLog/master/controls_influx.txt
+https://raw.githubusercontent.com/jowiemann/DBPlan-for-Fhem/master/controls_dbplan.txt
+https://raw.githubusercontent.com/kc-GitHub/FHEM-HM485/master/controls_hm485.txt
+https://raw.githubusercontent.com/klassm/andFHEM/master/fhem_modules/controls_gcmsend.txt
+https://raw.githubusercontent.com/klein0r/fhem-style-haus-automatisierung/version-2/controls_ha_theme.txt
+https://raw.githubusercontent.com/klein0r/fhem-tasmota/master/controls_tasmota.txt
+https://raw.githubusercontent.com/knowthelist/fhem-tablet-ui/master/controls_fhemtabletui.txt
+https://raw.githubusercontent.com/mumpitzstuff/fhem-BleTagBattery/master/controls_bletagbattery.txt
+https://raw.githubusercontent.com/nesges/Widgets-for-fhem-tablet-ui/master/controls_widgets-for-fhem-tablet-ui.txt
+https://raw.githubusercontent.com/oskarn97/fhem-xiaomi-mqtt/master/controls_xiaomi-zb2mqtt.txt
+https://raw.githubusercontent.com/patrickjahns/esp_rgbww_fhemmodule/develop/controls_ledcontroller.txt
+https://raw.githubusercontent.com/peterkappelt/Tradfri-FHEM/dev-cf/src/controls_tradfri.txt
+https://raw.githubusercontent.com/peterkappelt/Tradfri-FHEM/master/src/controls_tradfri.txt
+https://raw.githubusercontent.com/SirUli/FHEM-TALKTO/master/controls_talkto.txt
+https://raw.githubusercontent.com/sw-home/FHEM-HomeConnect/master/controls_homeconnect.txt
+https://raw.githubusercontent.com/ThorstenPferdekaemper/FHEM-FUIP/master/controls_fuip.txt
+https://raw.githubusercontent.com/uniqueck/fhem-abfall/develop/controls_fhemabfall.txt
+https://raw.githubusercontent.com/uniqueck/fhem-abfall/master/controls_fhemabfall.txt
+
+
+# Meanwhile (seem to be) part of official FHEM repository
+#
+#https://raw.githubusercontent.com/ddtlabs/ESPEasy/master/controls_ESPEasy.txt
+#https://raw.githubusercontent.com/RettungsTim/fhem-rollo/master/controls_fhemrollo.txt
+#https://raw.githubusercontent.com/RFD-FHEM/RFFHEM/dev-r33/controls_signalduino.txt
