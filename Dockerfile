@@ -262,7 +262,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Add Perl app layer for self-compiled software
+# Add Perl app layer for self-compiled modules
 #  * exclude any ARM platforms due too long build time
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
