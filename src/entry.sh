@@ -44,6 +44,28 @@ if [ -d "/fhem" ]; then
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global commandref')" ] && echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
+    (( i++ ))
+
+    echo "$i. Adding pre-defined devices to fhem.cfg"
+
+    echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo alias Docker Image Info" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo devStateIcon ok:security@green .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg
+    echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
+    echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm alias Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
 
     cd - 2>&1>/dev/null
   else
@@ -77,10 +99,21 @@ cp -f /etc/group.orig /etc/group
 groupadd --force --gid ${FHEM_GID} fhem 2>&1>/dev/null
 useradd --home ${FHEM_DIR} --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
 usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem 2>&1>/dev/null
+adduser --quiet fhem audio 2>&1>/dev/null
 adduser --quiet fhem bluetooth 2>&1>/dev/null
 adduser --quiet fhem dialout 2>&1>/dev/null
+adduser --quiet fhem mail 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
+
+echo -e "  - Updating /etc/sudoers.d/fhem ..."
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -q update" > /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm outdated" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm update" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/nmap" >> /etc/sudoers.d/fhem
 
 # SSH key: Ed25519
 mkdir -p ${FHEM_DIR}/.ssh

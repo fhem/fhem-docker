@@ -68,11 +68,11 @@ COPY ./src/qemu-* /usr/bin/
 COPY src/entry.sh /entry.sh
 COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
 COPY src/health-check.sh /health-check.sh
-COPY src/find-missing-deb-packages.sh /usr/local/bin/find-missing-deb-packages.sh
-COPY src/find-missing-perl-modules.sh /usr/local/bin/find-missing-perl-modules.sh
+COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
-ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/bin/speedtest-cli
-RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
+ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/speedtest-cli/speedtest-cli
+RUN chmod 755 /*.sh /usr/local/bin/* /usr/local/speedtest-cli/speedtest-cli \
+    && ln -s /usr/local/speedtest-cli/speedtest-cli /usr/local/bin/speedtest-cli \
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
     && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
@@ -98,6 +98,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        alsa-utils \
         avahi-daemon \
         avrdude \
         bluez \
@@ -124,6 +125,7 @@ RUN chmod 755 /*.sh /usr/local/bin/speedtest-cli \
         openssh-client \
         sendemail \
         snmp \
+        snmp-mibs-downloader \
         sox \
         sqlite3 \
         subversion \
@@ -232,21 +234,25 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Add Perl app layer for self-compiled software
+# Add Perl app layer for self-compiled modules
 #  * exclude any ARM platforms due too long build time
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          autoconf \
+          automake \
           build-essential \
           cpanminus \
           libssl-dev \
+          libtool \
       && cpanm \
           Crypt::OpenSSL::AES \
           CryptX \
           Device::SMBus \
           Net::MQTT::Constants \
           Net::MQTT::Simple \
+          Net::WebSocket::Server \
       && if [ "${ARCH}" = "amd64" ]; then \
           cpanm \
            Crypt::Random \
@@ -254,9 +260,12 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
          ; fi \
       && rm -rf /root/.cpanm \
       && apt-get purge -qqy \
+          autoconf \
+          automake \
           build-essential \
           cpanminus \
           libssl-dev \
+          libtool \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
@@ -269,21 +278,27 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           curl -sL https://deb.nodesource.com/setup_10.x | bash - \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          autoconf \
+          automake \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
           python \
+          libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
           alexa-fhem \
           homebridge \
           homebridge-fhem \
-          git+https://github.com/dominikkarall/fhem-google-assistant-connector.git \
+          tradfri-fhem \
       && apt-get purge -qqy \
+          autoconf \
+          automake \
           build-essential \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
+          libtool \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi

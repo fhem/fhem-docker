@@ -16,6 +16,7 @@ sub DockerImageInfo_Initialize($) {
 sub DockerImageInfo_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
+    my $name = $hash->{NAME};
 
     return "Wrong syntax: use define <name> DockerImageInfo"
       if ( int(@a) != 2 );
@@ -26,6 +27,18 @@ sub DockerImageInfo_Define($$) {
 
     # create global unique device definition
     $modules{ $hash->{TYPE} }{defptr} = $hash;
+
+    # set default settings on first define
+    if ( $init_done && !defined( $hash->{OLDDEF} ) ) {
+
+        # presets for FHEMWEB
+        $attr{$name}{alias} = 'Docker Image Info';
+        $attr{$name}{devStateIcon} =
+          'ok:security@green .*:message_attention@red';
+        $attr{$name}{group} = 'System';
+        $attr{$name}{icon}  = 'it_pc';
+        $attr{$name}{room}  = 'System';
+    }
 
     return undef;
 }
@@ -44,8 +57,7 @@ sub DockerImageInfo_GetImageInfo() {
     readingsBeginUpdate( $defs{$n} );
 
     my @LINES = split( "\n",
-        `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info`
-    );
+        `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
 
     foreach my $LINE (@LINES) {
         next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/ );
@@ -57,8 +69,10 @@ sub DockerImageInfo_GetImageInfo() {
         readingsBulkUpdateIfChanged( $defs{$n}, $NAME, $VAL );
     }
 
-    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_ed25519.pub",  `cat ./.ssh/id_ed25519.pub` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub", `cat ./.ssh/id_rsa.pub` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_ed25519.pub",
+        `cat ./.ssh/id_ed25519.pub` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub",
+        `cat ./.ssh/id_rsa.pub` );
 
     readingsEndUpdate( $defs{$n}, 1 );
     return undef;
