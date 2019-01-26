@@ -61,7 +61,7 @@ if [ -d "/fhem" ]; then
     echo "attr fhemServerApt icon it_pc" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerNpm npmjs Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm alias Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm icon it_pc" >> ${FHEM_DIR}/fhem.cfg
