@@ -44,6 +44,22 @@ if [ -d "/fhem" ]; then
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global dnsServer')" ] && echo "attr global dnsServer ${DNS}" >> ${FHEM_DIR}/fhem.cfg
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global commandref')" ] && echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
     [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global mseclog')" ] && echo "attr global mseclog 1" >> ${FHEM_DIR}/fhem.cfg
+    (( i++ ))
+
+    echo "$i. Adding pre-defined devices to fhem.cfg"
+
+    echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo alias Docker Image Info" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo devStateIcon ok:security@green .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg
+    echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
 
     cd - 2>&1>/dev/null
   else
