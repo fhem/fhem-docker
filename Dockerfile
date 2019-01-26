@@ -291,7 +291,6 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           alexa-fhem \
           homebridge \
           homebridge-fhem \
-          npm-upgrade \
           tradfri-fhem \
       && apt-get purge -qqy \
           autoconf \
