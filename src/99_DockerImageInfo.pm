@@ -16,6 +16,7 @@ sub DockerImageInfo_Initialize($) {
 sub DockerImageInfo_Define($$) {
     my ( $hash, $def ) = @_;
     my @a = split( "[ \t][ \t]*", $def );
+    my $name = $hash->{NAME};
 
     return "Wrong syntax: use define <name> DockerImageInfo"
       if ( int(@a) != 2 );
