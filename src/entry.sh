@@ -101,8 +101,12 @@ adduser --quiet fhem tty 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 
 echo -e "  - Updating /etc/sudoers.d/fhem ..."
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get" > /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -q update" > /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm outdated" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm update" >> /etc/sudoers.d/fhem
 echo "fhem    ALL=NOPASSWD:   /usr/bin/nmap" >> /etc/sudoers.d/fhem
 
 # SSH key: Ed25519
