@@ -283,6 +283,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtool \
     && pip3 install \
         setuptools \
+        wheel \
     && pip3 install \
         pychromecast \
         youtube-dl \
