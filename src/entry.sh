@@ -125,8 +125,8 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
-[ -e /dev/tty ] && chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null
-[ -e /dev/ttyS0 ] && chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null
+[ -e /dev/tty ] && chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/tty* 2>&1>/dev/null
+[ -e /dev/ttyS0 ] && chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/ttyS* 2>&1>/dev/null
 (( i++ ))
 if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
@@ -137,9 +137,10 @@ if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d
   fi
   adduser --quiet fhem gpio 2>&1>/dev/null
   find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \;
-  [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null
-  [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null
-  [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null
+  find /dev/ -name "gpio*" -exec chmod --recursive --quiet g+rw {} \;
+  [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/virtual/gpio/*
+  [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/platform/gpio-sunxi/gpio/*
+  [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/class/gpio/*
   (( i++ ))
 fi
 if [ -n "$(grep ^i2c: /etc/group)" ]; then
