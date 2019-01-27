@@ -106,10 +106,10 @@ cp -f /etc/passwd.orig /etc/passwd
 cp -f /etc/shadow.orig /etc/shadow
 cp -f /etc/group.orig /etc/group
 echo "$i. Creating group 'fhem' with GID ${FHEM_GID} ..."
-groupadd --force --gid ${FHEM_GID} fhem 2>&1>/dev/null
+groupadd --force --gid ${FHEM_GID} --non-unique fhem 2>&1>/dev/null
 (( i++ ))
 echo "$i. Enforcing GID for group 'bluetooth' to ${BLUETOOTH_GID} ..."
-sed -i s/^bluetooth:.*/bluetooth:x:${BLUETOOTH_GID}/ /etc/group
+sed -i "s/^bluetooth\:.*/bluetooth\:x\:${BLUETOOTH_GID}/" /etc/group
 (( i++ ))
 echo "$i. Creating user 'fhem' with UID ${FHEM_UID} ..."
 useradd --home ${FHEM_DIR} --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
@@ -125,28 +125,32 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
-chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null
-chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null
+[ -e /dev/tty ] && chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null
+[ -e /dev/ttyS0 ] && chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null
 (( i++ ))
-if [ -n "$(grep ^gpio: /etc/group)" ]; then
+if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
-  sed -i s/^gpio:.*/gpio:x:${GPIO_GID}/ /etc/group
+  if [ -n "$(grep ^gpio: /etc/group)" ]; then
+    sed -i "s/^gpio\:.*/gpio\:x\:${GPIO_GID}/" /etc/group
+  else
+    groupadd --force --gid ${GPIO_GID} --non-unique gpio 2>&1>/dev/null
+  fi
   adduser --quiet fhem gpio 2>&1>/dev/null
-  chown --recursive --quiet --no-dereference .gpio \
-    /dev/gpio* \
-    /sys/devices/virtual/gpio/* \
-    /sys/devices/platform/gpio-sunxi/gpio/* \
-    /sys/class/gpio/* \
-  2>&1>/dev/null
+  find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \;
+  [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null
+  [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null
+  [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null
   (( i++ ))
 fi
 if [ -n "$(grep ^i2c: /etc/group)" ]; then
   echo "$i. Found I2C: Correcting group permissions in /dev to 'i2c' with GID ${I2C_GID} ..."
-  sed -i s/^i2c:.*/i2c:x:${I2C_GID}/ /etc/group
+  if [ -n "$(grep ^i2c: /etc/group)" ]; then
+    sed -i "s/^i2c\:.*/i2c\:x\:${I2C_GID}/" /etc/group
+  else
+    groupadd --force --gid ${I2C_GID} --non-unique i2c 2>&1>/dev/null
+  fi
   adduser --quiet fhem i2c 2>&1>/dev/null
-  chown --recursive --quiet --no-dereference .i2c \
-    /dev/i2c-* \
-  2>&1>/dev/null
+  find /dev/ -name "i2c-*" -exec chown --recursive --quiet --no-dereference .i2c {} \;
   (( i++ ))
 fi
 
