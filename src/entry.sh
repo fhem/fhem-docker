@@ -57,19 +57,19 @@ if [ -d "/fhem" ]; then
     echo "attr DockerImageInfo alias Docker Image Info" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo devStateIcon ok:security@green .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr DockerImageInfo icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerApt icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm alias Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerNpm icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
 
     cd - 2>&1>/dev/null
