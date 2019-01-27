@@ -175,8 +175,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libimage-imlib2-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
-        libio-file-withpath-perl \
-        libio-socket-*-perl \
+        libio-all-perl \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
@@ -216,8 +215,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-diff-perl \
         libtime-period-perl \
         libtimedate-perl \
+        libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
         libusb-1.0-0-dev \
+        libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
