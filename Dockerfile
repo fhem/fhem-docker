@@ -71,8 +71,6 @@ COPY src/health-check.sh /health-check.sh
 COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
 RUN chmod 755 /*.sh /usr/local/bin/* \
-    && mkdir -p /usr/local/speedtest-cli \
-    && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
     && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
@@ -292,6 +290,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         pip3 install \
          rpi.gpio \
        ; fi \
+    && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
     && apt-get purge -qqy \
         autoconf \
         automake \
