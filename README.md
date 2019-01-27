@@ -98,6 +98,21 @@ The platform repositories will also allow you to choose more specific build tags
 
     	-e FHEM_GID=6061
 
+* Change Bluetooth group ID:
+	To set a different GID for the group 'bluetooth' (default is 6001):
+
+    	-e BLUETOOTH_GID=6001
+
+* Change GPIO group ID:
+	To set a different GID for the group 'gpio' (default is 6002):
+
+    	-e GPIO_GID=6002
+
+* Change I2C group ID:
+	To set a different GID for the group 'i2c' (default is 6003):
+
+    	-e I2C_GID=6003
+
 * Change shutdown timeout:
 	To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 

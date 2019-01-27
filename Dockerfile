@@ -270,6 +270,34 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
+# Add Python app layer
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        libinline-python-perl \
+        python3 \
+        python3-dev \
+        python3-pip \
+        libtool \
+    && pip3 install \
+        setuptools \
+    && pip3 install \
+        pychromecast \
+        youtube-dl \
+    && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+        pip3 install \
+         rpi.gpio \
+       ; fi \
+    && apt-get purge -qqy \
+        autoconf \
+        automake \
+        build-essential \
+        libtool \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+
 # Add nodejs app layer
 RUN if [ "${ARCH}" != "arm32v5" ]; then \
       if [ "${ARCH}" = "i386" ]; then \
@@ -284,7 +312,6 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
-          python \
           libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
@@ -302,16 +329,6 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
-
-# Add Python app layer
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libinline-python-perl \
-        python3 \
-        python3-pychromecast \
-        youtube-dl \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Travis:
