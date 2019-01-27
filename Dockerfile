@@ -316,6 +316,7 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
+          alexa-cookie2 \
           alexa-fhem \
           homebridge \
           homebridge-fhem \
