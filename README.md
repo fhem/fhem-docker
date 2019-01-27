@@ -14,7 +14,7 @@ To start your container right away:
 
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
-    docker run -d --name fhem -p 8083:8083 fhem/fhem -v /some/host/directory:/opt/fhem
+    docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
 
 After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants:
 
