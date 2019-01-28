@@ -16,6 +16,10 @@ export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
 export FHEM_CLEANINSTALL=1
 
+export BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
+export GPIO_GID="${GPIO_GID:-6002}"
+export I2C_GID="${I2C_GID:-6003}"
+
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
 if [ -d "/fhem" ]; then
@@ -26,6 +30,7 @@ if [ -d "/fhem" ]; then
 
   if [ -s /pre-init.sh ]; then
     echo "$i. Running pre-init script"
+    chmod 755 /pre-init.sh
     /pre-init.sh
     (( i++ ))
   fi
@@ -52,19 +57,19 @@ if [ -d "/fhem" ]; then
     echo "attr DockerImageInfo alias Docker Image Info" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo devStateIcon ok:security@green .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr DockerImageInfo icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerApt icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm alias Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerNpm icon it_pc" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
 
     cd - 2>&1>/dev/null
@@ -79,9 +84,12 @@ if [ -d "/fhem" ]; then
 
   if [ -s /post-init.sh ]; then
     echo "$i. Running post-init script"
+    chmod 755 /post-init.sh
     /post-init.sh
     (( i++ ))
   fi
+
+  echo -e '\n\n'
 
 elif [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
   echo "- ERROR: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl"
@@ -90,13 +98,20 @@ fi
 
 # creating user environment
 echo "Preparing user environment ..."
+i=1
 [ ! -s /etc/passwd.orig ] && cp -f /etc/passwd /etc/passwd.orig
 [ ! -s /etc/shadow.orig ] && cp -f /etc/shadow /etc/shadow.orig
 [ ! -s /etc/group.orig ] && cp -f /etc/group /etc/group.orig
 cp -f /etc/passwd.orig /etc/passwd
 cp -f /etc/shadow.orig /etc/shadow
 cp -f /etc/group.orig /etc/group
-groupadd --force --gid ${FHEM_GID} fhem 2>&1>/dev/null
+echo "$i. Creating group 'fhem' with GID ${FHEM_GID} ..."
+groupadd --force --gid ${FHEM_GID} --non-unique fhem 2>&1>/dev/null
+(( i++ ))
+echo "$i. Enforcing GID for group 'bluetooth' to ${BLUETOOTH_GID} ..."
+sed -i "s/^bluetooth\:.*/bluetooth\:x\:${BLUETOOTH_GID}/" /etc/group
+(( i++ ))
+echo "$i. Creating user 'fhem' with UID ${FHEM_UID} ..."
 useradd --home ${FHEM_DIR} --shell /bin/bash --uid ${FHEM_UID} --no-create-home --no-user-group --non-unique fhem 2>&1>/dev/null
 usermod --append --gid ${FHEM_GID} --groups ${FHEM_GID} fhem 2>&1>/dev/null
 adduser --quiet fhem audio 2>&1>/dev/null
@@ -104,40 +119,75 @@ adduser --quiet fhem bluetooth 2>&1>/dev/null
 adduser --quiet fhem dialout 2>&1>/dev/null
 adduser --quiet fhem mail 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
+adduser --quiet fhem video 2>&1>/dev/null
+(( i++ ))
+echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
+(( i++ ))
+echo "$i. Correcting group ownership for /dev/tty* ..."
+[ -e /dev/tty ] && chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/tty* 2>&1>/dev/null
+[ -e /dev/ttyS0 ] && chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/ttyS* 2>&1>/dev/null
+(( i++ ))
+if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
+  echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
+  if [ -n "$(grep ^gpio: /etc/group)" ]; then
+    sed -i "s/^gpio\:.*/gpio\:x\:${GPIO_GID}/" /etc/group
+  else
+    groupadd --force --gid ${GPIO_GID} --non-unique gpio 2>&1>/dev/null
+  fi
+  adduser --quiet fhem gpio 2>&1>/dev/null
+  find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \;
+  find /dev/ -name "gpio*" -exec chmod --recursive --quiet g+rw {} \;
+  [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/virtual/gpio/*
+  [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/platform/gpio-sunxi/gpio/*
+  [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/class/gpio/*
+  (( i++ ))
+fi
+if [ -n "$(grep ^i2c: /etc/group)" ]; then
+  echo "$i. Found I2C: Correcting group permissions in /dev to 'i2c' with GID ${I2C_GID} ..."
+  if [ -n "$(grep ^i2c: /etc/group)" ]; then
+    sed -i "s/^i2c\:.*/i2c\:x\:${I2C_GID}/" /etc/group
+  else
+    groupadd --force --gid ${I2C_GID} --non-unique i2c 2>&1>/dev/null
+  fi
+  adduser --quiet fhem i2c 2>&1>/dev/null
+  find /dev/ -name "i2c-*" -exec chown --recursive --quiet --no-dereference .i2c {} \;
+  (( i++ ))
+fi
 
-echo -e "  - Updating /etc/sudoers.d/fhem ..."
+echo "$i. Updating /etc/sudoers.d/fhem ..."
 echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -q update" > /etc/sudoers.d/fhem
 echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
 echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
 echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/npm outdated" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/npm update" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm outdated*" >> /etc/sudoers.d/fhem
+echo "fhem    ALL=NOPASSWD:   /usr/bin/npm update*" >> /etc/sudoers.d/fhem
 echo "fhem    ALL=NOPASSWD:   /usr/bin/nmap" >> /etc/sudoers.d/fhem
+chmod 440 /etc/sudoers.d/fhem
+(( i++ ))
 
 # SSH key: Ed25519
 mkdir -p ${FHEM_DIR}/.ssh
 if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
-  echo -e "  - Generating SSH Ed25519 client certificate for user 'fhem' ..."
+  echo "$i. Generating SSH Ed25519 client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_ed25519*
   ssh-keygen -t ed25519 -f ${FHEM_DIR}/.ssh/id_ed25519 -q -N "" -o -a 100
   sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_ed25519.pub
+  (( i++ ))
 fi
-chmod 600 ${FHEM_DIR}/.ssh/id_ed25519
-chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub
 
 # SSH key: RSA
 if [ ! -s ${FHEM_DIR}/.ssh/id_rsa ]; then
-  echo -e "  - Generating SSH RSA client certificate for user 'fhem' ..."
+  echo "$i. Generating SSH RSA client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_rsa*
   ssh-keygen -t rsa -b 4096 -f ${FHEM_DIR}/.ssh/id_rsa -q -N "" -o -a 100
   sed -i "s/root@.*/fhem@fhem-docker/" ${FHEM_DIR}/.ssh/id_rsa.pub
+  (( i++ ))
 fi
-chmod 600 ${FHEM_DIR}/.ssh/id_rsa
-chmod 644 ${FHEM_DIR}/.ssh/id_rsa.pub
 
 # SSH client hardening
 if [ ! -f ${FHEM_DIR}/.ssh/config ]; then
+  echo "$i. Generating SSH client configuration for user 'fhem' ..."
 echo "IdentityFile ~/.ssh/id_ed25519
 IdentityFile ~/.ssh/id_rsa
 
@@ -146,13 +196,18 @@ HostKeyAlgorithms ssh-ed25519,ssh-rsa
 KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256
 MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,umac-128-etm@openssh.com
 " > ${FHEM_DIR}/.ssh/config
+  (( i++ ))
 fi
 
 # SSH key pinning
+echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..."
 touch ${FHEM_DIR}/.ssh/known_hosts
 cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k2,3 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/
+chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
+chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
+(( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
 [ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0
@@ -196,6 +251,7 @@ function StartFHEM {
 
   if [ -s /pre-start.sh ]; then
     echo "Running pre-start script ..."
+    chmod 755 /pre-start.sh
     /pre-start.sh
   fi
 
@@ -258,6 +314,7 @@ function StartFHEM {
 
   if [ -s /post-start.sh ]; then
     echo "Running post-start script ..."
+    chmod 755 /post-start.sh
     /post-start.sh
   fi
 

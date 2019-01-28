@@ -70,9 +70,7 @@ COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
 COPY src/health-check.sh /health-check.sh
 COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
-ADD https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py /usr/local/speedtest-cli/speedtest-cli
-RUN chmod 755 /*.sh /usr/local/bin/* /usr/local/speedtest-cli/speedtest-cli \
-    && ln -s /usr/local/speedtest-cli/speedtest-cli /usr/local/bin/speedtest-cli \
+RUN chmod 755 /*.sh /usr/local/bin/* \
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
     && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
@@ -177,8 +175,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libimage-imlib2-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
-        libio-file-withpath-perl \
-        libio-socket-*-perl \
+        libio-all-perl \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
@@ -218,8 +215,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-diff-perl \
         libtime-period-perl \
         libtimedate-perl \
+        libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
         libusb-1.0-0-dev \
+        libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
         libxml-parser-lite-perl \
@@ -270,6 +269,37 @@ RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
+# Add Python app layer
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        libinline-python-perl \
+        python3 \
+        python3-dev \
+        python3-pip \
+        libtool \
+    && pip3 install \
+        setuptools \
+        wheel \
+    && pip3 install \
+        pychromecast \
+        speedtest-cli \
+        youtube-dl \
+    && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+        pip3 install \
+         rpi.gpio \
+       ; fi \
+    && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+    && apt-get purge -qqy \
+        autoconf \
+        automake \
+        build-essential \
+        libtool \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+
 # Add nodejs app layer
 RUN if [ "${ARCH}" != "arm32v5" ]; then \
       if [ "${ARCH}" = "i386" ]; then \
@@ -284,10 +314,10 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           libavahi-compat-libdnssd-dev \
           libssl-dev \
           nodejs \
-          python \
           libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
+          alexa-cookie2 \
           alexa-fhem \
           homebridge \
           homebridge-fhem \
@@ -302,16 +332,6 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
-
-# Add Python app layer
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libinline-python-perl \
-        python3 \
-        python3-pychromecast \
-        youtube-dl \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Travis:
