@@ -319,6 +319,7 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
       && npm install -g --unsafe-perm \
           alexa-cookie2 \
           alexa-fhem \
+          gassistant-fhem \
           homebridge \
           homebridge-fhem \
           tradfri-fhem \
