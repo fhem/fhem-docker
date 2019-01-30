@@ -82,6 +82,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         ca-certificates \
         gnupg \
         locales \
+    && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
@@ -176,6 +177,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-all-perl \
+        libio-file-withpath-perl \
+        libio-socket-*-perl \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
@@ -233,53 +236,55 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Add Perl app layer for self-compiled modules
-#  * exclude any ARM platforms due too long build time
-#  * manually pre-compiled ARM packages may be applied here
-RUN if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          autoconf \
-          automake \
-          build-essential \
-          cpanminus \
-          libssl-dev \
-          libtool \
-      && cpanm \
-          Crypt::OpenSSL::AES \
-          CryptX \
-          Device::SMBus \
-          Net::MQTT::Constants \
-          Net::MQTT::Simple \
-          Net::WebSocket::Server \
-      && if [ "${ARCH}" = "amd64" ]; then \
-          cpanm \
-           Crypt::Random \
-           Math::Pari \
-         ; fi \
-      && rm -rf /root/.cpanm \
-      && apt-get purge -qqy \
-          autoconf \
-          automake \
-          build-essential \
-          cpanminus \
-          libssl-dev \
-          libtool \
-      && apt-get autoremove -qqy && apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
-
-# Add Python app layer
+# Add development/compilation layer
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         autoconf \
         automake \
         build-essential \
+        libavahi-compat-libdnssd-dev \
+        libdb-dev \
+        libssl-dev \
+        libtool \
+        patch \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+
+# Add Perl app layer for self-compiled modules
+#  * exclude any ARM platforms due too long build time
+#  * manually pre-compiled ARM packages may be applied here
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        cpanminus \
+    && cpanm \
+        App::cpanminus \
+        App::cpanoutdated \
+        CPAN::Plugin::Sysdeps \
+    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+        cpanm \
+         Crypt::OpenSSL::AES \
+         CryptX \
+         Device::SMBus \
+         Net::MQTT::Constants \
+         Net::MQTT::Simple \
+         Net::WebSocket::Server \
+        && if [ "${ARCH}" = "amd64" ]; then \
+            cpanm \
+             Crypt::Random \
+             Math::Pari \
+           ; fi \
+        ; fi \
+    && rm -rf /root/.cpanm \
+    && apt-get autoremove -qqy && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+
+# Add Python app layer
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         libinline-python-perl \
         python3 \
         python3-dev \
         python3-pip \
-        libtool \
     && pip3 install \
         setuptools \
         wheel \
@@ -292,11 +297,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
          rpi.gpio \
        ; fi \
     && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
-    && apt-get purge -qqy \
-        autoconf \
-        automake \
-        build-essential \
-        libtool \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
@@ -308,27 +308,15 @@ RUN if [ "${ARCH}" != "arm32v5" ]; then \
           curl -sL https://deb.nodesource.com/setup_10.x | bash - \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          autoconf \
-          automake \
-          build-essential \
-          libavahi-compat-libdnssd-dev \
-          libssl-dev \
           nodejs \
-          libtool \
       && npm update -g --unsafe-perm \
       && npm install -g --unsafe-perm \
           alexa-cookie2 \
           alexa-fhem \
+          gassistant-fhem \
           homebridge \
           homebridge-fhem \
           tradfri-fhem \
-      && apt-get purge -qqy \
-          autoconf \
-          automake \
-          build-essential \
-          libavahi-compat-libdnssd-dev \
-          libssl-dev \
-          libtool \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi

@@ -125,8 +125,14 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
-[ -e /dev/tty ] && chown --recursive --quiet --no-dereference .tty /dev/tty* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/tty* 2>&1>/dev/null
-[ -e /dev/ttyS0 ] && chown --recursive --quiet --no-dereference .dialout /dev/ttyS* 2>&1>/dev/null && chmod --recursive --quiet g+rw /dev/ttyS* 2>&1>/dev/null
+#find /dev/ -name "tty*" -exec chown --recursive --quiet --no-dereference .tty {} \;
+find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
+find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
+find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
+#find /dev/ -name "tty*" -exec chmod --recursive --quiet g+w {} \;
+find /dev/ -name "ttyS*" -exec chmod --recursive --quiet g+rw {} \;
+find /dev/ -name "ttyACM*" -exec chmod --recursive --quiet g+rw {} \;
+find /dev/ -name "ttyUSB*" -exec chmod --recursive --quiet g+rw {} \;
 (( i++ ))
 if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
@@ -156,13 +162,21 @@ if [ -n "$(grep ^i2c: /etc/group)" ]; then
 fi
 
 echo "$i. Updating /etc/sudoers.d/fhem ..."
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -q update" > /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/npm outdated*" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/npm update*" >> /etc/sudoers.d/fhem
-echo "fhem    ALL=NOPASSWD:   /usr/bin/nmap" >> /etc/sudoers.d/fhem
+
+# required by modules
+echo "fhem ALL=NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem
+
+# Allow updates
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/npm outdated *" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/npm update *" >> /etc/sudoers.d/fhem
+
+# Allow installation of new packages
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem
+
 chmod 440 /etc/sudoers.d/fhem
 (( i++ ))
 
