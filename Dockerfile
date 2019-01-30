@@ -82,6 +82,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         ca-certificates \
         gnupg \
         locales \
+    && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
@@ -176,6 +177,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-all-perl \
+        libio-file-withpath-perl \
+        libio-socket-*-perl \
         libjson-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
