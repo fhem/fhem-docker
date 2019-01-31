@@ -276,7 +276,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         ; fi \
     && rm -rf /root/.cpanm \
     && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Python app layer
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
