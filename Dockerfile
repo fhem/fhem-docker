@@ -181,6 +181,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libio-socket-*-perl \
         libjson-perl \
         libjson-xs-perl \
+        liblinux-inotify2-perl \
         liblist-moreutils-perl \
         libmail-gnupg-perl \
         libmail-imapclient-perl \
