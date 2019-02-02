@@ -74,7 +74,7 @@ sub DockerImageInfo_GetImageInfo() {
         `cat ./.ssh/id_ed25519.pub` );
     readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub",
         `cat ./.ssh/id_rsa.pub` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "privileged",
+    readingsBulkUpdateIfChanged( $defs{$n}, "container.privileged",
         `cat /docker.privileged` );
 
     readingsEndUpdate( $defs{$n}, 1 );
