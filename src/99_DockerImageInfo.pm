@@ -45,6 +45,7 @@ sub DockerImageInfo_Define($$) {
 
 sub DockerImageInfo_GetImageInfo() {
     my $n = 'DockerImageInfo';
+    return unless ($init_done);
 
     if ( defined( $modules{'DockerImageInfo'}{defptr} ) ) {
         $n = $modules{'DockerImageInfo'}{defptr}{NAME};
@@ -73,6 +74,8 @@ sub DockerImageInfo_GetImageInfo() {
         `cat ./.ssh/id_ed25519.pub` );
     readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub",
         `cat ./.ssh/id_rsa.pub` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "privileged",
+        `cat /docker.privileged` );
 
     readingsEndUpdate( $defs{$n}, 1 );
     return undef;

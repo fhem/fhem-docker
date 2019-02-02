@@ -22,6 +22,14 @@ export I2C_GID="${I2C_GID:-6003}"
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
+ip link add dummy0 type dummy 2>&1 >/dev/null
+if [[ $? -eq 0 ]]; then
+  echo 1 > /docker.privileged
+    ip link delete dummy0 >/dev/null
+else
+  echo 0 > /docker.privileged
+fi
+
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
   i=1
