@@ -29,6 +29,7 @@ if [[ $? -eq 0 ]]; then
 else
   echo 0 > /docker.privileged
 fi
+cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.containerid
 
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
