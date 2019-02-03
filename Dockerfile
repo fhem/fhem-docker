@@ -178,9 +178,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libimage-librsvg-perl \
         libio-all-perl \
         libio-file-withpath-perl \
+        libio-interface-perl \
         libio-socket-*-perl \
         libjson-perl \
         libjson-xs-perl \
+        liblinux-inotify2-perl \
         liblist-moreutils-perl \
         libmail-gnupg-perl \
         libmail-imapclient-perl \
@@ -190,6 +192,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmodule-pluggable-perl \
         libmojolicious-perl \
         libmoox-late-perl \
+        libnet-address-ip-local-perl \
         libnet-bonjour-perl \
         libnet-jabber-perl \
         libnet-oauth-perl \

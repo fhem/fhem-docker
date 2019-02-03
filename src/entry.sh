@@ -22,6 +22,15 @@ export I2C_GID="${I2C_GID:-6003}"
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
+ip link add dummy0 type dummy 2>&1 >/dev/null
+if [[ $? -eq 0 ]]; then
+  echo 1 > /docker.privileged
+    ip link delete dummy0 >/dev/null
+else
+  echo 0 > /docker.privileged
+fi
+cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.containerid
+
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
   i=1
@@ -61,13 +70,13 @@ if [ -d "/fhem" ]; then
     echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green:repoSync .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
     echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm alias Node.js Update Status" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red npm.is.up.to.date:security@green:outdated .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm icon it_server" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
