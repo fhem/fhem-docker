@@ -22,7 +22,7 @@ export I2C_GID="${I2C_GID:-6003}"
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
-ip link add dummy0 type dummy 2>&1 >/dev/null
+ip link add dummy0 type dummy >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
   echo 1 > /docker.privileged
     ip link delete dummy0 >/dev/null
