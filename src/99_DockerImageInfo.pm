@@ -23,12 +23,13 @@ sub DockerImageInfo_Define($$) {
 
     return "This module may only be defined once, existing device: "
       . $modules{ $hash->{TYPE} }{defptr}{NAME}
-      if ( defined( $modules{ $hash->{TYPE} }{defptr} ) );
+      if ( defined( $modules{ $hash->{TYPE} }{defptr} )
+        && $init_done
+        && !defined( $hash->{OLDDEF} ) );
 
     # create global unique device definition
     $modules{ $hash->{TYPE} }{defptr} = $hash;
 
-    # set default settings on first define
     if ( $init_done && !defined( $hash->{OLDDEF} ) ) {
 
         # presets for FHEMWEB
@@ -44,15 +45,11 @@ sub DockerImageInfo_Define($$) {
 }
 
 sub DockerImageInfo_GetImageInfo() {
-    my $n = 'DockerImageInfo';
-    return unless ($init_done);
-
-    if ( defined( $modules{'DockerImageInfo'}{defptr} ) ) {
-        $n = $modules{'DockerImageInfo'}{defptr}{NAME};
-    }
-    else {
-        fhem "defmod $n DockerImageInfo";
-    }
+    return
+      unless ($init_done);
+    return "undefined"
+      unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
+    my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
 
     $defs{$n}{STATE} = 'ok';
     readingsBeginUpdate( $defs{$n} );
