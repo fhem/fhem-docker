@@ -31,6 +31,15 @@ fi
 
 IMAGE_VERSION=$(git describe --tags --dirty --match "v[0-9]*")
 IMAGE_VERSION=${IMAGE_VERSION:-1}
+
+if [[ -z "${FHEM_VERSION}" || -z "${FHEM_REVISION_LATEST}" || -z "${IMAGE_VERSION}" ]]; then
+  echo "ERROR: Unable to collect all required version info:"
+  echo " FHEM_VERSION=${FHEM_VERSION}"
+  echo " FHEM_REVISION_LATEST=${FHEM_REVISION_LATEST}"
+  echo " IMAGE_VERSION=${IMAGE_VERSION}"
+  exit 1
+fi
+
 IMAGE_BRANCH=$( [[ -n "${TRAVIS_BRANCH}" && "${TRAVIS_BRANCH}" != "master" && "${TRAVIS_BRANCH}" != "${TRAVIS_TAG}" ]] && echo -n "${TRAVIS_BRANCH}" || echo -n "" )
 VARIANT_FHEM="${FHEM_VERSION}-s${FHEM_REVISION_LATEST}"
 VARIANT_IMAGE="${IMAGE_VERSION}$( [ -n "${IMAGE_BRANCH}" ] && echo -n "-${IMAGE_BRANCH}" || echo -n "" )"
