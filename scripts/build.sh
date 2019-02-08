@@ -19,7 +19,7 @@ if [ ! -d ./src/fhem ]; then
   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
 fi
 FHEM_VERSION="$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
-FHEM_REVISION_LATEST="$( cd ./src/fhem; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
+FHEM_REVISION_LATEST="$( cd ./src/fhem/trunk; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
 
 if [[ -n "${ARCH}" && "${ARCH}" != "amd64" ]]; then
   BASE_IMAGE="${ARCH}/${BASE_IMAGE}"
