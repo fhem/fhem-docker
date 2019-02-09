@@ -42,10 +42,10 @@ sub DockerImageInfo_Define($$) {
     }
 
     if ( -e '/.dockerenv' ) {
-        $defs{$n}{STATE} = "Initialized";
+        $defs{$name}{STATE} = "Initialized";
     }
     else {
-        $defs{$n}{STATE} = "ERROR: Host is not a container";
+        $defs{$name}{STATE} = "ERROR: Host is not a container";
     }
 
     return undef;
