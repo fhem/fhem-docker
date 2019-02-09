@@ -4,8 +4,6 @@
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
-export LOGFILE="${FHEM_DIR}/log/${LOGFILE:-fhem-%Y-%m.log}"
-export PIDFILE="${FHEM_DIR}/log/${PIDFILE:-fhem.pid}"
 export SLEEPINTERVAL=0.5
 export TIMEOUT="${TIMEOUT:-10}"
 export RESTART="${RESTART:-1}"
@@ -19,6 +17,30 @@ export FHEM_CLEANINSTALL=1
 export BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
 export GPIO_GID="${GPIO_GID:-6002}"
 export I2C_GID="${I2C_GID:-6003}"
+
+# determine global logfile
+if [ -z "${LOGFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+  else
+    GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
+    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+  fi
+else
+  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
+fi
+
+# determine PID file
+if [ -z "${PIDFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
+  else
+    GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
+    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
+  fi
+else
+  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
+fi
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
@@ -233,23 +255,23 @@ chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
 (( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
-[ -s "$( date +"$LOGFILE" )" ] && OLDLINES=$( wc -l < "$( date +"$LOGFILE" )" ) || OLDLINES=0
-NEWLINES=$OLDLINES
+[ -s "$( date +"${LOGFILE}" )" ] && OLDLINES=$( wc -l < "$( date +"${LOGFILE}" )" ) || OLDLINES=0
+NEWLINES=${OLDLINES}
 FOUND=false
 function PrintNewLines {
-  if [ -s "$( date +"$LOGFILE" )" ]; then
-  	NEWLINES=$(wc -l < "$(date +"$LOGFILE")")
-  	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=$NEWLINES
-  	tail -n "$LINES" "$(date +"$LOGFILE")"
-  	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"$LOGFILE")") && FOUND=true || FOUND=false
-  	OLDLINES=$NEWLINES
+  if [ -s "$( date +"${LOGFILE}" )" ]; then
+  	NEWLINES=$(wc -l < "$(date +"${LOGFILE}")")
+  	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=${NEWLINES}
+  	tail -n "${LINES}" "$(date +"${LOGFILE}")"
+  	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"${LOGFILE}")") && FOUND=true || FOUND=false
+  	OLDLINES=${NEWLINES}
   fi
 }
 
 # Docker stop signal handler
 function StopFHEM {
 	echo -e '\n\nSIGTERM signal received, sending "shutdown" command to FHEM!\n'
-	PID=$(<"$PIDFILE")
+	PID=$(<"${PIDFILE}")
   su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl 7072 shutdown"
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
