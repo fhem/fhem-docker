@@ -302,42 +302,49 @@ function StartFHEM {
 
   # Update system environment
   #
-  echo 'Preparing configuration ...'
 
-  # Mandatory
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
-  sed -i "s,attr global nofork.*,attr global nofork 0," ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global nofork')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/fhem.cfg
-  sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/fhem.cfg
-  sed -i "s,attr global pidfilename.*,attr global pidfilename .${PIDFILE#${FHEM_DIR}}," ${FHEM_DIR}/fhem.cfg
-  [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^attr global pidfilename')" ] && echo "attr global pidfilename .${PIDFILE#${FHEM_DIR}}" >> ${FHEM_DIR}/fhem.cfg
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    echo 'configDB detected - skipping automatic config preparation ...'
+  else
+    echo 'Preparing configuration ...'
 
-  ## Find Telnet access details
-  if [ -z "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
-    CUSTOMPORT="$(cat ${FHEM_DIR}/fhem.cfg | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
-    if [ -z "${CUSTOMPORT}"]; then
-      echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/fhem.cfg
-    else
-      TELNETPORT=${CUSTOMPORT}
+    # Mandatory
+    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/${CONFIGTYPE}
+    sed -i "s,attr global nofork.*,attr global nofork 0," ${FHEM_DIR}/${CONFIGTYPE}
+    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global nofork')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/${CONFIGTYPE}
+    sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/${CONFIGTYPE}
+    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/${CONFIGTYPE}
+    sed -i "s,attr global logfile.*,attr global logfile ${LOGFILE#${FHEM_DIR}/}," ${FHEM_DIR}/${CONFIGTYPE}
+    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile')" ] && echo "attr global logfile ${LOGFILE#${FHEM_DIR}/}" >> ${FHEM_DIR}/${CONFIGTYPE}
+    sed -i "s,attr global pidfilename.*,attr global pidfilename ${PIDFILE#${FHEM_DIR}/}," ${FHEM_DIR}/${CONFIGTYPE}
+    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename')" ] && echo "attr global pidfilename ${PIDFILE#${FHEM_DIR}/}" >> ${FHEM_DIR}/${CONFIGTYPE}
+
+    ## Find Telnet access details
+    if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
+      CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
+      if [ -z "${CUSTOMPORT}"]; then
+        echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
+      else
+        TELNETPORT=${CUSTOMPORT}
+      fi
     fi
-  fi
-  TELNETDEV="$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^define .* telnet ${TELNETPORT}" | cut -d " " -f 2)"
-  TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr .* validFor .*${TELNETDEV}.*" | cut -d " " -f 2)"
+    TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}" | cut -d " " -f 2)"
+    TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr .* validFor .*${TELNETDEV}.*" | cut -d " " -f 2)"
 
-  ## Enforce local telnet access w/o password
-  if [ -n "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
-    if [ -n "$(cat ${FHEM_DIR}/fhem.cfg | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
-      echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
-      sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/fhem.cfg
-    else
-      echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
-      sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/fhem.cfg
+    ## Enforce local telnet access w/o password
+    if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
+      if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
+        echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
+        sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/${CONFIGTYPE}
+      else
+        echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
+        sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/${CONFIGTYPE}
+      fi
     fi
-  fi
 
-  # Optional
-  sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/fhem.cfg
+    # Optional
+    sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
+  fi
 
   echo 'Starting FHEM ...'
   trap "StopFHEM" SIGTERM
