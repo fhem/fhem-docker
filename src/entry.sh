@@ -86,7 +86,7 @@ if [ -d "/fhem" ]; then
 
     echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo alias Docker Image Info" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr DockerImageInfo devStateIcon ok:security@green .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr DockerImageInfo devStateIcon ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo group System" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo icon docker" >> ${FHEM_DIR}/fhem.cfg
     echo "attr DockerImageInfo room System" >> ${FHEM_DIR}/fhem.cfg

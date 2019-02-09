@@ -35,10 +35,16 @@ sub DockerImageInfo_Define($$) {
         # presets for FHEMWEB
         $attr{$name}{alias} = 'Docker Image Info';
         $attr{$name}{devStateIcon} =
-          'ok:security@green .*:message_attention@red';
+          'ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
         $attr{$name}{group} = 'System';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
+    }
+
+    if ( -e '/.dockerenv') {
+      $defs{$n}{STATE} = "Initialized";
+    } else {
+      $defs{$n}{STATE} = "ERROR: Host is not a container";      
     }
 
     return undef;
