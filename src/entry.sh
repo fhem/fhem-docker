@@ -44,6 +44,7 @@ fi
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
+# Collect info about container
 ip link add dummy0 type dummy >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
   echo 1 > /docker.privileged
@@ -52,7 +53,11 @@ else
   echo 0 > /docker.privileged
 fi
 cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
+captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
+captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
+captest --text | grep -P "^Inheritable:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.i
 
+# This is a brand new container
 if [ -d "/fhem" ]; then
   echo "Preparing initial start:"
   i=1

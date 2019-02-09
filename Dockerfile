@@ -112,6 +112,8 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         jq \
         lame \
         libav-tools \
+        libcap-ng-utils \
+        libcap2-bin \
         libttspico-utils \
         lsb-release \
         mariadb-client \
