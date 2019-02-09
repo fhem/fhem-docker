@@ -150,10 +150,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libclass-loader-perl \
         libcommon-sense-perl \
         libconvert-base32-perl \
+        libcpan-meta-yaml-perl \
         libcrypt-*-perl \
         libdata-dump-perl \
         libdatetime-format-strptime-perl \
+        libdatetime-perl \
         libdbd-mysql \
+        libdbd-mysql-perl \
         libdbd-pg-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
@@ -165,6 +168,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libencode-perl \
         liberror-perl \
         libev-perl \
+        libextutils-makemaker-cpanfile-perl \
         libfile-copy-recursive-perl \
         libfile-fcntllock-perl \
         libfinance-quote-perl \
@@ -187,11 +191,15 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmail-gnupg-perl \
         libmail-imapclient-perl \
         libmail-sendmail-perl \
+        libmath-round-perl \
         libmime-base64-perl \
         libmime-lite-perl \
         libmodule-pluggable-perl \
         libmojolicious-perl \
+        libmoose-perl \
         libmoox-late-perl \
+        libmp3-info-perl \
+        libmp3-tag-perl \
         libnet-address-ip-local-perl \
         libnet-bonjour-perl \
         libnet-jabber-perl \
@@ -227,6 +235,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
+        libxml-libxml-perl \
         libxml-parser-lite-perl \
         libxml-parser-perl \
         libxml-simple-perl \
