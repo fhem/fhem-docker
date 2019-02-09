@@ -74,7 +74,7 @@ sub DockerImageInfo_GetImageInfo() {
     readingsBulkUpdateIfChanged( $defs{$n}, "container.hostname",
         `cat /etc/hostname` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.id",
-        `cat /docker.containerid` );
+        `cat /docker.container.id` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.privileged",
         `cat /docker.privileged` );
 
