@@ -35,10 +35,17 @@ sub DockerImageInfo_Define($$) {
         # presets for FHEMWEB
         $attr{$name}{alias} = 'Docker Image Info';
         $attr{$name}{devStateIcon} =
-          'ok:security@green .*:message_attention@red';
+'ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
         $attr{$name}{group} = 'System';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
+    }
+
+    if ( -e '/.dockerenv' ) {
+        $defs{$name}{STATE} = "Initialized";
+    }
+    else {
+        $defs{$name}{STATE} = "ERROR: Host is not a container";
     }
 
     return undef;
@@ -73,8 +80,14 @@ sub DockerImageInfo_GetImageInfo() {
         `cat ./.ssh/id_rsa.pub` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.hostname",
         `cat /etc/hostname` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.e",
+        `cat /docker.container.cap.e` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.p",
+        `cat /docker.container.cap.p` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.i",
+        `cat /docker.container.cap.i` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.id",
-        `cat /docker.containerid` );
+        `cat /docker.container.id` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.privileged",
         `cat /docker.privileged` );
 

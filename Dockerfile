@@ -15,6 +15,15 @@ ARG VCS_REF=""
 ARG FHEM_VERSION=""
 ARG IMAGE_VERSION=""
 
+# Custom build options:
+#  Disable certain image layers using build env variables if desired
+ARG IMAGE_LAYER_SYS_EXT="1"
+ARG IMAGE_LAYER_PERL_EXT="1"
+ARG IMAGE_LAYER_DEV="1"
+ARG IMAGE_LAYER_PERL_CPAN="1"
+ARG IMAGE_LAYER_PYTHON="1"
+ARG IMAGE_LAYER_NODEJS="1"
+
 # Re-usable variables during build
 ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
 ARG L_URL="https://hub.docker.com/r/fhem/fhem-${ARCH}_${PLATFORM}"
@@ -97,136 +106,99 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        alsa-utils \
         avahi-daemon \
         avrdude \
         bluez \
         curl \
         dfu-programmer \
         dnsutils \
-        espeak \
         etherwake \
         git-core \
         i2c-tools \
         inetutils-ping \
         jq \
-        lame \
-        libav-tools \
+        libcap-ng-utils \
+        libcap2-bin \
         libttspico-utils \
         lsb-release \
         mariadb-client \
-        mp3wrap \
-        mpg123 \
-        mplayer \
         netcat \
         nmap \
-        normalize-audio \
         openssh-client \
         sendemail \
         snmp \
         snmp-mibs-downloader \
-        sox \
         sqlite3 \
         subversion \
         sudo \
         telnet \
         telnet-ssl \
+        ttf-liberation \
         unzip \
         usbutils \
-        vorbis-tools \
         wget \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Add Perl app layer for pre-compiled packages
+# Add extended system layer
+RUN if [ "${IMAGE_LAYER_SYS_EXT}" = "1" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          alsa-utils \
+          espeak \
+          lame \
+          libav-tools \
+          mp3wrap \
+          mpg123 \
+          mplayer \
+          normalize-audio \
+          sox \
+          vorbis-tools \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
+
+# Add Perl basic app layer for pre-compiled packages
 RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        perl \
-        libalgorithm-merge-perl \
-        libauthen-*-perl \
+        perl-base \
+        libarchive-extract-perl \
+        libarchive-zip-perl \
         libcgi-pm-perl \
-        libclass-dbi-mysql-perl \
-        libclass-isa-perl \
-        libclass-loader-perl \
-        libcommon-sense-perl \
-        libconvert-base32-perl \
-        libcrypt-*-perl \
-        libdata-dump-perl \
-        libdatetime-format-strptime-perl \
         libdbd-mysql \
+        libdbd-mysql-perl \
         libdbd-pg-perl \
         libdbd-sqlite3-perl \
         libdbi-perl \
-        libdevel-size-perl \
         libdevice-serialport-perl \
         libdevice-usb-perl \
-        libdigest-*-perl \
-        libdpkg-perl \
-        libencode-perl \
-        liberror-perl \
-        libev-perl \
-        libfile-copy-recursive-perl \
-        libfile-fcntllock-perl \
-        libfinance-quote-perl \
         libgd-graph-perl \
         libgd-text-perl \
-        libgnupg-interface-perl \
-        libhtml-strip-perl \
-        libhtml-treebuilder-xpath-perl \
         libimage-imlib2-perl \
         libimage-info-perl \
         libimage-librsvg-perl \
         libio-all-perl \
         libio-file-withpath-perl \
         libio-interface-perl \
-        libio-socket-*-perl \
+        libio-socket-inet6-perl \
+        libio-socket-ssl-perl \
         libjson-perl \
         libjson-xs-perl \
-        liblinux-inotify2-perl \
         liblist-moreutils-perl \
         libmail-gnupg-perl \
         libmail-imapclient-perl \
         libmail-sendmail-perl \
         libmime-base64-perl \
         libmime-lite-perl \
-        libmodule-pluggable-perl \
-        libmojolicious-perl \
-        libmoox-late-perl \
-        libnet-address-ip-local-perl \
-        libnet-bonjour-perl \
-        libnet-jabber-perl \
-        libnet-oauth-perl \
-        libnet-oauth2-perl \
-        libnet-server-perl \
-        libnet-sip-perl \
-        libnet-snmp-perl \
-        libnet-ssleay-perl \
-        libnet-telnet-perl \
-        libnet-xmpp-perl \
-        libnmap-parser-perl \
-        librivescript-perl \
-        librpc-xml-perl \
-        libsnmp-perl \
-        libsnmp-session-perl \
-        libsoap-lite-perl \
-        libsocket-perl \
         libsocket6-perl \
-        libsox-fmt-mp3 \
-        libswitch-perl \
-        libsys-hostname-long-perl \
-        libsys-statistics-linux-perl \
-        libterm-readkey-perl \
-        libterm-readline-perl-perl \
         libtext-csv-perl \
         libtext-diff-perl \
-        libtime-period-perl \
         libtimedate-perl \
-        libtypes-path-tiny-perl \
-        liburi-escape-xs-perl \
         libusb-1.0-0-dev \
         libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
+        libxml-libxml-perl \
         libxml-parser-lite-perl \
         libxml-parser-perl \
         libxml-simple-perl \
@@ -239,72 +211,148 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
+# Add Perl extended app layer for pre-compiled packages
+RUN if [ "${IMAGE_LAYER_PERL_EXT}" = "1" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          perl \
+          libalgorithm-merge-perl \
+          libauthen-*-perl \
+          libclass-dbi-mysql-perl \
+          libclass-isa-perl \
+          libclass-loader-perl \
+          libcommon-sense-perl \
+          libconvert-base32-perl \
+          libcpan-meta-yaml-perl \
+          libcrypt-*-perl \
+          libdata-dump-perl \
+          libdatetime-format-strptime-perl \
+          libdatetime-perl \
+          libdevel-size-perl \
+          libdigest-*-perl \
+          libdpkg-perl \
+          libencode-perl \
+          liberror-perl \
+          libev-perl \
+          libextutils-makemaker-cpanfile-perl \
+          libfile-copy-recursive-perl \
+          libfile-fcntllock-perl \
+          libfinance-quote-perl \
+          libgnupg-interface-perl \
+          libhtml-strip-perl \
+          libhtml-treebuilder-xpath-perl \
+          libio-socket-*-perl \
+          liblinux-inotify2-perl \
+          libmath-round-perl \
+          libmodule-pluggable-perl \
+          libmojolicious-perl \
+          libmoose-perl \
+          libmoox-late-perl \
+          libmp3-info-perl \
+          libmp3-tag-perl \
+          libnet-address-ip-local-perl \
+          libnet-bonjour-perl \
+          libnet-jabber-perl \
+          libnet-oauth-perl \
+          libnet-oauth2-perl \
+          libnet-server-perl \
+          libnet-sip-perl \
+          libnet-snmp-perl \
+          libnet-ssleay-perl \
+          libnet-telnet-perl \
+          libnet-xmpp-perl \
+          libnmap-parser-perl \
+          librivescript-perl \
+          librpc-xml-perl \
+          libsnmp-perl \
+          libsnmp-session-perl \
+          libsoap-lite-perl \
+          libsocket-perl \
+          libsox-fmt-mp3 \
+          libswitch-perl \
+          libsys-hostname-long-perl \
+          libsys-statistics-linux-perl \
+          libterm-readkey-perl \
+          libterm-readline-perl-perl \
+          libtime-period-perl \
+          libtypes-path-tiny-perl \
+          liburi-escape-xs-perl \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
+
 # Add development/compilation layer
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        autoconf \
-        automake \
-        build-essential \
-        libavahi-compat-libdnssd-dev \
-        libdb-dev \
-        libssl-dev \
-        libtool \
-        patch \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+RUN if [ "${IMAGE_LAYER_DEV}" = "1" ] || [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ] || [ "${IMAGE_LAYER_NODEJS}" = "1" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          autoconf \
+          automake \
+          build-essential \
+          libavahi-compat-libdnssd-dev \
+          libdb-dev \
+          libssl-dev \
+          libtool \
+          patch \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
 
 # Add Perl app layer for self-compiled modules
 #  * exclude any ARM platforms due too long build time
 #  * manually pre-compiled ARM packages may be applied here
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        cpanminus \
-    && cpanm \
-        App::cpanminus \
-        App::cpanoutdated \
-        CPAN::Plugin::Sysdeps \
-    && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
-        cpanm \
-         Crypt::OpenSSL::AES \
-         CryptX \
-         Device::SMBus \
-         Net::MQTT::Constants \
-         Net::MQTT::Simple \
-         Net::WebSocket::Server \
-        && if [ "${ARCH}" = "amd64" ]; then \
-            cpanm \
-             Crypt::Random \
-             Math::Pari \
-           ; fi \
-        ; fi \
-    && rm -rf /root/.cpanm \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          cpanminus \
+      && cpanm \
+          App::cpanminus \
+          App::cpanoutdated \
+          CPAN::Plugin::Sysdeps \
+      && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+          cpanm \
+           Crypt::OpenSSL::AES \
+           CryptX \
+           Device::SMBus \
+           Net::MQTT::Constants \
+           Net::MQTT::Simple \
+           Net::WebSocket::Server \
+          && if [ "${ARCH}" = "amd64" ]; then \
+              cpanm \
+               Crypt::Random \
+               Math::Pari \
+             ; fi \
+          ; fi \
+      && rm -rf /root/.cpanm \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
 
 # Add Python app layer
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libinline-python-perl \
-        python3 \
-        python3-dev \
-        python3-pip \
-    && pip3 install \
-        setuptools \
-        wheel \
-    && pip3 install \
-        pychromecast \
-        speedtest-cli \
-        youtube-dl \
-    && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-        pip3 install \
-         rpi.gpio \
-       ; fi \
-    && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
-    && apt-get autoremove -qqy && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+RUN if [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          libinline-python-perl \
+          python3 \
+          python3-dev \
+          python3-pip \
+      && pip3 install \
+          setuptools \
+          wheel \
+      && pip3 install \
+          pychromecast \
+          speedtest-cli \
+          youtube-dl \
+      && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+          pip3 install \
+           rpi.gpio \
+         ; fi \
+      && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+      && apt-get autoremove -qqy && apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
 
 # Add nodejs app layer
-RUN if [ "${ARCH}" != "arm32v5" ]; then \
+RUN if [ "${IMAGE_LAYER_NODEJS}" = "1" ] && [ "${ARCH}" != "arm32v5" ]; then \
       if [ "${ARCH}" = "i386" ]; then \
           curl -sL https://deb.nodesource.com/setup_8.x | bash - \
         ; else \
