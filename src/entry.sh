@@ -18,6 +18,8 @@ export BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
 export GPIO_GID="${GPIO_GID:-6002}"
 export I2C_GID="${I2C_GID:-6003}"
 
+export PERL5LIB=${FHEM_DIR}/FHEM:${FHEM_DIR}/FHEM/lib:${FHEM_DIR}/lib:${FHEM_DIR}/local/lib/perl5:/usr/local/lib/perl5:$PERL5LIB
+
 # determine global logfile
 if [ -z "${LOGFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
