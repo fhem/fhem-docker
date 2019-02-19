@@ -2,8 +2,7 @@ language: bash
 services: docker
 
 branches:
-  only:
-    - dev
+  except:
     - /v\d+.\d+.*/
 
 # amd64 toolchain (used as a base for non-sudo compilation, which is faster) 
