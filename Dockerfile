@@ -106,6 +106,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        adb \
         avahi-daemon \
         avrdude \
         bluez \
