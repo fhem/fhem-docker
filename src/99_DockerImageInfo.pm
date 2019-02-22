@@ -4,12 +4,15 @@ package main;
 
 use strict;
 use warnings;
+use FHEM::Meta;
 
 sub DockerImageInfo_Initialize($) {
     my ($hash) = @_;
 
     $hash->{DefFn}    = "DockerImageInfo_Define";
     $hash->{AttrList} = $readingFnAttributes;
+
+    return FHEM::Meta::Load( __FILE__, $hash );
 }
 
 ###################################
@@ -26,6 +29,9 @@ sub DockerImageInfo_Define($$) {
       if ( defined( $modules{ $hash->{TYPE} }{defptr} )
         && $init_done
         && !defined( $hash->{OLDDEF} ) );
+
+    # Initialize the module and the device
+    return $@ unless ( FHEM::Meta::SetInternals($hash) );
 
     # create global unique device definition
     $modules{ $hash->{TYPE} }{defptr} = $hash;
@@ -61,17 +67,51 @@ sub DockerImageInfo_GetImageInfo() {
     $defs{$n}{STATE} = 'ok';
     readingsBeginUpdate( $defs{$n} );
 
+    my $NAME;
+    my $VAL;
     my @LINES = split( "\n",
         `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
 
     foreach my $LINE (@LINES) {
-        next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/ );
+        next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/i );
         my @NV = split( "=", $LINE );
-        my $NAME = shift @NV;
-        $NAME =~ s/^org\.opencontainers\.//;
-        my $VAL = join( "=", @NV );
+        $NAME = shift @NV;
+        $NAME =~ s/^org\.opencontainers\.//i;
+        $VAL = join( "=", @NV );
         next if ( $NAME eq "image.authors" );
         readingsBulkUpdateIfChanged( $defs{$n}, $NAME, $VAL );
+    }
+
+    $VAL = '[ ';
+    @LINES = split( "\n", `sort --stable --unique /etc/sudoers.d/fhem` );
+    foreach my $LINE (@LINES) {
+        $VAL .= ', ' unless ( $VAL eq '[ ' );
+        $LINE =~ s/"/\\"/g;
+        $VAL .= "\"$LINE\"";
+    }
+    $VAL .= ' ]';
+    readingsBulkUpdateIfChanged( $defs{$n}, 'sudoers', $VAL );
+
+    my $ID = `id`;
+    if ( $ID =~
+m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+\)))$/i
+      )
+    {
+        readingsBulkUpdateIfChanged( $defs{$n}, 'id.uid',   $1 );
+        readingsBulkUpdateIfChanged( $defs{$n}, 'id.uname', $2 );
+        readingsBulkUpdateIfChanged( $defs{$n}, 'id.gid',   $3 );
+        readingsBulkUpdateIfChanged( $defs{$n}, 'id.gname', $4 );
+
+        $VAL = '[ ';
+        foreach my $group ( split( ',', $5 ) ) {
+            if ( $group =~ m/^(\d+)\((\w+)\)$/ ) {
+                $VAL .= ', ' unless ( $VAL eq '[ ' );
+                $VAL .= "\"$2\": $1";
+            }
+        }
+        $VAL .= ' ]';
+
+        readingsBulkUpdateIfChanged( $defs{$n}, 'id.groups', $VAL );
     }
 
     readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_ed25519.pub",
@@ -98,6 +138,7 @@ sub DockerImageInfo_GetImageInfo() {
 1;
 
 =pod
+=encoding utf8
 =item helper
 =item summary    DockerImageInfo device
 =item summary_DE DockerImageInfo Ger&auml;t
@@ -154,5 +195,38 @@ sub DockerImageInfo_GetImageInfo() {
 </ul>
 
 =end html_DE
+
+=for :application/json;q=META.json 99_DockerImageInfo.pm
+{
+  "version": "v0.4.0",
+  "release_status": "stable",
+  "author": [
+    "Julian Pawlowski <julian.pawlowski@gmail.com>"
+  ],
+  "x_fhem_maintainer": [
+    "loredo"
+  ],
+  "x_fhem_maintainer_github": [
+    "jpawlowski"
+  ],
+  "resources": {
+    "license": [
+      "https://github.com/fhem/fhem-docker/blob/master/LICENSE"
+    ],
+    "homepage": "https://fhem.de/",
+    "bugtracker": {
+      "web": "https://github.com/fhem/fhem-docker/issues",
+      "x_web_title": "Github Issues for fhem/fhem-docker"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/fhem/fhem-docker.git",
+      "x_branch_master": "master",
+      "x_branch_dev": "dev",
+      "web": "https://github.com/fhem/fhem-docker"
+    }
+  }
+}
+=end :application/json;q=META.json
 
 =cut
