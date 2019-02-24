@@ -301,7 +301,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" = "1" ] || [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] ||
 # Add Perl app layer for self-compiled modules
 #  * exclude any ARM platforms due too long build time
 #  * manually pre-compiled ARM packages may be applied here
-RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ]; then \
+RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           cpanminus \
@@ -309,7 +309,7 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ]; then \
           App::cpanminus \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
-      && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+      && if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm \
            Crypt::OpenSSL::AES \
            CryptX \
