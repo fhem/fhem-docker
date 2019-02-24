@@ -349,6 +349,7 @@ RUN if [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
            rpi.gpio \
          ; fi \
       && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+      && rm -rf /root/.cpanm \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
