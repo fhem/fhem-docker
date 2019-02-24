@@ -332,10 +332,11 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ]; then \
 RUN if [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          libinline-python-perl \
           python3 \
           python3-dev \
           python3-pip \
+      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm \
+          Inline::Python \
       && pip3 install \
           setuptools \
           wheel \
