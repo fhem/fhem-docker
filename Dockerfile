@@ -363,8 +363,8 @@ RUN if [ "${IMAGE_LAYER_NODEJS}" = "1" ] && [ "${ARCH}" != "arm32v5" ]; then \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           nodejs \
-      && npm update -g --unsafe-perm \
-      && npm install -g --unsafe-perm \
+      && npm update -g --unsafe-perm --production \
+      && npm install -g --unsafe-perm --production \
           alexa-cookie2 \
           alexa-fhem \
           gassistant-fhem \
