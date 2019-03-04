@@ -77,7 +77,7 @@ You may define several different types of packages to be installed automatically
 
 		-e CPAN_PKGS="App::Name1 App::Name2"
 
-* Python PIP3 packages:
+* Python PIP packages:
 
 		-e PIP_PKGS="package1 package2"
 
