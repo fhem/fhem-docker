@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#	Credits for the initial script to Joscha Middendorf:
+#	Credits for the initial process handling to Joscha Middendorf:
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
@@ -202,24 +202,25 @@ if [ -n "$(grep ^i2c: /etc/group)" ]; then
   (( i++ ))
 fi
 
-echo "$i. Updating /etc/sudoers.d/fhem ..."
+echo "$i. Updating /etc/sudoers.d/fhem-docker ..."
 
 # required by modules
-echo "fhem ALL=NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem-docker
 
 # Allow updates
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/npm update *" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
 
 # Allow installation of new packages
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/npm install *" >> /etc/sudoers.d/fhem
-echo "fhem ALL=NOPASSWD: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem
+echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/npm install *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem-docker
 
-chmod 440 /etc/sudoers.d/fhem
+chmod 440 /etc/sudoers.d/fhem*
+chown --quiet --no-dereference root:${FHEM_GID} /etc/sudoers.d/fhem* 2>&1>/dev/null
 (( i++ ))
 
 # SSH key: Ed25519

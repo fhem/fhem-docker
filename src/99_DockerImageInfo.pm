@@ -83,7 +83,7 @@ sub DockerImageInfo_GetImageInfo() {
     }
 
     $VAL = '[ ';
-    @LINES = split( "\n", `sort --stable --unique /etc/sudoers.d/fhem` );
+    @LINES = split( "\n", `sort --stable --unique /etc/sudoers.d/fhem*` );
     foreach my $LINE (@LINES) {
         $VAL .= ', ' unless ( $VAL eq '[ ' );
         $LINE =~ s/"/\\"/g;
