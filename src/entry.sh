@@ -18,6 +18,11 @@ export BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
 export GPIO_GID="${GPIO_GID:-6002}"
 export I2C_GID="${I2C_GID:-6003}"
 
+export APT_PKGS="${APT_PKGS:-}"
+export CPAN_PKGS="${CPAN_PKGS:-}"
+export PIP_PKGS="${PIP_PKGS:-}"
+export NPM_PKGS="${NPM_PKGS:-}"
+
 export PERL5LIB=${FHEM_DIR}/FHEM:${FHEM_DIR}/FHEM/lib:${FHEM_DIR}/lib:${FHEM_DIR}/local/lib/perl5:/usr/local/lib/perl5:$PERL5LIB
 
 # determine global logfile
@@ -73,6 +78,81 @@ if [ -d "/fhem" ]; then
     (( i++ ))
   fi
 
+  if [ "${APT_PKGS}" != '' ]; then
+    echo "$i. Adding custom APT packages to container ..."
+    DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.apt 2>&1
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      ${APT_PKGS} \
+    >>/pkgs.apt 2>&1
+    (( i++ ))
+  fi
+
+  if [ "${CPAN_PKGS}" != '' ]; then
+    if [ ! -e /usr/bin/cpanm ] && [ ! -e /usr/local/bin/cpanm ]; then
+      echo "$i. Installing cpanminus ..."
+      DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.apt 2>&1
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        cpanminus \
+      >>/pkgs.apt 2>&1
+      (( i++ ))
+    fi
+
+    echo "$i. Adding custom Perl modules to container ..."
+    cpanm \
+      ${CPAN_PKGS} \
+    >>/pkgs.cpan 2>&1
+    (( i++ ))
+  fi
+
+  if [ "${PIP_PKGS}" != '' ]; then
+    if [ ! -e /usr/bin/pip3 ]; then
+      echo "$i. Installing pip3 ..."
+      DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.pip 2>&1
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+      >>/pkgs.pip 2>&1
+      (( i++ ))
+    fi
+
+    echo "$i. Adding custom Python modules to container ..."
+    pip3 install \
+      ${PIP_PKGS} \
+    >>/pkgs.pip 2>&1
+    (( i++ ))
+  fi
+
+  if [ "${NPM_PKGS}" != '' ]; then
+    if [ ! -e /usr/bin/npm ]; then
+      MTYPE=$(uname -m)
+      if [ "${MTYPE}" = 'arm32v5' ]; then
+        echo "ERROR: Missing Node.js for ${MTYPE} platform cannot be installed automatically"
+        exit 1
+      fi
+
+      echo "$i. Adding APT sources for Node.js ..."
+      if [ "${MTYPE}" = "i386" ]; then
+        curl -sL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
+      else
+        curl -sL https://deb.nodesource.com/setup_10.x | bash - >>/pkgs.npm 2>&1
+      fi
+      (( i++ ))
+
+      echo "$i. Installing Node.js ..."
+      DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.npm 2>&1
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        nodejs \
+      >>/pkgs.npm 2>&1
+      (( i++ ))
+    fi
+
+    echo "$i. Adding custom Node.js packages to container ..."
+    npm install -g --unsafe-perm --production \
+      ${NPM_PKGS} \
+    >>/pkgs.npm 2>&1
+    (( i++ ))
+  fi
+
   if [ "${FHEM_CLEANINSTALL}" = '1' ]; then
     echo "$i. Installing FHEM to ${FHEM_DIR}"
     shopt -s dotglob nullglob 2>&1>/dev/null
@@ -104,7 +184,7 @@ if [ -d "/fhem" ]; then
     echo "attr fhemServerApt icon debian" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
 
-    if [ -e /usr/bin/node ]; then
+    if [ -e /usr/bin/npm ]; then
       echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm alias Node.js Package Update Status" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red:outdated npm.is.up.to.date:security@green:outdated .*npm.outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
