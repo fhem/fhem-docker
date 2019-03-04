@@ -17,12 +17,21 @@ ARG IMAGE_VERSION=""
 
 # Custom build options:
 #  Disable certain image layers using build env variables if desired
-ARG IMAGE_LAYER_SYS_EXT="1"
-ARG IMAGE_LAYER_PERL_EXT="1"
-ARG IMAGE_LAYER_DEV="1"
-ARG IMAGE_LAYER_PERL_CPAN="1"
-ARG IMAGE_LAYER_PYTHON="1"
-ARG IMAGE_LAYER_NODEJS="1"
+ARG IMAGE_LAYER_SYS_EXT
+ARG IMAGE_LAYER_PERL_EXT
+ARG IMAGE_LAYER_DEV
+ARG IMAGE_LAYER_PERL_CPAN
+ARG IMAGE_LAYER_PERL_CPAN_EXT
+ARG IMAGE_LAYER_PYTHON
+ARG IMAGE_LAYER_PYTHON_EXT
+ARG IMAGE_LAYER_NODEJS
+ARG IMAGE_LAYER_NODEJS_EXT
+
+# Custom installation packages
+ARG APT_PKGS
+ARG CPAN_PKGS
+ARG PIP_PKGS
+ARG NPM_PKGS
 
 # Re-usable variables during build
 ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
@@ -111,7 +120,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         avrdude \
         bluez \
         curl \
-        dfu-programmer \
         dnsutils \
         etherwake \
         git-core \
@@ -120,15 +128,11 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         jq \
         libcap-ng-utils \
         libcap2-bin \
-        libttspico-utils \
         lsb-release \
         mariadb-client \
         netcat \
-        nmap \
         openssh-client \
         sendemail \
-        snmp \
-        snmp-mibs-downloader \
         sqlite3 \
         subversion \
         sudo \
@@ -138,21 +142,27 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         unzip \
         usbutils \
         wget \
+        ${APT_PKGS} \
     && apt-get autoremove -qqy && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add extended system layer
-RUN if [ "${IMAGE_LAYER_SYS_EXT}" = "1" ]; then \
+RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           alsa-utils \
+          dfu-programmer \
           espeak \
           lame \
           libav-tools \
+          libttspico-utils \
           mp3wrap \
           mpg123 \
           mplayer \
+          nmap \
           normalize-audio \
+          snmp \
+          snmp-mibs-downloader \
           sox \
           vorbis-tools \
       && apt-get autoremove -qqy && apt-get clean \
@@ -191,6 +201,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmail-sendmail-perl \
         libmime-base64-perl \
         libmime-lite-perl \
+        libnet-server-perl \
         libsocket6-perl \
         libtext-csv-perl \
         libtext-diff-perl \
@@ -213,7 +224,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl extended app layer for pre-compiled packages
-RUN if [ "${IMAGE_LAYER_PERL_EXT}" = "1" ]; then \
+RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           perl \
@@ -256,7 +267,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" = "1" ]; then \
           libnet-jabber-perl \
           libnet-oauth-perl \
           libnet-oauth2-perl \
-          libnet-server-perl \
           libnet-sip-perl \
           libnet-snmp-perl \
           libnet-ssleay-perl \
@@ -283,7 +293,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" = "1" ]; then \
     ; fi
 
 # Add development/compilation layer
-RUN if [ "${IMAGE_LAYER_DEV}" = "1" ] || [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ] || [ "${IMAGE_LAYER_NODEJS}" = "1" ]; then \
+RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           autoconf \
@@ -299,9 +309,9 @@ RUN if [ "${IMAGE_LAYER_DEV}" = "1" ] || [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] ||
     ; fi
 
 # Add Perl app layer for self-compiled modules
-#  * exclude any ARM platforms due too long build time
+#  * exclude any ARM platforms due to long build time
 #  * manually pre-compiled ARM packages may be applied here
-RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
+RUN if [ "${CPAN_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           cpanminus \
@@ -309,7 +319,8 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ]
           App::cpanminus \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
-      && if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
+          ${CPAN_PKGS} \
+      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm \
            Crypt::OpenSSL::AES \
            CryptX \
@@ -329,7 +340,7 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" = "1" ] || [ "${IMAGE_LAYER_PYTHON}" = "1" ]
     ; fi
 
 # Add Python app layer
-RUN if [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
+RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
       DEBIAN_FRONTEND=noninteractive apt-get update \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           python3 \
@@ -340,22 +351,25 @@ RUN if [ "${IMAGE_LAYER_PYTHON}" = "1" ]; then \
       && pip3 install \
           setuptools \
           wheel \
-      && pip3 install \
-          pychromecast \
-          speedtest-cli \
-          youtube-dl \
-      && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-          pip3 install \
-           rpi.gpio \
-         ; fi \
-      && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+          ${PIP_PKGS} \
+      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+           pip3 install \
+            pychromecast \
+            speedtest-cli \
+            youtube-dl \
+          && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+               pip3 install \
+                rpi.gpio \
+             ; fi \
+          && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+        ; fi
       && rm -rf /root/.cpanm \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add nodejs app layer
-RUN if [ "${IMAGE_LAYER_NODEJS}" = "1" ] && [ "${ARCH}" != "arm32v5" ]; then \
+RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
       if [ "${ARCH}" = "i386" ]; then \
           curl -sL https://deb.nodesource.com/setup_8.x | bash - \
         ; else \
@@ -363,14 +377,18 @@ RUN if [ "${IMAGE_LAYER_NODEJS}" = "1" ] && [ "${ARCH}" != "arm32v5" ]; then \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           nodejs \
-      && npm update -g --unsafe-perm --production \
       && npm install -g --unsafe-perm --production \
-          alexa-cookie2 \
-          alexa-fhem \
-          gassistant-fhem \
-          homebridge \
-          homebridge-fhem \
-          tradfri-fhem \
+          npm \
+          ${NPM_PKGS} \
+      && if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
+           npm install -g --unsafe-perm --production \
+            alexa-cookie2 \
+            alexa-fhem \
+            gassistant-fhem \
+            homebridge \
+            homebridge-fhem \
+            tradfri-fhem \
+        ; fi
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
