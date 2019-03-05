@@ -65,6 +65,26 @@ The platform repositories will also allow you to choose more specific build tags
 
 ## Customize your container configuration
 
+### Add custom packages
+
+You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
+
+* Debian APT packages:
+
+		-e APT_PKGS="package1 package2"
+
+* Perl CPAN modules:
+
+		-e CPAN_PKGS="App::Name1 App::Name2"
+
+* Python PIP packages:
+
+		-e PIP_PKGS="package1 package2"
+
+* Node.js NPM packages:
+
+		-e NPM_PKGS="package1 package2"
+
 
 #### Map USB devices to your container
 1. Find out the USB device path/address from your Docker host machine first:
