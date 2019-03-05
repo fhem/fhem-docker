@@ -353,6 +353,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
           setuptools \
           wheel \
           ${PIP_PKGS} \
+      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
       && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
            pip3 install \
             pychromecast \
