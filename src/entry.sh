@@ -286,6 +286,7 @@ if [ -n "$(grep ^i2c: /etc/group)" ]; then
 fi
 
 echo "$i. Updating /etc/sudoers.d/fhem-docker ..."
+echo "# Auto-generated during container start" > /etc/sudoers.d/fhem-docker
 
 # required by modules
 echo "fhem ALL=NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem-docker
