@@ -180,7 +180,7 @@ if [ -d "/fhem" ]; then
     echo "define fhemServerApt AptToDate localhost" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt alias System Update Status" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green:repoSync .*in.progress:system_fhem_reboot@orange errors:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
-    echo "attr fhemServerApt group System" >> ${FHEM_DIR}/fhem.cfg
+    echo "attr fhemServerApt group Update" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt icon debian" >> ${FHEM_DIR}/fhem.cfg
     echo "attr fhemServerApt room System" >> ${FHEM_DIR}/fhem.cfg
 
@@ -188,7 +188,7 @@ if [ -d "/fhem" ]; then
       echo "define fhemServerNpm npmjs localhost" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm alias Node.js Package Update Status" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm devStateIcon npm.updates.available:security@red:outdated npm.is.up.to.date:security@green:outdated .*npm.outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
-      echo "attr fhemServerNpm group System" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemServerNpm group Update" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm icon npm-old" >> ${FHEM_DIR}/fhem.cfg
       echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
     fi

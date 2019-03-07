@@ -42,7 +42,7 @@ sub DockerImageInfo_Define($$) {
         $attr{$name}{alias} = 'Docker Image Info';
         $attr{$name}{devStateIcon} =
 'ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
-        $attr{$name}{group} = 'System';
+        $attr{$name}{group} = 'Update';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
     }
