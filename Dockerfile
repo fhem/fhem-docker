@@ -319,6 +319,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           App::cpanminus \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
+          Perl::PrereqScanner::NotQuiteLite \
           ${CPAN_PKGS} \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm \
