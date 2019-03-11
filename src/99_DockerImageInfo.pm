@@ -1,5 +1,3 @@
-##############################################
-# $Id: 99_DockerImageInfo.pm 00000 2018-07-27 00:00:00Z loredo $
 package main;
 
 use strict;
@@ -12,7 +10,7 @@ sub DockerImageInfo_Initialize($) {
     $hash->{DefFn}    = "DockerImageInfo_Define";
     $hash->{AttrList} = $readingFnAttributes;
 
-    return FHEM::Meta::Load( __FILE__, $hash );
+    return FHEM::Meta::InitMod( __FILE__, $hash );
 }
 
 ###################################
@@ -42,7 +40,7 @@ sub DockerImageInfo_Define($$) {
         $attr{$name}{alias} = 'Docker Image Info';
         $attr{$name}{devStateIcon} =
 'ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
-        $attr{$name}{group} = 'System';
+        $attr{$name}{group} = 'Update';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
     }
