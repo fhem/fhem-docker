@@ -138,8 +138,6 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 =pod
 =encoding utf8
 =item helper
-=item summary    DockerImageInfo device
-=item summary_DE DockerImageInfo Ger&auml;t
 =begin html
 
 <a name="DockerImageInfo"></a>
@@ -196,8 +194,17 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
-  "version": "v0.4.0",
+  "version": "v0.4.2",
+  "license": "MIT",
   "release_status": "stable",
+  "abstract": "Shows information about the FHEM Docker Image in use and the running container",
+  "description": "This is a companion FHEM module and built-in to the official FHEM Docker Image on <a href=\"https://hub.docker.com/r/fhem/fhem\" target=\"_blank\">Docker Hub</a>.",
+  "x_lang": {
+  "de": {
+    "abstract": "Zeigt Informationen über das aktuell verwendete FHEM Docker Image und den laufenden Container",
+    "description": "Dies ist ein begeleitendes FHEM Modul und fest im FHEM Docker Image <a href=\"https://hub.docker.com/r/fhem/fhem\" target=\"_blank\">Docker Hub</a> eingebaut."
+    }
+  },
   "author": [
     "Julian Pawlowski <julian.pawlowski@gmail.com>"
   ],
@@ -211,7 +218,18 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
     "license": [
       "https://github.com/fhem/fhem-docker/blob/master/LICENSE"
     ],
-    "homepage": "https://fhem.de/",
+    "homepage": "https://github.com/fhem/fhem-docker/",
+    "x_support_community" : {
+      "board" : "Server - Linux",
+      "boardId" : 33,
+      "cat" : "FHEM - Hardware",
+      "description" : "FHEM auf Linux Servern",
+      "forum" : "FHEM Forum",
+      "language" : "de",
+      "rss" : "https://forum.fhem.de/index.php?action=.xml;type=rss;board=33",
+      "title" : "FHEM Forum: Server - Linux",
+      "web" : "https://forum.fhem.de/index.php/board,33.0.html"
+    },
     "bugtracker": {
       "web": "https://github.com/fhem/fhem-docker/issues",
       "x_web_title": "Github Issues for fhem/fhem-docker"
@@ -219,9 +237,18 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
     "repository": {
       "type": "git",
       "url": "https://github.com/fhem/fhem-docker.git",
-      "x_branch_master": "master",
-      "x_branch_dev": "dev",
-      "web": "https://github.com/fhem/fhem-docker"
+      "web": "https://github.com/fhem/fhem-docker/blob/master/src/99_DockerImageInfo.pm",
+      "x_branch": "master",
+      "x_filepath": "src/",
+      "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/master/src/99_DockerImageInfo.pm",
+      "x_dev": {
+        "type": "git",
+        "url": "https://github.com/fhem/fhem-docker.git",
+        "web": "https://github.com/fhem/fhem-docker/blob/dev/src/99_DockerImageInfo.pm",
+        "x_branch": "dev",
+        "x_filepath": "src/",
+        "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/dev/src/99_DockerImageInfo.pm"
+      }
     }
   }
 }
