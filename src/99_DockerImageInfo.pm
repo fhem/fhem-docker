@@ -214,6 +214,19 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
   "x_fhem_maintainer_github": [
     "jpawlowski"
   ],
+  "prereqs": {
+    "runtime": {
+      "requires": {
+        "strict": 0,
+        "warnings": 0,
+        "FHEM::Meta": 0.001006
+      },
+      "recommends": {
+      },
+      "suggests": {
+      }
+    }
+  },
   "resources": {
     "license": [
       "https://github.com/fhem/fhem-docker/blob/master/LICENSE"
