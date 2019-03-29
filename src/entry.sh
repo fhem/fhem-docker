@@ -23,8 +23,6 @@ export CPAN_PKGS="${CPAN_PKGS:-}"
 export PIP_PKGS="${PIP_PKGS:-}"
 export NPM_PKGS="${NPM_PKGS:-}"
 
-export PERL5LIB=${FHEM_DIR}/FHEM:${FHEM_DIR}/FHEM/lib:${FHEM_DIR}/lib:${FHEM_DIR}/local/lib/perl5:/usr/local/lib/perl5:$PERL5LIB
-
 # determine global logfile
 if [ -z "${LOGFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
@@ -297,12 +295,12 @@ echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem-dock
 echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
 
 # Allow installation of new packages
 echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/npm install *" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm install *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem-docker
 
 chmod 440 /etc/sudoers.d/fhem*
 chown --quiet --no-dereference root:${FHEM_GID} /etc/sudoers.d/fhem* 2>&1>/dev/null
