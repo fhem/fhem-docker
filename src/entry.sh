@@ -256,8 +256,8 @@ find /dev/ -name "ttyACM*" -exec chmod --recursive --quiet g+rw {} \;
 find /dev/ -name "ttyUSB*" -exec chmod --recursive --quiet g+rw {} \;
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/serial/* ..."
-chown --recursive --quiet --no-dereference .dialout /dev/serial/by-id/*
-chmod --recursive --quiet g+rw /dev/serial/by-id/*
+find /dev/serial/by-id/ -exec chown --recursive --quiet --no-dereference .dialout {} \;
+find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \;
 (( i++ ))
 if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
