@@ -288,19 +288,20 @@ echo "$i. Updating /etc/sudoers.d/fhem-docker ..."
 echo "# Auto-generated during container start" > /etc/sudoers.d/fhem-docker
 
 # required by modules
-echo "fhem ALL=NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/nmap" >> /etc/sudoers.d/fhem-docker
 
 # Allow updates
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
 
 # Allow installation of new packages
-echo "fhem ALL=NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm install *" >> /etc/sudoers.d/fhem-docker
-echo "fhem ALL=NOPASSWD:SETENV: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/cpanm *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y install *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm install *" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm uninstall *" >> /etc/sudoers.d/fhem-docker
 
 chmod 440 /etc/sudoers.d/fhem*
 chown --quiet --no-dereference root:${FHEM_GID} /etc/sudoers.d/fhem* 2>&1>/dev/null

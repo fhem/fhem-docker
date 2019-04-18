@@ -195,8 +195,11 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
   "version": "v0.4.2",
-  "license": "MIT",
+  "x_release_date": "2019-04-02",
   "release_status": "stable",
+  "license": [
+    "MIT"
+  ],
   "abstract": "Shows information about the FHEM Docker Image in use and the running container",
   "description": "This is a companion FHEM module and built-in to the official FHEM Docker Image on <a href=\"https://hub.docker.com/r/fhem/fhem\" target=\"_blank\">Docker Hub</a>.",
   "x_lang": {
@@ -253,14 +256,14 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
       "web": "https://github.com/fhem/fhem-docker/blob/master/src/99_DockerImageInfo.pm",
       "x_branch": "master",
       "x_filepath": "src/",
-      "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/master/src/99_DockerImageInfo.pm",
+      "x_raw": "https://github.com/fhem/fhem-docker/raw/master/src/99_DockerImageInfo.pm",
       "x_dev": {
         "type": "git",
         "url": "https://github.com/fhem/fhem-docker.git",
         "web": "https://github.com/fhem/fhem-docker/blob/dev/src/99_DockerImageInfo.pm",
         "x_branch": "dev",
         "x_filepath": "src/",
-        "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/dev/src/99_DockerImageInfo.pm"
+        "x_raw": "https://github.com/fhem/fhem-docker/raw/dev/src/99_DockerImageInfo.pm"
       }
     }
   }
