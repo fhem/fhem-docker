@@ -256,14 +256,14 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
       "web": "https://github.com/fhem/fhem-docker/blob/master/src/99_DockerImageInfo.pm",
       "x_branch": "master",
       "x_filepath": "src/",
-      "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/master/src/99_DockerImageInfo.pm",
+      "x_raw": "https://github.com/fhem/fhem-docker/raw/master/src/99_DockerImageInfo.pm",
       "x_dev": {
         "type": "git",
         "url": "https://github.com/fhem/fhem-docker.git",
         "web": "https://github.com/fhem/fhem-docker/blob/dev/src/99_DockerImageInfo.pm",
         "x_branch": "dev",
         "x_filepath": "src/",
-        "x_raw": "https://raw.githubusercontent.com/fhem/fhem-docker/dev/src/99_DockerImageInfo.pm"
+        "x_raw": "https://github.com/fhem/fhem-docker/raw/dev/src/99_DockerImageInfo.pm"
       }
     }
   }

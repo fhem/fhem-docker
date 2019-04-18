@@ -22,6 +22,9 @@ https://raw.githubusercontent.com/sw-home/FHEM-HomeConnect/master/controls_homec
 https://raw.githubusercontent.com/ThorstenPferdekaemper/FHEM-FUIP/master/controls_fuip.txt
 https://raw.githubusercontent.com/uniqueck/fhem-abfall/develop/controls_fhemabfall.txt
 https://raw.githubusercontent.com/uniqueck/fhem-abfall/master/controls_fhemabfall.txt
+https://raw.githubusercontent.com/verybadsoldier/32_YeeLight.pm/master/controls_yeelight.txt
+https://raw.githubusercontent.com/verybadsoldier/esp_rgbww_fhemmodule/master/controls_espledcontroller.txt
+https://raw.githubusercontent.com/verybadsoldier/fhem-co2mini/vbs/controls_co2mini.txt
 
 
 # Meanwhile (seem to be) part of official FHEM repository
