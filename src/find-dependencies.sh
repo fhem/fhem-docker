@@ -7,7 +7,7 @@ FPATH="${1:-/opt/fhem}"
 FTMP="${FPATH}/.depcheck.tmp}"
 
 for repo in $(cat /unofficial_controls.txt unofficial_controls.txt ${FPATH}/FHEM/unofficial_controls.txt ${FPATH}/FHEM/controls.txt 2>/dev/null | grep -v controls_fhem.txt | grep -E -v '^#|^$' | sort -u); do
-  lines=$(curl -sSLf ${repo} 2>/dev/null)
+  lines=$(curl -fsSL ${repo} 2>/dev/null)
   base_url=${repo%/*}
   reponame=${repo##*/}
 
@@ -21,7 +21,7 @@ for repo in $(cat /unofficial_controls.txt unofficial_controls.txt ${FPATH}/FHEM
 
       if [[ "${fileext}" == "pm" ]]; then
         echo "  ${filename}"
-        curl -sSL -o ${FTMP}/${filename} -C - ${base_url}/${filename} 2>/dev/null
+        curl -fsSL -o ${FTMP}/${filename} -C - ${base_url}/${filename} 2>/dev/null
       fi
     fi 
   done <<< "${lines}"

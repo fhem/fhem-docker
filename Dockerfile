@@ -312,7 +312,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
 #  * exclude any ARM platforms due to long build time
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      curl -sSL https://git.io/cpanm | perl - App::cpanminus \
+      curl -fsSL https://git.io/cpanm | perl - App::cpanminus \
       && cpanm \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
@@ -371,9 +371,9 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
       if [ "${ARCH}" = "i386" ]; then \
-          curl -sSL https://deb.nodesource.com/setup_8.x | bash - \
+          curl -fsSL https://deb.nodesource.com/setup_8.x | bash - \
         ; else \
-          curl -sSL https://deb.nodesource.com/setup_10.x | bash - \
+          curl -fsSL https://deb.nodesource.com/setup_10.x | bash - \
         ; fi \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           nodejs \
