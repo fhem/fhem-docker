@@ -130,9 +130,9 @@ if [ -d "/fhem" ]; then
 
       echo "$i. Adding APT sources for Node.js ..."
       if [ "${MTYPE}" = "i386" ]; then
-        curl -sL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
+        curl -fsSL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
       else
-        curl -sL https://deb.nodesource.com/setup_10.x | bash - >>/pkgs.npm 2>&1
+        curl -fsSL https://deb.nodesource.com/setup_10.x | bash - >>/pkgs.npm 2>&1
       fi
       (( i++ ))
 

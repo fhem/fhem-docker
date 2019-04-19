@@ -166,8 +166,8 @@ Follow initial setup steps:
 1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
 
 		sudo mkdir -p /docker/home
-		sudo curl -o /docker/home/docker-compose.yml https://raw.githubusercontent.com/fhem/fhem-docker/master/docker-compose.yml
-		sudo curl -o /docker/home/.gitignore https://raw.githubusercontent.com/fhem/fhem-docker/master/.gitignore
+		sudo curl -fsSL -o /docker/home/docker-compose.yml https://github.com/fhem/fhem-docker/raw/master/docker-compose.yml
+		sudo curl -fsSL -o /docker/home/.gitignore https://github.com/fhem/fhem-docker/raw/master/.gitignore
 
 	Note that the sub-directory "home" will be the base prefix name for all	your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
 
