@@ -128,6 +128,8 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
         `cat /docker.container.id` );
     readingsBulkUpdateIfChanged( $defs{$n}, "container.privileged",
         `cat /docker.privileged` );
+    readingsBulkUpdateIfChanged( $defs{$n}, "container.hostnetwork",
+        `cat /docker.hostnetwork` );
 
     readingsEndUpdate( $defs{$n}, 1 );
     return undef;
@@ -194,7 +196,7 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
-  "version": "v0.4.2",
+  "version": "v0.5.0",
   "x_release_date": "2019-04-02",
   "release_status": "stable",
   "license": [
