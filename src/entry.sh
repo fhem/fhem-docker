@@ -10,6 +10,8 @@ export RESTART="${RESTART:-1}"
 export TELNETPORT="${TELNETPORT:-7072}"
 export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
+export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
+export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
 export FHEM_CLEANINSTALL=1
@@ -23,39 +25,27 @@ export CPAN_PKGS="${CPAN_PKGS:-}"
 export PIP_PKGS="${PIP_PKGS:-}"
 export NPM_PKGS="${NPM_PKGS:-}"
 
-# determine global logfile
-if [ -z "${LOGFILE}" ]; then
-  if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
-  else
-    GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
-    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
-  fi
-else
-  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
-fi
-
-# determine PID file
-if [ -z "${PIDFILE}" ]; then
-  if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
-  else
-    GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
-    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
-  fi
-else
-  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
-fi
-
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
 # Collect info about container
 ip link add dummy0 type dummy >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
   echo 1 > /docker.privileged
-    ip link delete dummy0 >/dev/null
+  ip link delete dummy0 >/dev/null
+  export DOCKER_PRIVILEGED=1
 else
   echo 0 > /docker.privileged
+  export DOCKER_PRIVILEGED=0
+fi
+ip -4 addr show docker0 >/dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+  echo 1 > /docker.hostnetwork
+  export DOCKER_HOSTNETWORK=1
+  unset DOCKER_HOST
+  unset DOCKER_GATEWAY
+else
+  echo 0 > /docker.hostnetwork
+  export DOCKER_HOSTNETWORK=0
 fi
 cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
 captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
@@ -191,6 +181,15 @@ if [ -d "/fhem" ]; then
       echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
     fi
 
+    if [ -e /usr/bin/cpanm ] || [ -e /usr/local/bin/cpanm ]; then
+      echo "define fhemInstaller Installer" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller alias FHEM Installer Status" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller devStateIcon .*updates.available:security@red:outdated up.to.date:security@green:outdated .*outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller group Update" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller icon system_fhem" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller room System" >> ${FHEM_DIR}/fhem.cfg
+    fi
+
     cd - 2>&1>/dev/null
   else
     echo "$i. Updating existing FHEM installation in ${FHEM_DIR}"
@@ -213,6 +212,30 @@ if [ -d "/fhem" ]; then
 elif [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
   echo "- ERROR: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl"
   exit 1
+fi
+
+# determine global logfile
+if [ -z "${LOGFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+  else
+    GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
+    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+  fi
+else
+  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
+fi
+
+# determine PID file
+if [ -z "${PIDFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
+  else
+    GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
+    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
+  fi
+else
+  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
 fi
 
 # creating user environment
@@ -340,9 +363,37 @@ MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@op
   (( i++ ))
 fi
 
+# Adding local hosts file
+if [ -z $(dig +short -t a gateway.docker.internal.) ]; then
+  echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
+  if [ -n "${DOCKER_GW}" ]; then
+    grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "${DOCKER_GW}\tgateway.docker.internal" >> /etc/hosts
+  else
+    grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "127.0.127.1\tgateway.docker.internal" >> /etc/hosts
+  fi
+  (( i++ ))
+fi
+if [ -z $(dig +short -t a host.docker.internal.) ]; then
+  echo "$i. Adding host.docker.internal to /etc/hosts ..."
+  if [ -n "${DOCKER_HOST}" ]; then
+    grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
+  else
+    grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "127.0.127.2\thost.docker.internal" >> /etc/hosts
+  fi
+  (( i++ ))
+fi
+
+# Key pinning for Docker host
+echo "$i. Pre-authorizing SSH to Docker host for user 'fhem' ..."
+touch ${FHEM_DIR}/.ssh/known_hosts
+grep -v -E "^host.docker.internal" ${FHEM_DIR}/.ssh/known_hosts > ${FHEM_DIR}/.ssh/known_hosts.tmp
+ssh-keyscan -t ed25519 host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
+ssh-keyscan -t rsa host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
+mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
+(( i++ ))
+
 # SSH key pinning
 echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..."
-touch ${FHEM_DIR}/.ssh/known_hosts
 cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k2,3 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/
