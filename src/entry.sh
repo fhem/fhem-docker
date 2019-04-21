@@ -10,6 +10,8 @@ export RESTART="${RESTART:-1}"
 export TELNETPORT="${TELNETPORT:-7072}"
 export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | cut -d " " -f 2 )
+export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
+export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
 export FHEM_CLEANINSTALL=1
@@ -349,9 +351,29 @@ MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@op
   (( i++ ))
 fi
 
+# Adding local hosts file
+if [ ! $(dig +short -t a gateway.docker.internal.) ]; then
+  echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
+  grep -q -E "^${DOCKER_GW}" /etc/hosts || echo -e "${DOCKER_GW}\gateway.docker.internal" >> /etc/hosts
+  (( i++ ))
+fi
+if [ ! $(dig +short -t a host.docker.internal.) ]; then
+  echo "$i. Adding host.docker.internal to /etc/hosts ..."
+  grep -q -E "^${DOCKER_HOST}" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
+  (( i++ ))
+fi
+
+# Key pinning for Docker host
+echo "$i. Pre-authorizing SSH to Docker host for user 'fhem' ..."
+touch ${FHEM_DIR}/.ssh/known_hosts
+grep -v -E "^host.docker.internal" ${FHEM_DIR}/.ssh/known_hosts > ${FHEM_DIR}/.ssh/known_hosts.tmp
+ssh-keyscan -t ed25519 host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
+ssh-keyscan -t rsa host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
+mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
+(( i++ ))
+
 # SSH key pinning
 echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..."
-touch ${FHEM_DIR}/.ssh/known_hosts
 cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k2,3 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/

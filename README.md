@@ -153,6 +153,16 @@ You may define several different types of packages to be installed automatically
 
     	-e CONFIGTYPE=fhem.cfg.demo
 
+* Overwrite Docker host IP address for host.docker.internal:
+	To start the demo environment:
+
+    	-e DOCKER_HOST=172.17.0.1
+
+* Overwrite Docker gateway IP address for gateway.docker.internal:
+	To start the demo environment:
+
+    	-e DOCKER_GW=172.17.0.1
+
 
 ## Adding Git for version control of your Home Automation Docker containers
 
