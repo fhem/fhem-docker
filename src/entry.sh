@@ -25,30 +25,6 @@ export CPAN_PKGS="${CPAN_PKGS:-}"
 export PIP_PKGS="${PIP_PKGS:-}"
 export NPM_PKGS="${NPM_PKGS:-}"
 
-# determine global logfile
-if [ -z "${LOGFILE}" ]; then
-  if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
-  else
-    GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
-    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
-  fi
-else
-  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
-fi
-
-# determine PID file
-if [ -z "${PIDFILE}" ]; then
-  if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
-  else
-    GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
-    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
-  fi
-else
-  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
-fi
-
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
 # Collect info about container
@@ -63,14 +39,14 @@ else
 fi
 ip -4 addr show docker0 >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
+  echo 1 > /docker.hostnetwork
   export DOCKER_HOSTNETWORK=1
   unset DOCKER_HOST
   unset DOCKER_GATEWAY
 else
+  echo 0 > /docker.hostnetwork
   export DOCKER_HOSTNETWORK=0
 fi
-echo 0 > /docker.hostnetwork
-
 cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
 captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
 captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
@@ -236,6 +212,30 @@ if [ -d "/fhem" ]; then
 elif [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
   echo "- ERROR: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl"
   exit 1
+fi
+
+# determine global logfile
+if [ -z "${LOGFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+  else
+    GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
+    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+  fi
+else
+  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
+fi
+
+# determine PID file
+if [ -z "${PIDFILE}" ]; then
+  if [ "${CONFIGTYPE}" == "configDB" ]; then
+    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
+  else
+    GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
+    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
+  fi
+else
+  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
 fi
 
 # creating user environment
