@@ -86,6 +86,19 @@ You may define several different types of packages to be installed automatically
 		-e NPM_PKGS="package1 package2"
 
 
+#### Connect to Docker host from within container
+If you would like to connect to a service that is running on your Docker host itself, you may use the following DNS alias names that are automatically being added to /etc/hosts during container bootup:
+
+* gateway.docker.internal
+* host.docker.internal
+
+In case the container is running in host network mode, the IP address will be set to 127.0.127.1 (gateway) and 127.0.127.2 (host) as an alias for 'localhost'.
+
+Also, the SSH host key will automatically be added and updated in /opt/fhem/.ssh/known_hosts so that FHEM modules and other scripts can automatically connect without any further configuration effort.
+
+If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see DOCKER\_HOST and DOCKER\_GW below).
+
+
 #### Map USB devices to your container
 1. Find out the USB device path/address from your Docker host machine first:
 
