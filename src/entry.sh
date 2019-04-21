@@ -191,6 +191,15 @@ if [ -d "/fhem" ]; then
       echo "attr fhemServerNpm room System" >> ${FHEM_DIR}/fhem.cfg
     fi
 
+    if [ -e /usr/bin/cpanm ] || [ -e /usr/local/bin/cpanm ]; then
+      echo "define fhemInstaller Installer" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller alias FHEM Installer Status" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller devStateIcon .*updates.available:security@red:outdated up.to.date:security@green:outdated .*outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller group Update" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller icon system_fhem" >> ${FHEM_DIR}/fhem.cfg
+      echo "attr fhemInstaller room System" >> ${FHEM_DIR}/fhem.cfg
+    fi
+
     cd - 2>&1>/dev/null
   else
     echo "$i. Updating existing FHEM installation in ${FHEM_DIR}"
