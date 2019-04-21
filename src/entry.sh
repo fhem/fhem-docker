@@ -55,10 +55,22 @@ fi
 ip link add dummy0 type dummy >/dev/null 2>&1
 if [[ $? -eq 0 ]]; then
   echo 1 > /docker.privileged
-    ip link delete dummy0 >/dev/null
+  ip link delete dummy0 >/dev/null
+  export DOCKER_PRIVILEGED=1
 else
   echo 0 > /docker.privileged
+  export DOCKER_PRIVILEGED=0
 fi
+ip -4 addr show docker0 >/dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+  export DOCKER_HOSTNETWORK=1
+  unset DOCKER_HOST
+  unset DOCKER_GATEWAY
+else
+  export DOCKER_HOSTNETWORK=0
+fi
+echo 0 > /docker.hostnetwork
+
 cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
 captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
 captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
@@ -354,12 +366,20 @@ fi
 # Adding local hosts file
 if [ ! $(dig +short -t a gateway.docker.internal.) ]; then
   echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
-  grep -q -E "^${DOCKER_GW}" /etc/hosts || echo -e "${DOCKER_GW}\gateway.docker.internal" >> /etc/hosts
+  if [ -n "${DOCKER_GW}" ]; then
+    grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "${DOCKER_GW}\tgateway.docker.internal" >> /etc/hosts
+  else
+    grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "127.0.127.1\tgateway.docker.internal" >> /etc/hosts
+  fi
   (( i++ ))
 fi
 if [ ! $(dig +short -t a host.docker.internal.) ]; then
   echo "$i. Adding host.docker.internal to /etc/hosts ..."
-  grep -q -E "^${DOCKER_HOST}" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
+  if [ -n "${DOCKER_HOST}" ]; then
+    grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
+  else
+    grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "127.0.127.2\thost.docker.internal" >> /etc/hosts
+  fi
   (( i++ ))
 fi
 
