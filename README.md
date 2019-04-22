@@ -92,9 +92,10 @@ If you would like to connect to a service that is running on your Docker host it
 * gateway.docker.internal
 * host.docker.internal
 
-In case the container is running in host network mode, the IP address will be set to 127.0.127.1 (gateway) and 127.0.127.2 (host) as an alias for 'localhost'.
+That is, if you did not configure those in your local DNS, of course.
+In case the container is running in host network mode, the host IP address will be set to 127.0.127.2 as an alias for 'localhost'. The gateway will then reflect your actual network segment gateway IP address.
 
-Also, the SSH host key will automatically be added and updated in /opt/fhem/.ssh/known_hosts so that FHEM modules and other scripts can automatically connect without any further configuration effort.
+Also, for host.docker.internal, the SSH host key will automatically be added and updated in /opt/fhem/.ssh/known_hosts so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSHb client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM.
 
 If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see DOCKER\_HOST and DOCKER\_GW below).
 
