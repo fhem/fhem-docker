@@ -42,7 +42,7 @@ if [[ $? -eq 0 ]]; then
   echo 1 > /docker.hostnetwork
   export DOCKER_HOSTNETWORK=1
   unset DOCKER_HOST
-  unset DOCKER_GATEWAY
+  unset DOCKER_GW
 else
   echo 0 > /docker.hostnetwork
   export DOCKER_HOSTNETWORK=0
@@ -368,8 +368,6 @@ if [ -z $(dig +short -t a gateway.docker.internal.) ]; then
   echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
   if [ -n "${DOCKER_GW}" ]; then
     grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "${DOCKER_GW}\tgateway.docker.internal" >> /etc/hosts
-  else
-    grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "127.0.127.1\tgateway.docker.internal" >> /etc/hosts
   fi
   (( i++ ))
 fi
@@ -386,7 +384,7 @@ fi
 # Key pinning for Docker host
 echo "$i. Pre-authorizing SSH to Docker host for user 'fhem' ..."
 touch ${FHEM_DIR}/.ssh/known_hosts
-grep -v -E "^host.docker.internal" ${FHEM_DIR}/.ssh/known_hosts > ${FHEM_DIR}/.ssh/known_hosts.tmp
+grep -v -E "^host.docker.internal" ${FHEM_DIR}/.ssh/known_hosts | grep -v -E "^gateway.docker.internal" > ${FHEM_DIR}/.ssh/known_hosts.tmp
 ssh-keyscan -t ed25519 host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
 ssh-keyscan -t rsa host.docker.internal 2>/dev/null >> ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
@@ -394,7 +392,7 @@ mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 
 # SSH key pinning
 echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..."
-cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k2,3 > ${FHEM_DIR}/.ssh/known_hosts.tmp
+cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k1,2 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/
 chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
