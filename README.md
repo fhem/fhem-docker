@@ -175,15 +175,19 @@ If for some reason the host details are not detected correctly, you may overwrit
 
     	-e CONFIGTYPE=fhem.cfg.demo
 
-* Overwrite Docker host IP address for host.docker.internal:
-	To start the demo environment:
+* Set Docker host IPv4 address for host.docker.internal:
 
     	-e DOCKER_HOST=172.17.0.1
 
-* Overwrite Docker gateway IP address for gateway.docker.internal:
-	To start the demo environment:
+	If this variable is not present, host IP will automatically be detected based on the subnet network gateway (also see variable DOCKER\_GW below).
+	In case the container is running in network host mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
+	host.docker.internal will also be evaluated automatically for SSH connection on port 22 by adding the servers public key to /opt/fhem/.ssh/known\_hosts so that unattended connectivity for scripts is available.
+
+* Set Docker gateway IPv4 address for gateway.docker.internal:
 
     	-e DOCKER_GW=172.17.0.1
+	
+	If this variable is not present, the gateway will automatically be detected.
 
 
 ## Adding Git for version control of your Home Automation Docker containers
