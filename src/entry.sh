@@ -448,10 +448,13 @@ function StartFHEM {
   # Update system environment
   #
 
+  echo -n 'Preparing configuration ...'
+
   if [ "${CONFIGTYPE}" == "configDB" ]; then
-    echo 'configDB detected - skipping automatic config preparation ...'
+    echo ' skipped (detected configDB)'
+    echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !'
   else
-    echo 'Preparing configuration ...'
+    echo ''
 
     # Mandatory
     [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/${CONFIGTYPE}
@@ -491,7 +494,7 @@ function StartFHEM {
     sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
   fi
 
-  echo 'Starting FHEM ...'
+  echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
   su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
   RET=$?
