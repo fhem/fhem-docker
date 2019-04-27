@@ -267,19 +267,21 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
-#find /dev/ -name "tty*" -exec chown --recursive --quiet --no-dereference .tty {} \;
-find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
-find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
-find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference .dialout {} \;
-#find /dev/ -name "tty*" -exec chmod --recursive --quiet g+w {} \;
-find /dev/ -name "ttyS*" -exec chmod --recursive --quiet g+rw {} \;
-find /dev/ -name "ttyACM*" -exec chmod --recursive --quiet g+rw {} \;
-find /dev/ -name "ttyUSB*" -exec chmod --recursive --quiet g+rw {} \;
+find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
+find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chmod --recursive --quiet g+w {} \; 2>/dev/null
+find /dev/ -name "ttyS*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
+find /dev/ -name "ttyACM*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
+find /dev/ -name "ttyUSB*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
 (( i++ ))
-echo "$i. Correcting group ownership for /dev/serial/* ..."
-find /dev/serial/by-id/ -exec chown --recursive --quiet --no-dereference .dialout {} \;
-find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \;
-(( i++ ))
+if [[ -d /dev/serial/by-id ]]; then
+  echo "$i. Correcting group ownership for /dev/serial/* ..."
+  find /dev/serial/by-id/ -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+  find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
+  (( i++ ))
+fi
 if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
   if [ -n "$(grep ^gpio: /etc/group)" ]; then
@@ -288,8 +290,8 @@ if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d
     groupadd --force --gid ${GPIO_GID} --non-unique gpio 2>&1>/dev/null
   fi
   adduser --quiet fhem gpio 2>&1>/dev/null
-  find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \;
-  find /dev/ -name "gpio*" -exec chmod --recursive --quiet g+rw {} \;
+  find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \; 2>/dev/null
+  find /dev/ -name "gpio*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
   [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/virtual/gpio/*
   [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/platform/gpio-sunxi/gpio/*
   [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/class/gpio/*
@@ -417,7 +419,7 @@ function PrintNewLines {
 function StopFHEM {
 	echo -e '\n\nSIGTERM signal received, sending "shutdown" command to FHEM!\n'
 	PID=$(<"${PIDFILE}")
-  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl 7072 shutdown"
+  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl ${TELNETPORT} shutdown"
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
   # Wait for FHEM to complete shutdown
