@@ -1,5 +1,5 @@
 # Basic Docker image for FHEM
-A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Stretch.
+A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Buster.
 
 
 ## Installation
