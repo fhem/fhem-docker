@@ -417,7 +417,7 @@ function PrintNewLines {
 function StopFHEM {
 	echo -e '\n\nSIGTERM signal received, sending "shutdown" command to FHEM!\n'
 	PID=$(<"${PIDFILE}")
-  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl 7072 shutdown"
+  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl ${TELNETPORT} shutdown"
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
   # Wait for FHEM to complete shutdown

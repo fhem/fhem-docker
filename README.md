@@ -97,7 +97,7 @@ In case the container is running in host network mode, the host IP address will 
 
 Also, for host.docker.internal, the SSH host key will automatically be added and updated in /opt/fhem/.ssh/known_hosts so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSHb client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM.
 
-If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see DOCKER\_HOST and DOCKER\_GW below).
+If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` below).
 
 
 #### Map USB devices to your container
@@ -117,10 +117,12 @@ If for some reason the host details are not detected correctly, you may overwrit
 
 		-e LOGFILE=./log/fhem-%Y-%m.log
 
-* Change FHEM local Telnet port for health check:
-	To set a different Telnet port for local connection during health check (default is 7072):
+* Change FHEM local Telnet port for health check and container restart handling:
+	To set a different Telnet port for local connection during health check and container restart (default is 7072):
 
 		-e TELNETPORT=7072
+	
+	Note that this is paramount if you are running more than one instance in network host mode on the same server, otherwise the instances will interfere with their restart behaviours.
 
 * Change FHEM system user ID:
 	To set a different UID for the user 'fhem' (default is 6061):
@@ -179,9 +181,9 @@ If for some reason the host details are not detected correctly, you may overwrit
 
     	-e DOCKER_HOST=172.17.0.1
 
-	If this variable is not present, host IP will automatically be detected based on the subnet network gateway (also see variable DOCKER\_GW below).
+	If this variable is not present, host IP will automatically be detected based on the subnet network gateway (also see variable `DOCKER_GW` below).
 	In case the container is running in network host mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
-	host.docker.internal will also be evaluated automatically for SSH connection on port 22 by adding the servers public key to /opt/fhem/.ssh/known\_hosts so that unattended connectivity for scripts is available.
+	host.docker.internal will also be evaluated automatically for SSH connection on port 22 by adding the servers public key to `/opt/fhem/.ssh/known_hosts` so that unattended connectivity for scripts is available.
 
 * Set Docker gateway IPv4 address for gateway.docker.internal:
 
@@ -213,6 +215,7 @@ Follow initial setup steps:
 
 	All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
 	You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
+	Note that if you are using configDB already, you need to ensure Docker compatibility before starting the container for the very first time (see `DOCKER_*` environment variables below).
 
 3. Create a local Git repository and add all files as an initial commit:
 
