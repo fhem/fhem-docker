@@ -176,6 +176,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libarchive-extract-perl \
         libarchive-zip-perl \
         libcgi-pm-perl \
+        libcpanel-json-xs-perl \
         libdbd-mysql \
         libdbd-mysql-perl \
         libdbd-pg-perl \
@@ -194,6 +195,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libio-socket-inet6-perl \
         libio-socket-ssl-perl \
         libjson-perl \
+        libjson-pp-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
         libmail-gnupg-perl \
