@@ -95,7 +95,7 @@ If you would like to connect to a service that is running on your Docker host it
 That is, if you did not configure those in your local DNS, of course.
 In case the container is running in host network mode, the host IP address will be set to 127.0.127.2 as an alias for 'localhost'. The gateway will then reflect your actual network segment gateway IP address.
 
-Also, for host.docker.internal, the SSH host key will automatically be added and updated in /opt/fhem/.ssh/known_hosts so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSHb client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM.
+Also, for host.docker.internal, the SSH host key will automatically be added and updated in `/opt/fhem/.ssh/known_hosts` so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSH client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM. You may copy & paste those to the destination host into the respective destination user home directory with filename `~/.ssh/authorized_keys`.
 
 If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` below).
 
@@ -122,7 +122,7 @@ If for some reason the host details are not detected correctly, you may overwrit
 
 		-e TELNETPORT=7072
 	
-	Note that this is paramount if you are running more than one instance in network host mode on the same server, otherwise the instances will interfere with their restart behaviours.
+	Note that this is of paramount importance if you are running more than one instance in host network mode on the same server, otherwise the instances will interfere each other with their restart behaviours.
 
 * Change FHEM system user ID:
 	To set a different UID for the user 'fhem' (default is 6061):
