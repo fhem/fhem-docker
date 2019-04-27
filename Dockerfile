@@ -273,6 +273,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libnet-ssleay-perl \
           libnet-telnet-perl \
           libnet-xmpp-perl \
+          libcryptx-perl \
           libnmap-parser-perl \
           librivescript-perl \
           librpc-xml-perl \
@@ -325,7 +326,6 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
            Crypt::OpenSSL::AES \
-           CryptX \
            Device::SMBus \
            Net::MQTT::Constants \
            Net::MQTT::Simple \

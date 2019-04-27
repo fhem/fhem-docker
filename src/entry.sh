@@ -86,7 +86,7 @@ if [ -d "/fhem" ]; then
     fi
 
     echo "$i. Adding custom Perl modules to container ..."
-    cpanm \
+    cpanm --notest \
       ${CPAN_PKGS} \
     >>/pkgs.cpan 2>&1
     (( i++ ))
