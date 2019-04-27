@@ -122,6 +122,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         curl \
         dnsutils \
         etherwake \
+        fonts-liberation \
         git-core \
         i2c-tools \
         inetutils-ping \
@@ -137,8 +138,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         subversion \
         sudo \
         telnet \
-        telnet-ssl \
-        ttf-liberation \
         unzip \
         usbutils \
         wget \
@@ -152,9 +151,10 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           alsa-utils \
           dfu-programmer \
+          ffmpeg \
           espeak \
           lame \
-          libav-tools \
+          libsox-fmt-mp3 \
           libttspico-utils \
           mp3wrap \
           mpg123 \
@@ -206,7 +206,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-csv-perl \
         libtext-diff-perl \
         libtimedate-perl \
-        libusb-1.0-0-dev \
         libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
@@ -279,7 +278,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libsnmp-session-perl \
           libsoap-lite-perl \
           libsocket-perl \
-          libsox-fmt-mp3 \
           libswitch-perl \
           libsys-hostname-long-perl \
           libsys-statistics-linux-perl \
@@ -303,6 +301,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           libdb-dev \
           libssl-dev \
           libtool \
+          libusb-1.0-0-dev \
           patch \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
@@ -313,11 +312,14 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
       curl -fsSL https://git.io/cpanm | perl - App::cpanminus \
-      && cpanm \
+      && cpanm --notest \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
           Perl::PrereqScanner::NotQuiteLite \
-          ${CPAN_PKGS} \
+      && if [ "${CPAN_PKGS}" != "" ]; then \
+          cpanm \
+           ${CPAN_PKGS} \
+         ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
            Crypt::OpenSSL::AES \
@@ -344,14 +346,14 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
           python3 \
           python3-dev \
           python3-pip \
-      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm \
+      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm --notest \
           Inline::Python \
-      && pip3 install -U \
-          pip \
+      && pip3 install --upgrade \
+          pip
+      && pip3 install --upgrade \
           setuptools \
           wheel \
           ${PIP_PKGS} \
-      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
       && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
            pip3 install \
             pychromecast \
