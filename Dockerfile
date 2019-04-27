@@ -349,7 +349,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
       && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm --notest \
           Inline::Python \
       && pip3 install --upgrade \
-          pip
+          pip \
       && pip3 install --upgrade \
           setuptools \
           wheel \
