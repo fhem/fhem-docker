@@ -126,7 +126,7 @@ before_install: |
     echo "deb-src http://archive.ubuntu.com/ubuntu xenial main universe multiverse restricted" | sudo tee -a /etc/apt/sources.list;
     sudo dpkg --add-architecture ${DPKG_ARCH};
     sudo apt-get update -yq;
-    curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v4.0.0/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
+    curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.1.0-3/x86_64_qemu-${QEMU_ARCH}-static.tar.gz | tar zx -C ./src/;
   fi
   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
 
