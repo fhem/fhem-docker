@@ -373,15 +373,11 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
     ; fi
 
 # Add nodejs app layer
-RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      if [ "${ARCH}" = "i386" ]; then \
-          curl -fsSL https://deb.nodesource.com/setup_8.x | bash - \
-        ; else \
-          curl -fsSL https://deb.nodesource.com/setup_10.x | bash - \
-        ; fi \
+RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ); then \
+      curl -fsSL https://deb.nodesource.com/setup_10.x | bash - \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           nodejs \
-      && ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/bin/npm \
+          npm \
       && npm install -g --unsafe-perm --production \
           npm \
           ${NPM_PKGS} \
