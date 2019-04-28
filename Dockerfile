@@ -80,7 +80,7 @@ ENV TERM xterm
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
-ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
+#ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
