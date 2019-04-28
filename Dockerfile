@@ -103,7 +103,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
-    && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+    && echo -e "en_US.UTF-8 UTF-8\nde_DE.UTF-8 UTF-8\nnl_NL.UTF-8 UTF-8\nfr_FR.UTF-8 UTF-8\npl_PL.UTF-8 UTF-8\nit_IT.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen \
     && /usr/sbin/update-locale LANG=en_US.UTF-8 \
     \
