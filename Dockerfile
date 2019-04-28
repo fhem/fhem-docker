@@ -80,6 +80,7 @@ ENV TERM xterm
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
+ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
@@ -378,6 +379,8 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
            npm \
+      && ls -la /etc/ssl/certs/ \
+      && cat /etc/ssl/certs/ca-certificates.crt \
       && npm install -g --unsafe-perm --production \
           npm \
           ${NPM_PKGS} \
