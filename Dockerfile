@@ -101,8 +101,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         ca-certificates \
         gnupg \
         locales \
-    && ls -la /etc/ssl/certs/ \
-    && cat /etc/ssl/certs/ca-certificates.crt \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
