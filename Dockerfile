@@ -101,6 +101,8 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         ca-certificates \
         gnupg \
         locales \
+    && ls -la /etc/ssl/certs/ \
+    && cat /etc/ssl/certs/ca-certificates.crt \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
@@ -379,8 +381,6 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
            npm \
-      && ls -la /etc/ssl/certs/ \
-      && cat /etc/ssl/certs/ca-certificates.crt \
       && npm install -g --unsafe-perm --production \
           npm \
           ${NPM_PKGS} \
