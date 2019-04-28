@@ -353,7 +353,6 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
           Inline::Python \
       && pip3 install --upgrade \
           pip \
-      && pip3 install --upgrade \
           setuptools \
           wheel \
           ${PIP_PKGS} \
