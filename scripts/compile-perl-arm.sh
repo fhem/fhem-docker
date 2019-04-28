@@ -46,8 +46,8 @@ mk-sbuild --target=armel stretch
 mk-sbuild --target=armhf stretch
 mk-sbuild --target=arm64 stretch
 
-curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.1.0-3/x86_64_qemu-arm-static.tar.gz | tar zx -C ~/
-curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v3.1.0-3/x86_64_qemu-aarch64-static.tar.gz | tar zx -C ~/
+curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v4.0.0/x86_64_qemu-arm-static.tar.gz | tar zx -C ~/
+curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v4.0.0/x86_64_qemu-aarch64-static.tar.gz | tar zx -C ~/
 chmod a+x qemu-*-static
 sudo cp -f qemu-arm-static /var/lib/schroot/chroots/stretch-amd64-armel/usr/bin
 sudo cp -f qemu-arm-static /var/lib/schroot/chroots/stretch-amd64-armhf/usr/bin
