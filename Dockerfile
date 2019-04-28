@@ -315,7 +315,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
 #  * exclude any ARM platforms due to long build time
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      ( curl -fsSL https://git.io/cpanm || wget -qO- https://git.io/cpanm ) | perl - App::cpanminus \
+      curl -fsSL https://git.io/cpanm | perl - App::cpanminus \
       && cpanm --notest \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
