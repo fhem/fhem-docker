@@ -1,5 +1,5 @@
 ARG BASE_IMAGE="debian"
-ARG BASE_IMAGE_TAG="buster"
+ARG BASE_IMAGE_TAG="stretch"
 FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
 
 # Arguments to instantiate as variables
@@ -41,7 +41,7 @@ ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${ARCH}_${PLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Stretch."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
@@ -91,9 +91,9 @@ COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
 RUN chmod 755 /*.sh /usr/local/bin/* \
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
-    && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
     && DEBIAN_FRONTEND=noninteractive apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
@@ -123,7 +123,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         curl \
         dnsutils \
         etherwake \
-        fonts-liberation \
         git-core \
         i2c-tools \
         inetutils-ping \
@@ -139,6 +138,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         subversion \
         sudo \
         telnet \
+        ttf-liberation \
         unzip \
         usbutils \
         wget \
@@ -274,7 +274,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libnet-ssleay-perl \
           libnet-telnet-perl \
           libnet-xmpp-perl \
-          libcryptx-perl \
           libnmap-parser-perl \
           librivescript-perl \
           librpc-xml-perl \
@@ -327,6 +326,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
            Crypt::OpenSSL::AES \
+           CryptX \
            Device::SMBus \
            Net::MQTT::Constants \
            Net::MQTT::Simple \
@@ -375,13 +375,19 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
+      if [ "${ARCH}" = "i386" ]; then \
+          curl -fsSL https://deb.nodesource.com/setup_8.x | bash - \
+        ; else \
+          curl -fsSL https://deb.nodesource.com/setup_10.x | bash - \
+        ; fi \
        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
-           npm \
       && npm install -g --unsafe-perm --production \
           npm \
-          ${NPM_PKGS} \
+      && if [ "${NPM_PKGS}" != "" ]; then \
+          npm install -g --unsafe-perm --production \
+           ${NPM_PKGS} \
+         ; fi \
       && if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
            npm install -g --unsafe-perm --production \
             alexa-cookie2 \
