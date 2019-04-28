@@ -374,16 +374,10 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ); then \
-      if [ "${ARCH}" = "i386" ]; then \
-         DEBIAN_FRONTEND=noninteractive apt-get update \
-         && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          nodejs \
-          npm \
-        ; else \
-          curl -fsSL https://deb.nodesource.com/setup_12.x | bash - \
-          && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      DEBIAN_FRONTEND=noninteractive apt-get update \
+       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
-        ; fi \
+           npm \
       && npm install -g --unsafe-perm --production \
           npm \
           ${NPM_PKGS} \
