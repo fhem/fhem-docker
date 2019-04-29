@@ -80,6 +80,7 @@ ENV TERM xterm
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
+#ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
@@ -103,7 +104,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
-    && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+    && echo 'en_US.UTF-8 UTF-8\nde_DE.UTF-8 UTF-8\nnl_NL.UTF-8 UTF-8\nfr_FR.UTF-8 UTF-8\npl_PL.UTF-8 UTF-8\nit_IT.UTF-8 UTF-8' > /etc/locale.gen \
     && locale-gen \
     && /usr/sbin/update-locale LANG=en_US.UTF-8 \
     \
@@ -137,7 +138,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         subversion \
         sudo \
         telnet \
-        telnet-ssl \
         ttf-liberation \
         unzip \
         usbutils \
@@ -152,9 +152,10 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           alsa-utils \
           dfu-programmer \
+          ffmpeg \
           espeak \
           lame \
-          libav-tools \
+          libsox-fmt-mp3 \
           libttspico-utils \
           mp3wrap \
           mpg123 \
@@ -176,6 +177,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libarchive-extract-perl \
         libarchive-zip-perl \
         libcgi-pm-perl \
+        libcpanel-json-xs-perl \
         libdbd-mysql \
         libdbd-mysql-perl \
         libdbd-pg-perl \
@@ -194,6 +196,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libio-socket-inet6-perl \
         libio-socket-ssl-perl \
         libjson-perl \
+        libjson-pp-perl \
         libjson-xs-perl \
         liblist-moreutils-perl \
         libmail-gnupg-perl \
@@ -206,7 +209,6 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libtext-csv-perl \
         libtext-diff-perl \
         libtimedate-perl \
-        libusb-1.0-0-dev \
         libutf8-all-perl \
         libwww-curl-perl \
         libwww-perl \
@@ -279,7 +281,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libsnmp-session-perl \
           libsoap-lite-perl \
           libsocket-perl \
-          libsox-fmt-mp3 \
           libswitch-perl \
           libsys-hostname-long-perl \
           libsys-statistics-linux-perl \
@@ -303,6 +304,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           libdb-dev \
           libssl-dev \
           libtool \
+          libusb-1.0-0-dev \
           patch \
       && apt-get autoremove -qqy && apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
@@ -313,11 +315,14 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
 #  * manually pre-compiled ARM packages may be applied here
 RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
       curl -fsSL https://git.io/cpanm | perl - App::cpanminus \
-      && cpanm \
+      && cpanm --notest \
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
           Perl::PrereqScanner::NotQuiteLite \
-          ${CPAN_PKGS} \
+      && if [ "${CPAN_PKGS}" != "" ]; then \
+          cpanm \
+           ${CPAN_PKGS} \
+         ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
            Crypt::OpenSSL::AES \
@@ -344,14 +349,15 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
           python3 \
           python3-dev \
           python3-pip \
-      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm \
+      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm --notest \
           Inline::Python \
-      && pip3 install -U \
+      && pip3 install --upgrade \
           pip \
+      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
+      && pip3 install --upgrade \
           setuptools \
           wheel \
           ${PIP_PKGS} \
-      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
       && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
            pip3 install \
             pychromecast \
@@ -375,11 +381,14 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
         ; else \
           curl -fsSL https://deb.nodesource.com/setup_10.x | bash - \
         ; fi \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          nodejs \
+       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+           nodejs \
       && npm install -g --unsafe-perm --production \
           npm \
-          ${NPM_PKGS} \
+      && if [ "${NPM_PKGS}" != "" ]; then \
+          npm install -g --unsafe-perm --production \
+           ${NPM_PKGS} \
+         ; fi \
       && if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
            npm install -g --unsafe-perm --production \
             alexa-cookie2 \
