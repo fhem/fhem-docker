@@ -146,6 +146,7 @@ if [ -d "/fhem" ]; then
     shopt -s dotglob nullglob 2>&1>/dev/null
     mv -f /fhem/* ${FHEM_DIR}/ 2>&1>/dev/null
     cd ${FHEM_DIR} 2>&1>/dev/null
+    echo 'http://fhem.de/fhemupdate/controls_fhem.txt' > ./FHEM/controls.txt
     mv ./controls_fhem.txt ./FHEM/ 2>&1>/dev/null
     perl ./contrib/commandref_modular.pl 2>&1>/dev/null
     cp -f ./fhem.cfg ./fhem.cfg.default
