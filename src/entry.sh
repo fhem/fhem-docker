@@ -459,17 +459,6 @@ function StartFHEM {
   else
     echo ''
 
-    # Mandatory
-    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ DockerImageInfo.*')" ] && echo "define DockerImageInfo DockerImageInfo" >> ${FHEM_DIR}/${CONFIGTYPE}
-    sed -i "s,attr global nofork.*,attr global nofork 0," ${FHEM_DIR}/${CONFIGTYPE}
-    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global nofork')" ] && echo "attr global nofork 0" >> ${FHEM_DIR}/${CONFIGTYPE}
-    sed -i "s,attr global updateInBackground.*,attr global updateInBackground 1," ${FHEM_DIR}/${CONFIGTYPE}
-    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global updateInBackground')" ] && echo "attr global updateInBackground 1" >> ${FHEM_DIR}/${CONFIGTYPE}
-    sed -i "s,attr global logfile.*,attr global logfile ${LOGFILE#${FHEM_DIR}/}," ${FHEM_DIR}/${CONFIGTYPE}
-    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile')" ] && echo "attr global logfile ${LOGFILE#${FHEM_DIR}/}" >> ${FHEM_DIR}/${CONFIGTYPE}
-    sed -i "s,attr global pidfilename.*,attr global pidfilename ${PIDFILE#${FHEM_DIR}/}," ${FHEM_DIR}/${CONFIGTYPE}
-    [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename')" ] && echo "attr global pidfilename ${PIDFILE#${FHEM_DIR}/}" >> ${FHEM_DIR}/${CONFIGTYPE}
-
     ## Find Telnet access details
     if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
       CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
@@ -495,6 +484,11 @@ function StartFHEM {
 
     # Optional
     sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
+  fi
+
+  # Mandatory
+  if [ "${FHEM_GLOBALATTR}" == "" ]; then      
+    export FHEM_GLOBALATTR="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
   fi
 
   echo -n -e "\nStarting FHEM ...\n"
