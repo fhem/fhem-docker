@@ -4,26 +4,26 @@
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
 export FHEM_DIR="/opt/fhem"
-export SLEEPINTERVAL=0.5
-export TIMEOUT="${TIMEOUT:-10}"
-export RESTART="${RESTART:-1}"
-export TELNETPORT="${TELNETPORT:-7072}"
-export CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
-export DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | sed -e 's/^nameserver[ \t]*//' )
+SLEEPINTERVAL=0.5
+TIMEOUT="${TIMEOUT:-10}"
+RESTART="${RESTART:-1}"
+TELNETPORT="${TELNETPORT:-7072}"
+CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
+DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | sed -e 's/^nameserver[ \t]*//' )
 export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
-export FHEM_CLEANINSTALL=1
+FHEM_CLEANINSTALL=1
 
-export BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
-export GPIO_GID="${GPIO_GID:-6002}"
-export I2C_GID="${I2C_GID:-6003}"
+BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
+GPIO_GID="${GPIO_GID:-6002}"
+I2C_GID="${I2C_GID:-6003}"
 
-export APT_PKGS="${APT_PKGS:-}"
-export CPAN_PKGS="${CPAN_PKGS:-}"
-export PIP_PKGS="${PIP_PKGS:-}"
-export NPM_PKGS="${NPM_PKGS:-}"
+APT_PKGS="${APT_PKGS:-}"
+CPAN_PKGS="${CPAN_PKGS:-}"
+PIP_PKGS="${PIP_PKGS:-}"
+NPM_PKGS="${NPM_PKGS:-}"
 
 [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
@@ -218,25 +218,25 @@ fi
 # determine global logfile
 if [ -z "${LOGFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
   else
     GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
-    export LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+    LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
   fi
 else
-  export LOGFILE="${FHEM_DIR}/${LOGFILE}"
+  LOGFILE="${FHEM_DIR}/${LOGFILE}"
 fi
 
 # determine PID file
 if [ -z "${PIDFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
-    export PIDFILE="${FHEM_DIR}/./log/fhem.pid"
+    PIDFILE="${FHEM_DIR}/./log/fhem.pid"
   else
     GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
-    export PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
+    PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
   fi
 else
-  export PIDFILE="${FHEM_DIR}/${PIDFILE}"
+  PIDFILE="${FHEM_DIR}/${PIDFILE}"
 fi
 
 # creating user environment
@@ -457,7 +457,6 @@ function StartFHEM {
     echo ' skipped (detected configDB)'
     echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !'
   else
-    echo ''
 
     ## Find Telnet access details
     if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
