@@ -489,8 +489,9 @@ function StartFHEM {
 
   # Mandatory
   if [ "${FHEM_GLOBALATTR}" == "" ]; then      
-    export FHEM_GLOBALATTR="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
+    FHEM_GLOBALATTR="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
   fi
+  export FHEM_GLOBALATTR
 
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM

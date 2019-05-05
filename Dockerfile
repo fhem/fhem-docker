@@ -334,7 +334,6 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           && if [ "${ARCH}" = "amd64" ]; then \
               cpanm --notest \
                Crypt::Random \
-               Math::Pari \
              ; fi \
           ; fi \
       && rm -rf /root/.cpanm \
