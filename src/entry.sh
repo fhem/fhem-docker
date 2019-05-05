@@ -420,7 +420,7 @@ function PrintNewLines {
 function StopFHEM {
 	echo -e '\n\nSIGTERM signal received, sending "shutdown" command to FHEM!\n'
 	PID=$(<"${PIDFILE}")
-  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl ${TELNETPORT} shutdown"
+  su fhem -c "cd "${FHEM_DIR}"; perl fhem.pl ${TELNETPORT} shutdown"
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
   # Wait for FHEM to complete shutdown
@@ -484,6 +484,8 @@ function StartFHEM {
 
     # Optional
     sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
+
+    echo " done"
   fi
 
   # Mandatory
@@ -493,7 +495,7 @@ function StartFHEM {
 
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
-  su - fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
+  su fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
   RET=$?
 
   # If process was unable to restart,
