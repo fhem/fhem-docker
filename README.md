@@ -164,13 +164,9 @@ If for some reason the host details are not detected correctly, you may overwrit
 
     	-e CONFIGTYPE=configDB
 	
-	Note that you are also responsible to ensure your existing FHEM configuration is compatible with this Docker image as the entry script is unable to perform any automatic actions for you. In particular, make sure the global attribute 'nofork' is set to 1, otherwise FHEM will not be able to start properly. Furthermore, it is wise to set updateInBackground to 1.
-	Furthermore, of any of the following global attribute are not kept for their default settings, you are required to manually configure the Docker container using environment variables to ensure that both values are matching:
-	
-	- logfile (see environment variable LOGFILE above)
-	- pidfilename (see environment variable LOGFILE above)
-	
-	Last but not least you need to  make sure that there is an existing telnet device defined (`define telnetPort telnet 7072`) so that health check can be performed properly and DockerImageInfo can be updated. Global listening for external requests is not needed, localhost is sufficient. Note to make use of the environment variable TELNETPORT mentioned above if you wish to use a different port.
+	Note that some essential global configuration that is affecting FHEM during startup is being enforced using FHEM\_GLOBALATTR environment variable (nofork=0 and updateInBackground=1; logfile and pidfilename according, based on environment variables LOGFILE and PIDFILE). These settings cannot be changed during runtime in FHEM and any setting that might be in your configDB configuration will be overwritten the next time you save your configuration.
+
+	Last but not least you need to  make sure that there is an existing telnet device defined (`define telnetPort telnet 7072`) so that health check can be performed properly and DockerImageInfo can be updated. Global listening for external requests is not needed, localhost is sufficient. Note to make use of the environment variable TELNETPORT mentioned above if you wish to use a different port. Note that restrictions using the 'allowed' module is usually not necessary. Should you set any restrictions, make sure that there is no password for localhost connections (e.g. use attribue 'globalpassword=1' instead of 'password=1').
 
 * Starting the demo:
 	To start the demo environment:
