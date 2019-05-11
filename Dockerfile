@@ -155,7 +155,7 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
           ffmpeg \
           espeak \
           lame \
-          libsox-fmt-mp3 \
+          libsox-fmt-all \
           libttspico-utils \
           mp3wrap \
           mpg123 \
@@ -303,6 +303,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           build-essential \
           libavahi-compat-libdnssd-dev \
           libdb-dev \
+          libsodium-dev \
           libssl-dev \
           libtool \
           libusb-1.0-0-dev \
@@ -326,6 +327,10 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
          ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
+           Alien::Base::ModuleBuild \
+           Alien::Sodium \
+           Crypt::Argon2
+           Crypt::NaCl::Sodium \
            Crypt::OpenSSL::AES \
            CryptX \
            Device::SMBus \
