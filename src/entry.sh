@@ -14,6 +14,8 @@ export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 export FHEM_UID="${FHEM_UID:-6061}"
 export FHEM_GID="${FHEM_GID:-6061}"
+export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
+
 FHEM_CLEANINSTALL=1
 
 BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"

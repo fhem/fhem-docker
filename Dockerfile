@@ -208,6 +208,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libsocket6-perl \
         libtext-csv-perl \
         libtext-diff-perl \
+        libtext-iconv-perl \
         libtimedate-perl \
         libutf8-all-perl \
         libwww-curl-perl \
