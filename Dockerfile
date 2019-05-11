@@ -329,7 +329,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           cpanm --notest \
            Alien::Base::ModuleBuild \
            Alien::Sodium \
-           Crypt::Argon2
+           Crypt::Argon2 \
            Crypt::NaCl::Sodium \
            Crypt::OpenSSL::AES \
            CryptX \
