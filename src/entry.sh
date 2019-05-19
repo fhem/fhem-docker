@@ -509,17 +509,18 @@ function StartFHEM {
   export LANG="${LANG:-en_US.UTF-8}" # maximum compatibility so we need US English
   export LANGUAGE="${LANGUAGE:-en_US:en}"
   export LC_ADDRESS="${LC_ADDRESS:-en_DK.UTF-8}" # Address in European standard
-  export LC_COLLATE="${LC_COLLATE:-en_DK.UTF-8}" # Collation order in European standard
-  export LC_CTYPE="${LC_CTYPE:-en_DK.UTF-8}" # Character classification and case conversion
-  export LC_MEASUREMENT="${LC_MEASUREMENT:-en_DK.UTF-8}" # Measuring units in European standard
-  export LC_MONETARY="${LC_MONETARY:-en_IE.UTF-8}" # Monetary formatting in European standard
-  export LC_NUMERIC="${LC_NUMERIC:-en_DK.UTF-8}" # Numeric formatting in European standard
-  export LC_PAPER="${LC_PAPER:-en_DK.UTF-8}" # Paper size in European standard
-  export LC_TELEPHONE="${LC_TELEPHONE:-en_DK.UTF-8}" # Representation of telephone numbers in European standard
+  export LC_MEASUREMENT="${LC_MEASUREMENT:-de_DE.UTF-8}" # Measuring units in European standard
+  export LC_MESSAGES="${LC_MESSAGES:-en_DK.UTF-8}" # Yes/No messages in english but with more answers
+  export LC_MONETARY="${LC_MONETARY:-de_DE.UTF-8}" # Monetary formatting in European standard
+  export LC_NUMERIC="${LC_NUMERIC:-de_DE.UTF-8}" # Numeric formatting in (a) European standard
+  export LC_PAPER="${LC_PAPER:-de_DE.UTF-8}" # Paper size in European standard
+  export LC_TELEPHONE="${LC_TELEPHONE:-de_DE.UTF-8}" # Representation of telephone numbers in German format
   export LC_TIME="${LC_TIME:-en_DK.UTF-8}" # Date and time formats in European standard
   export TZ="${TZ:-Europe/Berlin}"
-  [ "${LC_MESSAGES}" != '' ] && export LC_MESSAGES
-  [ "${LC_RESPONSE}" != '' ] && export LC_RESPONSE
+  [ "${LC_CTYPE}" != '' ] && export LC_CTYPE
+  [ "${LC_COLLATE}" != '' ] && export LC_COLLATE
+  [ "${LC_NAME}" != '' ] && export LC_NAME
+  [ "${LC_ADDRESS}" != '' ] && export LC_ADDRESS
   [ "${LC_ALL}" != '' ] && export LC_ALL
 
   echo -n -e "\nStarting FHEM ...\n"

@@ -155,19 +155,19 @@ If for some reason the host details are not detected correctly, you may overwrit
     	-e TIMEOUT=10
 
 * Set locale:
-	For maximum compatibility, standard locale is set to US english with some refinements towards the European standards. This may be changed according to your needs (also see [Debian Wiki](https://wiki.debian.org/Locale) for more information):
+	For maximum compatibility, standard locale is set to US english with some refinements towards the European standards and German defaults. This may be changed according to your needs (also see [Debian Wiki](https://wiki.debian.org/Locale) for more information):
 
 		-e LANG=en_US.UTF-8
 		-e LANGUAGE=en_US:en
-		-e LC_ADDRESS=en_DK.UTF-8
-		-e LC_COLLATE=en_DK.UTF-8
-		-e LC_CTYPE=en_DK.UTF-8
-		-e LC_MEASUREMENT=en_DK.UTF-8
-		-e LC_MONETARY=en_IE.UTF-8
-		-e LC_NUMERIC=en_DK.UTF-8
-		-e LC_PAPER=en_DK.UTF-8
-		-e LC_TELEPHONE=en_DK.UTF-8
-		-e LC_TIME=en_DK.UTF-8
+		-e LC_ADDRESS=de_DE.UTF-8
+		-e LC_MEASUREMENT=de_DE.UTF-8
+		-e LC_MESSAGES=en_DK.UTF-8
+		-e LC_MONETARY=de_DE.UTF-8
+		-e LC_NAME=de_DE.UTF-8
+		-e LC_NUMERIC=de_DE.UTF-8
+		-e LC_PAPER=de_DE.UTF-8
+		-e LC_TELEPHONE=de_DE.UTF-8
+		-e LC_TIME=de_DE.UTF-8
 
 * Set timezone:
 	Set a specific timezone in [POSIX format](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
