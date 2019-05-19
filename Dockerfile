@@ -78,15 +78,15 @@ LABEL org.fhem.description=${L_DESCR_FHEM}
 
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
-ENV LC_ADDRESS en_GB.UTF-8
-ENV LC_COLLATE en_GB.UTF-8
-ENV LC_CTYPE en_GB.UTF-8
-ENV LC_MEASUREMENT en_GB.UTF-8
-ENV LC_MONETARY en_GB.UTF-8
-ENV LC_NUMERIC en_GB.UTF-8
-ENV LC_PAPER en_GB.UTF-8
-ENV LC_TELEPHONE en_GB.UTF-8
-ENV LC_TIME en_GB.UTF-8
+ENV LC_ADDRESS en_DK.UTF-8
+ENV LC_COLLATE en_DK.UTF-8
+ENV LC_CTYPE en_DK.UTF-8
+ENV LC_MEASUREMENT en_DK.UTF-8
+ENV LC_MONETARY en_IE.UTF-8
+ENV LC_NUMERIC en_DK.UTF-8
+ENV LC_PAPER en_DK.UTF-8
+ENV LC_TELEPHONE en_DK.UTF-8
+ENV LC_TIME en_DK.UTF-8
 ENV TERM xterm
 ENV TZ Europe/Berlin
 
@@ -112,7 +112,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
-    && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
+    && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
     && locale-gen \
     \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \

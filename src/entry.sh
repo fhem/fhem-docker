@@ -505,21 +505,20 @@ function StartFHEM {
   export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
 
   # Set default language settings, based on https://wiki.debian.org/Locale
+  # Also see https://unix.stackexchange.com/questions/62316/why-is-there-no-euro-english-locale
   export LANG="${LANG:-en_US.UTF-8}" # maximum compatibility so we need US English
   export LANGUAGE="${LANGUAGE:-en_US:en}"
-  export LC_ADDRESS="${LC_ADDRESS:-en_GB.UTF-8}" # Address in European standard
-  export LC_COLLATE="${LC_COLLATE:-en_GB.UTF-8}" # Collation order in European standard
-  export LC_CTYPE="${LC_CTYPE:-en_GB.UTF-8}" # Character classification and case conversion
-  export LC_MEASUREMENT="${LC_MEASUREMENT:-en_GB.UTF-8}" # Measuring units in European standard
-  export LC_MONETARY="${LC_MONETARY:-en_GB.UTF-8}" # Monetary formatting in European standard
-  export LC_NUMERIC="${LC_NUMERIC:-en_GB.UTF-8}" # Numeric formatting in European standard
-  export LC_PAPER="${LC_PAPER:-en_GB.UTF-8}" # Paper size in European standard
-  export LC_TELEPHONE="${LC_TELEPHONE:-en_GB.UTF-8}" # Representation of telephone numbers in European standard
-  export LC_TIME="${LC_TIME:-en_GB.UTF-8}" # Date and time formats in European standard
+  export LC_ADDRESS="${LC_ADDRESS:-en_DK.UTF-8}" # Address in European standard
+  export LC_COLLATE="${LC_COLLATE:-en_DK.UTF-8}" # Collation order in European standard
+  export LC_CTYPE="${LC_CTYPE:-en_DK.UTF-8}" # Character classification and case conversion
+  export LC_MEASUREMENT="${LC_MEASUREMENT:-en_DK.UTF-8}" # Measuring units in European standard
+  export LC_MONETARY="${LC_MONETARY:-en_IE.UTF-8}" # Monetary formatting in European standard
+  export LC_NUMERIC="${LC_NUMERIC:-en_DK.UTF-8}" # Numeric formatting in European standard
+  export LC_PAPER="${LC_PAPER:-en_DK.UTF-8}" # Paper size in European standard
+  export LC_TELEPHONE="${LC_TELEPHONE:-en_DK.UTF-8}" # Representation of telephone numbers in European standard
+  export LC_TIME="${LC_TIME:-en_DK.UTF-8}" # Date and time formats in European standard
   export TZ="${TZ:-Europe/Berlin}"
-  [ "${LC_IDENTIFICATION}" != '' ] && export LC_IDENTIFICATION
   [ "${LC_MESSAGES}" != '' ] && export LC_MESSAGES
-  [ "${LC_NAME}" != '' ] && export LC_NAME
   [ "${LC_RESPONSE}" != '' ] && export LC_RESPONSE
   [ "${LC_ALL}" != '' ] && export LC_ALL
 
