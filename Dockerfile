@@ -76,11 +76,19 @@ LABEL org.fhem.vendor=${L_VENDOR_FHEM}
 LABEL org.fhem.licenses=${L_LICENSES_FHEM}
 LABEL org.fhem.description=${L_DESCR_FHEM}
 
-ENV TERM xterm
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
-#ENV NODE_EXTRA_CA_CERTS /etc/ssl/certs/ca-certificates.crt
+ENV LC_ADDRESS de_DE.UTF-8
+ENV LC_MEASUREMENT de_DE.UTF-8
+ENV LC_MESSAGES en_DK.UTF-8
+ENV LC_MONETARY de_DE.UTF-8
+ENV LC_NAME de_DE.UTF-8
+ENV LC_NUMERIC de_DE.UTF-8
+ENV LC_PAPER de_DE.UTF-8
+ENV LC_TELEPHONE de_DE.UTF-8
+ENV LC_TIME de_DE.UTF-8
+ENV TERM xterm
+ENV TZ Europe/Berlin
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
@@ -104,9 +112,8 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
-    && echo 'en_US.UTF-8 UTF-8\nde_DE.UTF-8 UTF-8\nnl_NL.UTF-8 UTF-8\nfr_FR.UTF-8 UTF-8\npl_PL.UTF-8 UTF-8\nit_IT.UTF-8 UTF-8' > /etc/locale.gen \
+    && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
     && locale-gen \
-    && /usr/sbin/update-locale LANG=en_US.UTF-8 \
     \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
@@ -155,7 +162,7 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
           ffmpeg \
           espeak \
           lame \
-          libsox-fmt-mp3 \
+          libsox-fmt-all \
           libttspico-utils \
           mp3wrap \
           mpg123 \
@@ -208,6 +215,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libsocket6-perl \
         libtext-csv-perl \
         libtext-diff-perl \
+        libtext-iconv-perl \
         libtimedate-perl \
         libutf8-all-perl \
         libwww-curl-perl \
@@ -302,6 +310,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           build-essential \
           libavahi-compat-libdnssd-dev \
           libdb-dev \
+          libsodium-dev \
           libssl-dev \
           libtool \
           libusb-1.0-0-dev \
@@ -325,6 +334,10 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
          ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
           cpanm --notest \
+           Alien::Base::ModuleBuild \
+           Alien::Sodium \
+           Crypt::Argon2 \
+           Crypt::NaCl::Sodium \
            Crypt::OpenSSL::AES \
            CryptX \
            Device::SMBus \

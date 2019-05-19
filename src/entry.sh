@@ -3,7 +3,11 @@
 #	Credits for the initial process handling to Joscha Middendorf:
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
-export FHEM_DIR="/opt/fhem"
+# we run in standard locale environment to ensure proper behaviour
+USER_LC_ALL="${LC_ALL}"
+LC_ALL=C
+
+FHEM_DIR="/opt/fhem"
 SLEEPINTERVAL=0.5
 TIMEOUT="${TIMEOUT:-10}"
 RESTART="${RESTART:-1}"
@@ -12,8 +16,9 @@ CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | sed -e 's/^nameserver[ \t]*//' )
 export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
-export FHEM_UID="${FHEM_UID:-6061}"
-export FHEM_GID="${FHEM_GID:-6061}"
+FHEM_UID="${FHEM_UID:-6061}"
+FHEM_GID="${FHEM_GID:-6061}"
+
 FHEM_CLEANINSTALL=1
 
 BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
@@ -264,8 +269,12 @@ adduser --quiet fhem mail 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
 adduser --quiet fhem video 2>&1>/dev/null
 (( i++ ))
+echo "$i. Creating log directory ${LOGFILE%/*} ..."
+mkdir -p "${LOGFILE%/*}"
+(( i++ ))
 echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
+chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
@@ -445,7 +454,7 @@ function StartFHEM {
   if [ -s /pre-start.sh ]; then
     echo "Running pre-start script ..."
     chmod 755 /pre-start.sh
-    /pre-start.sh
+    LC_ALL=C /pre-start.sh
   fi
 
   # Update system environment
@@ -487,11 +496,32 @@ function StartFHEM {
     echo " done"
   fi
 
-  # Mandatory
-  if [ "${FHEM_GLOBALATTR}" == "" ]; then      
-    FHEM_GLOBALATTR="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
-  fi
-  export FHEM_GLOBALATTR
+  # Generate environment variables for user 'fhem'
+
+  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
+
+  FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
+  export FHEM_GLOBALATTR="${FHEM_GLOBALATTR:-${FHEM_GLOBALATTR_DEF}}"
+  export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
+
+  # Set default language settings, based on https://wiki.debian.org/Locale
+  # Also see https://unix.stackexchange.com/questions/62316/why-is-there-no-euro-english-locale
+  export LANG="${LANG:-en_US.UTF-8}" # maximum compatibility so we need US English
+  export LANGUAGE="${LANGUAGE:-en_US:en}"
+  export LC_ADDRESS="${LC_ADDRESS:-en_DK.UTF-8}" # Address in European standard
+  export LC_MEASUREMENT="${LC_MEASUREMENT:-de_DE.UTF-8}" # Measuring units in European standard
+  export LC_MESSAGES="${LC_MESSAGES:-en_DK.UTF-8}" # Yes/No messages in english but with more answers
+  export LC_MONETARY="${LC_MONETARY:-de_DE.UTF-8}" # Monetary formatting in European standard
+  export LC_NUMERIC="${LC_NUMERIC:-de_DE.UTF-8}" # Numeric formatting in (a) European standard
+  export LC_PAPER="${LC_PAPER:-de_DE.UTF-8}" # Paper size in European standard
+  export LC_TELEPHONE="${LC_TELEPHONE:-de_DE.UTF-8}" # Representation of telephone numbers in German format
+  export LC_TIME="${LC_TIME:-en_DK.UTF-8}" # Date and time formats in European standard
+  export TZ="${TZ:-Europe/Berlin}"
+  [ "${LC_CTYPE}" != '' ] && export LC_CTYPE
+  [ "${LC_COLLATE}" != '' ] && export LC_COLLATE
+  [ "${LC_NAME}" != '' ] && export LC_NAME
+  [ "${LC_ADDRESS}" != '' ] && export LC_ADDRESS
+  [ "${LC_ALL}" != '' ] && export LC_ALL
 
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
@@ -508,13 +538,13 @@ function StartFHEM {
   # Wait for FHEM to start up
   until $FOUND; do
   	sleep $SLEEPINTERVAL
-        	PrintNewLines "Server started"
+    PrintNewLines "Server started"
   done
 
   if [ -s /post-start.sh ]; then
     echo "Running post-start script ..."
     chmod 755 /post-start.sh
-    /post-start.sh
+    LC_ALL=C /post-start.sh
   fi
 
   PrintNewLines
