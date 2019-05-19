@@ -508,7 +508,6 @@ function StartFHEM {
   # Also see https://unix.stackexchange.com/questions/62316/why-is-there-no-euro-english-locale
   export LANG="${LANG:-en_US.UTF-8}" # maximum compatibility so we need US English
   export LANGUAGE="${LANGUAGE:-en_US:en}"
-  export LC_ADDRESS="${LC_ADDRESS:-en_DK.UTF-8}" # Address in European standard
   export LC_MEASUREMENT="${LC_MEASUREMENT:-de_DE.UTF-8}" # Measuring units in European standard
   export LC_MESSAGES="${LC_MESSAGES:-en_DK.UTF-8}" # Yes/No messages in english but with more answers
   export LC_MONETARY="${LC_MONETARY:-de_DE.UTF-8}" # Monetary formatting in European standard
