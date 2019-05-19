@@ -202,6 +202,9 @@ If for some reason the host details are not detected correctly, you may overwrit
 	
 	If this variable is not present, the gateway will automatically be detected.
 
+* Manipulating software in the container using their own environment variables:
+	For security reasons, only allowed environment variables are passed to the FHEM user environment. To control certain behaviours of Perl, Node.js and Python, those language interpreters come with their own environment variables. Any variable that was set for the container and with a prefix of either PERL, NODE or PYTHON is exported to the FHEM user environment so it is available there during runtime of the fhem.pl main process and subsequently all its child processes.
+
 
 ## Adding Git for version control of your Home Automation Docker containers
 

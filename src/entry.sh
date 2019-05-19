@@ -501,8 +501,8 @@ function StartFHEM {
   [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
 
   FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
+  PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
   export FHEM_GLOBALATTR="${FHEM_GLOBALATTR:-${FHEM_GLOBALATTR_DEF}}"
-  export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
 
   # Set default language settings, based on https://wiki.debian.org/Locale
   # Also see https://unix.stackexchange.com/questions/62316/why-is-there-no-euro-english-locale
@@ -522,6 +522,13 @@ function StartFHEM {
   [ "${LC_NAME}" != '' ] && export LC_NAME
   [ "${LC_ADDRESS}" != '' ] && export LC_ADDRESS
   [ "${LC_ALL}" != '' ] && export LC_ALL
+
+  # Export some variables someone might want to use
+  while IFS='=' read -r -d '' n v; do
+      [[ $n = 'NODE'* ]] && export "$n"
+      [[ $n = 'PERL'* ]] && export "$n"
+      [[ $n = 'PYTHON'* ]] && export "$n"
+  done < <(env -0)
 
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
