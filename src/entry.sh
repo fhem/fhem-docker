@@ -265,8 +265,12 @@ adduser --quiet fhem mail 2>&1>/dev/null
 adduser --quiet fhem tty 2>&1>/dev/null
 adduser --quiet fhem video 2>&1>/dev/null
 (( i++ ))
+echo "$i. Creating log directory ${LOGFILE%/*} ..."
+mkdir -p "${LOGFILE%/*}"
+(( i++ ))
 echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
+chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
