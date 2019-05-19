@@ -3,6 +3,10 @@
 #	Credits for the initial process handling to Joscha Middendorf:
 #    https://raw.githubusercontent.com/JoschaMiddendorf/fhem-docker/master/StartAndInitialize.sh
 
+# we run in standard locale environment to ensure proper behaviour
+USER_LC_ALL="${LC_ALL}"
+LC_ALL=C
+
 FHEM_DIR="/opt/fhem"
 SLEEPINTERVAL=0.5
 TIMEOUT="${TIMEOUT:-10}"
@@ -450,7 +454,7 @@ function StartFHEM {
   if [ -s /pre-start.sh ]; then
     echo "Running pre-start script ..."
     chmod 755 /pre-start.sh
-    /pre-start.sh
+    LC_ALL=C /pre-start.sh
   fi
 
   # Update system environment
@@ -492,9 +496,11 @@ function StartFHEM {
     echo " done"
   fi
 
-  # Mandatory
-  FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
+  # Generate environment variables for user 'fhem'
 
+  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
+
+  FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
   export FHEM_GLOBALATTR="${FHEM_GLOBALATTR:-${FHEM_GLOBALATTR_DEF}}"
   export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
 
@@ -532,13 +538,13 @@ function StartFHEM {
   # Wait for FHEM to start up
   until $FOUND; do
   	sleep $SLEEPINTERVAL
-        	PrintNewLines "Server started"
+    PrintNewLines "Server started"
   done
 
   if [ -s /post-start.sh ]; then
     echo "Running post-start script ..."
     chmod 755 /post-start.sh
-    /post-start.sh
+    LC_ALL=C /post-start.sh
   fi
 
   PrintNewLines
