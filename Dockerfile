@@ -332,18 +332,22 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           cpanm \
            ${CPAN_PKGS} \
          ; fi \
-      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] && ( [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ] ); then \
+      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
           cpanm --notest \
-           Alien::Base::ModuleBuild \
-           Alien::Sodium \
-           Crypt::Argon2 \
-           Crypt::NaCl::Sodium \
-           Crypt::OpenSSL::AES \
-           CryptX \
-           Device::SMBus \
-           Net::MQTT::Constants \
-           Net::MQTT::Simple \
-           Net::WebSocket::Server \
+           Crypt::Rijndael_PP \
+         && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+             cpanm --notest \
+              Alien::Base::ModuleBuild \
+              Alien::Sodium \
+              Crypt::Argon2 \
+              Crypt::NaCl::Sodium \
+              Crypt::OpenSSL::AES \
+              CryptX \
+              Device::SMBus \
+              Net::MQTT::Constants \
+              Net::MQTT::Simple \
+              Net::WebSocket::Server \
+             ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
       && apt-get autoremove -qqy && apt-get clean \
