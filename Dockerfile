@@ -102,27 +102,27 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
         ca-certificates \
         gnupg \
         locales \
-    && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
-    && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
-    && locale-gen \
+    && LC_ALL=C locale-gen \
     \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
-    && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
     && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-    && DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
         avahi-daemon \
         avrdude \
@@ -150,13 +150,13 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         usbutils \
         wget \
         ${APT_PKGS} \
-    && apt-get autoremove -qqy && apt-get clean \
+    && LC_ALL=C LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add extended system layer
 RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           alsa-utils \
           dfu-programmer \
           ffmpeg \
@@ -173,13 +173,13 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
           snmp-mibs-downloader \
           sox \
           vorbis-tools \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Perl basic app layer for pre-compiled packages
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         perl-base \
         libarchive-extract-perl \
         libarchive-zip-perl \
@@ -231,13 +231,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
-    && apt-get autoremove -qqy && apt-get clean \
+    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl extended app layer for pre-compiled packages
 RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           perl \
           libalgorithm-merge-perl \
           libauthen-*-perl \
@@ -299,14 +299,14 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libtime-period-perl \
           libtypes-path-tiny-perl \
           liburi-escape-xs-perl \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add development/compilation layer
 RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           autoconf \
           automake \
           build-essential \
@@ -317,7 +317,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           libtool \
           libusb-1.0-0-dev \
           patch \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
@@ -351,14 +351,14 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Python app layer
 RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           python3 \
           python3-dev \
           python3-pip \
@@ -383,14 +383,14 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
           && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
         ; fi \
       && rm -rf /root/.cpanm \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | bash - \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | LC_ALL=C bash - \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
            npm \
       && npm install -g --unsafe-perm --production \
@@ -408,7 +408,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
             homebridge-fhem \
             tradfri-fhem \
         ; fi \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
