@@ -374,10 +374,6 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
             python3-pychromecast \
             speedtest-cli \
             youtube-dl \
-           && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-                pip3 install \
-                 rpi.gpio \
-              ; fi \
            && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
         ; fi \
       && rm -rf /root/.cpanm \
