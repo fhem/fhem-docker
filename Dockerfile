@@ -109,7 +109,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         ca-certificates \
         gnupg \
         locales \
-    && LC_ALL=C c_rehash \
+    && touch /etc/ssl/certs/ca-certificates.crt && LC_ALL=C openssl rehash -v /etc/ssl/certs \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
