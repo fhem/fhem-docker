@@ -249,6 +249,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libconvert-base32-perl \
           libcpan-meta-yaml-perl \
           libcrypt-*-perl \
+          libcrypt-rijndael-perl \
           libcryptx-perl \
           libdata-dump-perl \
           libdatetime-format-strptime-perl \
@@ -336,9 +337,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
            ${CPAN_PKGS} \
          ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
-          cpanm --notest \
-           Crypt::Rijndael_PP \
-         && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+           if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
               Alien::Sodium \
