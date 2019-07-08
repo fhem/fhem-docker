@@ -393,7 +393,10 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
       LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | LC_ALL=C bash - \
       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
-           npm \
+      && if [ ! -e /usr/bin/npm ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+             npm \
+      ; fi \
       && npm install -g --unsafe-perm --production \
           npm \
       && if [ "${NPM_PKGS}" != "" ]; then \
