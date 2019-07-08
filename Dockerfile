@@ -213,6 +213,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmime-lite-perl \
         libnet-server-perl \
         libsocket6-perl \
+        libterm-readline-perl-perl \
         libtext-csv-perl \
         libtext-diff-perl \
         libtext-iconv-perl \
@@ -388,11 +389,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      if [ "${ARCH}" = "i386" ]; then \
-          curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_8.x | bash - \
-        ; else \
-          curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | bash - \
-        ; fi \
+      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | bash - \
        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
            npm \
