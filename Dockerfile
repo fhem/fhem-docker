@@ -395,6 +395,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
         ; fi \
        && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
+           npm \
       && npm install -g --unsafe-perm --production \
           npm \
       && if [ "${NPM_PKGS}" != "" ]; then \
