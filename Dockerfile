@@ -360,28 +360,26 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
 RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
       LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          libinline-python-perl \
           python3 \
           python3-dev \
           python3-pip \
-      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm --notest \
-          Inline::Python \
-      && pip3 install --upgrade \
-          pip \
-      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
-      && pip3 install --upgrade \
-          setuptools \
-          wheel \
-          ${PIP_PKGS} \
-      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+          python3-setuptools \
+          python3-wheel \
+      && if [ "${PIP_PKGS}" != "" ]; then \
            pip3 install \
-            pychromecast \
+            ${PIP_PKGS} \
+         ; fi \
+      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            python3-pychromecast \
             speedtest-cli \
             youtube-dl \
-          && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-               pip3 install \
-                rpi.gpio \
-             ; fi \
-          && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+           && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
+                pip3 install \
+                 rpi.gpio \
+              ; fi \
+           && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
         ; fi \
       && rm -rf /root/.cpanm \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
