@@ -151,7 +151,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         usbutils \
         wget \
         ${APT_PKGS} \
-    && LC_ALL=C LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add extended system layer
