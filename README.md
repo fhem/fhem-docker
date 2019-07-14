@@ -245,9 +245,9 @@ Follow initial setup steps:
 	Note: This will also add any new files within your whole Docker Stack outside of the ./fhem/ folder.
 	Please see Git documentation for details and further commands.
 
-4. Optional - Add remote repository for external backup. Using BitBucket is recommended because it supports private repositories:
+4. Optional - Add remote repository for external backup. It is strongly recommended to have your external repository set to _private_ before doing so:
 
-		sudo git remote add origin git@bitbucket.org:user/repo.git
+		sudo git remote add origin git@github.com:user/repo.git
 		sudo git push --force --set-upstream origin master
 
 	Note that after updating your local repository as described above, you also	want to push those changes to the remote server:
@@ -257,7 +257,7 @@ Follow initial setup steps:
 	To restore your Docker Stack from remote Git backup on a fresh Docker host installation:
 
 		sudo mkdir -p /docker
-		cd /docker; sudo git clone git@bitbucket.org:user/repo.git
+		cd /docker; sudo git clone git@github.com:user/repo.git
 		cd /docker/home; sudo docker-compose up -d
 
 
