@@ -12,7 +12,7 @@ cd "$(readlink -f "$(dirname "${BASH_SOURCE}")")"/..
 BUILD_DATE=$( date --iso-8601=seconds --utc )
 BASE="fhem/fhem-${LABEL}"
 BASE_IMAGE="debian"
-BASE_IMAGE_TAG="stretch"
+BASE_IMAGE_TAG="buster"
 
 # Download dependencies if not existing
 if [ ! -d ./src/fhem ]; then
