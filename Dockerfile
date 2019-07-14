@@ -374,7 +374,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
             python3-pychromecast \
             speedtest-cli \
             youtube-dl \
-           && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+           && ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli \
         ; fi \
       && rm -rf /root/.cpanm \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
