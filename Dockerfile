@@ -249,7 +249,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libconvert-base32-perl \
           libcpan-meta-yaml-perl \
           libcrypt-*-perl \
-          libcrypt-rijndael-perl \
           libcryptx-perl \
           libdata-dump-perl \
           libdatetime-format-strptime-perl \
