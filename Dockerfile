@@ -141,6 +141,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         lsb-release \
         mariadb-client \
         netcat \
+        net-tools \
         openssh-client \
         sendemail \
         sqlite3 \
