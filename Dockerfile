@@ -53,42 +53,42 @@ ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is u
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors=${L_AUTHORS}
-LABEL org.opencontainers.image.url=${L_URL}
-LABEL org.opencontainers.image.documentation=${L_USAGE}
-LABEL org.opencontainers.image.source=${L_VCS_URL}
-LABEL org.opencontainers.image.version=${IMAGE_VERSION}
-LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
-LABEL org.opencontainers.image.vendor=${L_VENDOR}
-LABEL org.opencontainers.image.licenses=${L_LICENSES}
-LABEL org.opencontainers.image.title=${L_TITLE}
-LABEL org.opencontainers.image.description=${L_DESCR}
+LABEL org.opencontainers.image.created=${BUILD_DATE} \
+   org.opencontainers.image.authors=${L_AUTHORS} \
+   org.opencontainers.image.url=${L_URL} \
+   org.opencontainers.image.documentation=${L_USAGE} \
+   org.opencontainers.image.source=${L_VCS_URL} \
+   org.opencontainers.image.version=${IMAGE_VERSION} \
+   org.opencontainers.image.revision=${IMAGE_VCS_REF} \
+   org.opencontainers.image.vendor=${L_VENDOR} \
+   org.opencontainers.image.licenses=${L_LICENSES} \
+   org.opencontainers.image.title=${L_TITLE} \
+   org.opencontainers.image.description=${L_DESCR}
 
 # non-standard labels
-LABEL org.fhem.authors=${L_AUTHORS_FHEM}
-LABEL org.fhem.url=${L_URL_FHEM}
-LABEL org.fhem.documentation=${L_USAGE_FHEM}
-LABEL org.fhem.source=${L_VCS_URL_FHEM}
-LABEL org.fhem.version=${FHEM_VERSION}
-LABEL org.fhem.revision=${VCS_REF}
-LABEL org.fhem.vendor=${L_VENDOR_FHEM}
-LABEL org.fhem.licenses=${L_LICENSES_FHEM}
-LABEL org.fhem.description=${L_DESCR_FHEM}
+LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
+   org.fhem.url=${L_URL_FHEM} \
+   org.fhem.documentation=${L_USAGE_FHEM} \
+   org.fhem.source=${L_VCS_URL_FHEM} \
+   org.fhem.version=${FHEM_VERSION} \
+   org.fhem.revision=${VCS_REF} \
+   org.fhem.vendor=${L_VENDOR_FHEM} \
+   org.fhem.licenses=${L_LICENSES_FHEM} \
+   org.fhem.description=${L_DESCR_FHEM}
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ADDRESS de_DE.UTF-8
-ENV LC_MEASUREMENT de_DE.UTF-8
-ENV LC_MESSAGES en_DK.UTF-8
-ENV LC_MONETARY de_DE.UTF-8
-ENV LC_NAME de_DE.UTF-8
-ENV LC_NUMERIC de_DE.UTF-8
-ENV LC_PAPER de_DE.UTF-8
-ENV LC_TELEPHONE de_DE.UTF-8
-ENV LC_TIME de_DE.UTF-8
-ENV TERM xterm
-ENV TZ Europe/Berlin
+ENV LANG en_US.UTF-8 \
+   LANGUAGE en_US:en \
+   LC_ADDRESS de_DE.UTF-8 \
+   LC_MEASUREMENT de_DE.UTF-8 \
+   LC_MESSAGES en_DK.UTF-8 \
+   LC_MONETARY de_DE.UTF-8 \
+   LC_NAME de_DE.UTF-8 \
+   LC_NUMERIC de_DE.UTF-8 \
+   LC_PAPER de_DE.UTF-8 \
+   LC_TELEPHONE de_DE.UTF-8 \
+   LC_TIME de_DE.UTF-8 \
+   TERM xterm \
+   TZ Europe/Berlin
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
