@@ -1,5 +1,5 @@
 ARG BASE_IMAGE="debian"
-ARG BASE_IMAGE_TAG="stretch"
+ARG BASE_IMAGE_TAG="buster"
 FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
 
 # Arguments to instantiate as variables
@@ -41,7 +41,7 @@ ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${ARCH}_${PLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Stretch."
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
@@ -53,42 +53,42 @@ ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is u
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors=${L_AUTHORS}
-LABEL org.opencontainers.image.url=${L_URL}
-LABEL org.opencontainers.image.documentation=${L_USAGE}
-LABEL org.opencontainers.image.source=${L_VCS_URL}
-LABEL org.opencontainers.image.version=${IMAGE_VERSION}
-LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
-LABEL org.opencontainers.image.vendor=${L_VENDOR}
-LABEL org.opencontainers.image.licenses=${L_LICENSES}
-LABEL org.opencontainers.image.title=${L_TITLE}
-LABEL org.opencontainers.image.description=${L_DESCR}
+LABEL org.opencontainers.image.created=${BUILD_DATE} \
+   org.opencontainers.image.authors=${L_AUTHORS} \
+   org.opencontainers.image.url=${L_URL} \
+   org.opencontainers.image.documentation=${L_USAGE} \
+   org.opencontainers.image.source=${L_VCS_URL} \
+   org.opencontainers.image.version=${IMAGE_VERSION} \
+   org.opencontainers.image.revision=${IMAGE_VCS_REF} \
+   org.opencontainers.image.vendor=${L_VENDOR} \
+   org.opencontainers.image.licenses=${L_LICENSES} \
+   org.opencontainers.image.title=${L_TITLE} \
+   org.opencontainers.image.description=${L_DESCR}
 
 # non-standard labels
-LABEL org.fhem.authors=${L_AUTHORS_FHEM}
-LABEL org.fhem.url=${L_URL_FHEM}
-LABEL org.fhem.documentation=${L_USAGE_FHEM}
-LABEL org.fhem.source=${L_VCS_URL_FHEM}
-LABEL org.fhem.version=${FHEM_VERSION}
-LABEL org.fhem.revision=${VCS_REF}
-LABEL org.fhem.vendor=${L_VENDOR_FHEM}
-LABEL org.fhem.licenses=${L_LICENSES_FHEM}
-LABEL org.fhem.description=${L_DESCR_FHEM}
+LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
+   org.fhem.url=${L_URL_FHEM} \
+   org.fhem.documentation=${L_USAGE_FHEM} \
+   org.fhem.source=${L_VCS_URL_FHEM} \
+   org.fhem.version=${FHEM_VERSION} \
+   org.fhem.revision=${VCS_REF} \
+   org.fhem.vendor=${L_VENDOR_FHEM} \
+   org.fhem.licenses=${L_LICENSES_FHEM} \
+   org.fhem.description=${L_DESCR_FHEM}
 
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ADDRESS de_DE.UTF-8
-ENV LC_MEASUREMENT de_DE.UTF-8
-ENV LC_MESSAGES en_DK.UTF-8
-ENV LC_MONETARY de_DE.UTF-8
-ENV LC_NAME de_DE.UTF-8
-ENV LC_NUMERIC de_DE.UTF-8
-ENV LC_PAPER de_DE.UTF-8
-ENV LC_TELEPHONE de_DE.UTF-8
-ENV LC_TIME de_DE.UTF-8
-ENV TERM xterm
-ENV TZ Europe/Berlin
+ENV LANG=en_US.UTF-8 \
+   LANGUAGE=en_US:en \
+   LC_ADDRESS=de_DE.UTF-8 \
+   LC_MEASUREMENT=de_DE.UTF-8 \
+   LC_MESSAGES=en_DK.UTF-8 \
+   LC_MONETARY=de_DE.UTF-8 \
+   LC_NAME=de_DE.UTF-8 \
+   LC_NUMERIC=de_DE.UTF-8 \
+   LC_PAPER=de_DE.UTF-8 \
+   LC_TELEPHONE=de_DE.UTF-8 \
+   LC_TIME=de_DE.UTF-8 \
+   TERM=xterm \
+   TZ=Europe/Berlin
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
@@ -99,30 +99,31 @@ COPY src/find-* /usr/local/bin/
 COPY src/99_DockerImageInfo.pm /fhem/FHEM/
 RUN chmod 755 /*.sh /usr/local/bin/* \
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
-    && sed -i "s/stretch main/stretch main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/stretch-updates main/stretch-updates main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/stretch\/updates main/stretch\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-transport-https \
         apt-utils \
         ca-certificates \
         gnupg \
         locales \
-    && DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
+    && LC_ALL=C c_rehash \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get -qqy --no-install-recommends upgrade \
     \
-    && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
     && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
-    && locale-gen \
+    && LC_ALL=C locale-gen \
     \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
-    && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
     && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
     && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-    && DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
         avahi-daemon \
         avrdude \
@@ -130,6 +131,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         curl \
         dnsutils \
         etherwake \
+        fonts-liberation \
         git-core \
         i2c-tools \
         inetutils-ping \
@@ -145,18 +147,17 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         subversion \
         sudo \
         telnet \
-        ttf-liberation \
         unzip \
         usbutils \
         wget \
         ${APT_PKGS} \
-    && apt-get autoremove -qqy && apt-get clean \
+    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add extended system layer
 RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           alsa-utils \
           dfu-programmer \
           ffmpeg \
@@ -173,13 +174,13 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
           snmp-mibs-downloader \
           sox \
           vorbis-tools \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Perl basic app layer for pre-compiled packages
-RUN DEBIAN_FRONTEND=noninteractive apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         perl-base \
         libarchive-extract-perl \
         libarchive-zip-perl \
@@ -213,6 +214,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libmime-lite-perl \
         libnet-server-perl \
         libsocket6-perl \
+        libterm-readline-perl-perl \
         libtext-csv-perl \
         libtext-diff-perl \
         libtext-iconv-perl \
@@ -230,13 +232,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
         libxml-xpathengine-perl \
         libyaml-libyaml-perl \
         libyaml-perl \
-    && apt-get autoremove -qqy && apt-get clean \
+    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl extended app layer for pre-compiled packages
 RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           perl \
           libalgorithm-merge-perl \
           libauthen-*-perl \
@@ -247,6 +249,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libconvert-base32-perl \
           libcpan-meta-yaml-perl \
           libcrypt-*-perl \
+          libcryptx-perl \
           libdata-dump-perl \
           libdatetime-format-strptime-perl \
           libdatetime-perl \
@@ -297,14 +300,14 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
           libtime-period-perl \
           libtypes-path-tiny-perl \
           liburi-escape-xs-perl \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add development/compilation layer
 RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
           autoconf \
           automake \
           build-essential \
@@ -315,7 +318,7 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
           libtool \
           libusb-1.0-0-dev \
           patch \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
@@ -333,16 +336,13 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
            ${CPAN_PKGS} \
          ; fi \
       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
-          cpanm --notest \
-           Crypt::Rijndael_PP \
-         && if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
+           if [ "${ARCH}" = "amd64" ] || [ "${ARCH}" = "i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
               Alien::Sodium \
               Crypt::Argon2 \
               Crypt::NaCl::Sodium \
               Crypt::OpenSSL::AES \
-              CryptX \
               Device::SMBus \
               Net::MQTT::Constants \
               Net::MQTT::Simple \
@@ -350,51 +350,45 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add Python app layer
 RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      DEBIAN_FRONTEND=noninteractive apt-get update \
-      && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          libinline-python-perl \
           python3 \
           python3-dev \
           python3-pip \
-      && INLINE_PYTHON_EXECUTABLE=/usr/bin/python3 cpanm --notest \
-          Inline::Python \
-      && pip3 install --upgrade \
-          pip \
-      && cp -fv /usr/local/bin/pip3 /usr/bin/pip3 \
-      && pip3 install --upgrade \
-          setuptools \
-          wheel \
-          ${PIP_PKGS} \
-      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+          python3-setuptools \
+          python3-wheel \
+      && if [ "${PIP_PKGS}" != "" ]; then \
            pip3 install \
-            pychromecast \
+            ${PIP_PKGS} \
+         ; fi \
+      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+            python3-pychromecast \
             speedtest-cli \
             youtube-dl \
-          && if [ "${ARCH}" = "arm32v5" ] || [ "${ARCH}" = "arm32v7" ] || [ "${ARCH}" = "arm64v8" ]; then \
-               pip3 install \
-                rpi.gpio \
-             ; fi \
-          && mkdir -p /usr/local/speedtest-cli && ln -s ../bin/speedtest-cli /usr/local/speedtest-cli/speedtest-cli \
+           && ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli \
         ; fi \
       && rm -rf /root/.cpanm \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      if [ "${ARCH}" = "i386" ]; then \
-          curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_8.x | bash - \
-        ; else \
-          curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | bash - \
-        ; fi \
-       && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | LC_ALL=C bash - \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
+      && if [ ! -e /usr/bin/npm ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+             npm \
+      ; fi \
       && npm install -g --unsafe-perm --production \
           npm \
       && if [ "${NPM_PKGS}" != "" ]; then \
@@ -410,7 +404,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
             homebridge-fhem \
             tradfri-fhem \
         ; fi \
-      && apt-get autoremove -qqy && apt-get clean \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
