@@ -76,19 +76,19 @@ LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
    org.fhem.licenses=${L_LICENSES_FHEM} \
    org.fhem.description=${L_DESCR_FHEM}
 
-ENV LANG en_US.UTF-8 \
-   LANGUAGE en_US:en \
-   LC_ADDRESS de_DE.UTF-8 \
-   LC_MEASUREMENT de_DE.UTF-8 \
-   LC_MESSAGES en_DK.UTF-8 \
-   LC_MONETARY de_DE.UTF-8 \
-   LC_NAME de_DE.UTF-8 \
-   LC_NUMERIC de_DE.UTF-8 \
-   LC_PAPER de_DE.UTF-8 \
-   LC_TELEPHONE de_DE.UTF-8 \
-   LC_TIME de_DE.UTF-8 \
-   TERM xterm \
-   TZ Europe/Berlin
+ENV LANG=en_US.UTF-8 \
+   LANGUAGE=en_US:en \
+   LC_ADDRESS=de_DE.UTF-8 \
+   LC_MEASUREMENT=de_DE.UTF-8 \
+   LC_MESSAGES=en_DK.UTF-8 \
+   LC_MONETARY=de_DE.UTF-8 \
+   LC_NAME=de_DE.UTF-8 \
+   LC_NUMERIC=de_DE.UTF-8 \
+   LC_PAPER=de_DE.UTF-8 \
+   LC_TELEPHONE=de_DE.UTF-8 \
+   LC_TIME=de_DE.UTF-8 \
+   TERM=xterm \
+   TZ=Europe/Berlin
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
