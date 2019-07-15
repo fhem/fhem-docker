@@ -143,6 +143,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         netcat \
         net-tools \
         openssh-client \
+        procps \
         sendemail \
         sqlite3 \
         subversion \
