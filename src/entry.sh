@@ -65,9 +65,16 @@ if [ -d "/fhem" ]; then
   [ -s "${FHEM_DIR}/fhem.pl" ] && FHEM_CLEANINSTALL=0
 
   if [ -s /pre-init.sh ]; then
-    echo "$i. Running pre-init script"
+    echo "$i. Running /pre-init.sh script"
     chmod 755 /pre-init.sh
-    /pre-init.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-init.sh
+    (( i++ ))
+  fi
+
+  if [ -d /docker ] && [ -s /docker/pre-init.sh ]; then
+    echo "$i. Running /docker/pre-init.sh script"
+    chmod 755 /docker/pre-init.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-init.sh
     (( i++ ))
   fi
 
@@ -83,10 +90,10 @@ if [ -d "/fhem" ]; then
   if [ "${CPAN_PKGS}" != '' ]; then
     if [ ! -e /usr/bin/cpanm ] && [ ! -e /usr/local/bin/cpanm ]; then
       echo "$i. Installing cpanminus ..."
-      DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.apt 2>&1
+      DEBIAN_FRONTEND=noninteractive apt-get update >>/pkgs.cpanm 2>&1
       DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         cpanminus \
-      >>/pkgs.apt 2>&1
+      >>/pkgs.cpanm 2>&1
       (( i++ ))
     fi
 
@@ -207,9 +214,16 @@ if [ -d "/fhem" ]; then
   rm -rf /fhem/
 
   if [ -s /post-init.sh ]; then
-    echo "$i. Running post-init script"
+    echo "$i. Running /post-init.sh script"
     chmod 755 /post-init.sh
-    /post-init.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-init.sh
+    (( i++ ))
+  fi
+
+  if [ -d /docker ] && [ -s /docker/post-init.sh ]; then
+    echo "$i. Running /docker/post-init.sh script"
+    chmod 755 /docker/post-init.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-init.sh
     (( i++ ))
   fi
 
@@ -452,9 +466,16 @@ function StartFHEM {
   echo -e '\n\n'
 
   if [ -s /pre-start.sh ]; then
-    echo "Running pre-start script ..."
+    echo "Running /pre-start.sh script ..."
     chmod 755 /pre-start.sh
-    LC_ALL=C /pre-start.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-start.sh
+  fi
+
+  if [ -d /docker ] && [ -s /docker/pre-start.sh ]; then
+    echo "$i. Running /docker/pre-start.sh script"
+    chmod 755 /docker/pre-start.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-start.sh
+    (( i++ ))
   fi
 
   # Update system environment
@@ -548,9 +569,16 @@ function StartFHEM {
   done
 
   if [ -s /post-start.sh ]; then
-    echo "Running post-start script ..."
+    echo "Running /post-start.sh script ..."
     chmod 755 /post-start.sh
-    LC_ALL=C /post-start.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-start.sh
+  fi
+
+  if [ -d /docker ] && [ -s /docker/post-start.sh ]; then
+    echo "$i. Running /docker/post-start.sh script"
+    chmod 755 /docker/post-start.sh
+    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
+    (( i++ ))
   fi
 
   PrintNewLines
