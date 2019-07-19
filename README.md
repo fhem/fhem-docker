@@ -86,21 +86,31 @@ You may define several different types of packages to be installed automatically
 		-e NPM_PKGS="package1 package2"
 
 
-#### Connect to Docker host from within container
-If you would like to connect to a service that is running on your Docker host itself, you may use the following DNS alias names that are automatically being added to /etc/hosts during container bootup:
+### Make any other changes during container start
+In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place.
 
-* gateway.docker.internal
-* host.docker.internal
+If something needs to be done only once during the first start of a fresh container you just created, like after upgrading to a new version of the FHEM Docker Image, the `*-init.sh` scripts are the right place:
 
-That is, if you did not configure those in your local DNS, of course.
-In case the container is running in host network mode, the host IP address will be set to 127.0.127.2 as an alias for 'localhost'. The gateway will then reflect your actual network segment gateway IP address.
+* `/pre-init.sh`, `/docker/pre-init.sh`
 
-Also, for host.docker.internal, the SSH host key will automatically be added and updated in `/opt/fhem/.ssh/known_hosts` so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSH client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM. You may copy & paste those to the destination host into the respective destination user home directory with filename `~/.ssh/authorized_keys`.
+	This script will be run at the very beginning of the initialization of the new container, even before any custom packages will be installed.
 
-If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` below).
+* `/post-init.sh`, `/docker/post-init.sh`
+
+	This script will be run at the very end of the initialization of the new container, also after your local FHEM configuration was checked and adjusted for compatibility with the container. Custom packages you defined using the environment variables mentioned above will be installed already at this point in time. This is likely the best place for you to do any final changes to the environment that need to be done only once for the lifetime of that container.
+
+If something needs to be done every time you (re)start your container, the `*-start.sh` scripts are the right place:
+
+* `/pre-start.sh`, `/docker/pre-start.sh`
+
+	This script will be run every time the container starts, even before the FHEM Docker Image's own startup preparations. FHEM will not yet be running at this point in time.
+
+* `/post-start.sh`, `/docker/post-start.sh`
+
+	This script will be run every time the container starts and after the FHEM process was already started.
 
 
-#### Map USB devices to your container
+### Map USB devices to your container
 1. Find out the USB device path/address from your Docker host machine first:
 
 		lsusb -v | grep -E '\<(Bus|iProduct|bDeviceClass|bDeviceProtocol)' 2>/dev/null
@@ -110,7 +120,7 @@ If for some reason the host details are not detected correctly, you may overwrit
 		--device=/dev/bus/usb/001/002
 
 
-#### Tweak container settings using environment variables
+### Tweak container settings using environment variables
 
 * Change FHEM logfile format:
 	To set a different logfile path and format (default is ./log/fhem-%Y-%m.log):
@@ -193,7 +203,7 @@ If for some reason the host details are not detected correctly, you may overwrit
     	-e DOCKER_HOST=172.17.0.1
 
 	If this variable is not present, host IP will automatically be detected based on the subnet network gateway (also see variable `DOCKER_GW` below).
-	In case the container is running in network host mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
+	In case the container is running in network host network mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
 	host.docker.internal will also be evaluated automatically for SSH connection on port 22 by adding the servers public key to `/opt/fhem/.ssh/known_hosts` so that unattended connectivity for scripts is available.
 
 * Set Docker gateway IPv4 address for gateway.docker.internal:
@@ -204,6 +214,24 @@ If for some reason the host details are not detected correctly, you may overwrit
 
 * Manipulating software in the container using their own environment variables:
 	For security reasons, only allowed environment variables are passed to the FHEM user environment. To control certain behaviours of Perl, Node.js and Python, those language interpreters come with their own environment variables. Any variable that was set for the container and with a prefix of either PERL, NODE or PYTHON is exported to the FHEM user environment so it is available there during runtime of the fhem.pl main process and subsequently all its child processes.
+
+
+## Further tweaks for your FHEM configuration
+
+### Connect to Docker host from within container
+If you would like to connect to a service that is running on your Docker host itself or to a container that is running in host network mode, you may use the following DNS alias names that are automatically being added to /etc/hosts during container bootup:
+
+* gateway.docker.internal
+* host.docker.internal
+
+That is, if you did not configure those in your local DNS, of course.
+
+In case the container is running in host network mode, the host IP address will be set to 127.0.127.2 as an alias for 'localhost'. That means a service you would like to reach needs to listen on the loopback interface as well. If a service you would like to reach is only listening on a particular IP address or interface instead, you need to set the environment variable `DOCKER_HOST` to the respective IP address as there is no way for the FHEM Docker Image to automatically detect what you need.
+When running in host network mode, the gateway will reflect your actual network segment gateway IP address.
+
+Also, for host.docker.internal, the SSH host key will automatically be added and updated in `/opt/fhem/.ssh/known_hosts` so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSH client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM. You may copy & paste those to the destination host into the respective destination user home directory with filename `~/.ssh/authorized_keys`.
+
+If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` below).
 
 
 ## Adding Git for version control of your Home Automation Docker containers
