@@ -40,6 +40,8 @@ If you do not specify any variant, `latest` will always be the default.
 `latest` will give you the current stable Docker image, including up-to-date FHEM.
 `dev` will give you the latest development Docker image, including up-to-date FHEM.
 
+Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
+
 
 ### Supported platforms
 This is a multi-platform image, providing support for the following platforms:
