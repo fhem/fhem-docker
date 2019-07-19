@@ -575,10 +575,9 @@ function StartFHEM {
   fi
 
   if [ -d /docker ] && [ -s /docker/post-start.sh ]; then
-    echo "$i. Running /docker/post-start.sh script"
+    echo "Running /docker/post-start.sh script"
     chmod 755 /docker/post-start.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
-    (( i++ ))
   fi
 
   PrintNewLines
