@@ -1,3 +1,4 @@
+
 # Basic Docker image for FHEM
 A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Buster.
 
@@ -16,11 +17,12 @@ Usually you want to keep your FHEM setup after a container was destroyed (or re-
 
     docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
 
+You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants:
 
 	http://xxx.xxx.xxx.xxx:8083/
 
-You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information.
+You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information about how to use and configure FHEM.
 
 
 ### Image flavors
@@ -87,7 +89,7 @@ You may define several different types of packages to be installed automatically
 
 
 ### Make any other changes during container start
-In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place.
+In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place. In order to achieve this, you need to mount the script file itself or a complete folder that contains that script to the respective destination inside your container. See Docker documentation about [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/) to learn how to achieve this in general.
 
 If something needs to be done only once during the first start of a fresh container you just created, like after upgrading to a new version of the FHEM Docker Image, the `*-init.sh` scripts are the right place:
 
