@@ -188,9 +188,12 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         libarchive-zip-perl \
         libcgi-pm-perl \
         libcpanel-json-xs-perl \
+        libdbd-mariadb-perl \
         libdbd-mysql \
         libdbd-mysql-perl \
         libdbd-pg-perl \
+        libdbd-pgsql \
+        libdbd-sqlite3 \
         libdbd-sqlite3-perl \
         libdbi-perl \
         libdevice-serialport-perl \
