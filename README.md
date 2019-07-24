@@ -1,3 +1,4 @@
+
 # Basic Docker image for FHEM
 A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Buster.
 
@@ -16,11 +17,12 @@ Usually you want to keep your FHEM setup after a container was destroyed (or re-
 
     docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
 
+You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants:
 
 	http://xxx.xxx.xxx.xxx:8083/
 
-You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information.
+You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information about how to use and configure FHEM.
 
 
 ### Image flavors
@@ -37,6 +39,8 @@ If you do not specify any variant, `latest` will always be the default.
 
 `latest` will give you the current stable Docker image, including up-to-date FHEM.
 `dev` will give you the latest development Docker image, including up-to-date FHEM.
+
+Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
 
 ### Supported platforms
@@ -65,6 +69,13 @@ The platform repositories will also allow you to choose more specific build tags
 
 ## Customize your container configuration
 
+### Performance implications
+
+The FHEM log file is mirrored to the Docker console output in order to give input for any Docker related tools. However, if the log file becomes too big, this will lead to some performance implications.
+For that reason, the default value of the global attribute `logfile` is different from the FHEM default configuration and set to a daily file (`attr global logfile ./log/fhem-%Y-%m-%d.log`).
+
+It is highly recommended to keep this setting. Please note that FileLog devices are not adjusted automatically so you may want to update any FileLog devices you might have to watch the log file from within FHEM.
+
 ### Add custom packages
 
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
@@ -87,7 +98,7 @@ You may define several different types of packages to be installed automatically
 
 
 ### Make any other changes during container start
-In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place.
+In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place. In order to achieve this, you need to mount the script file itself or a complete folder that contains that script to the respective destination inside your container. See Docker documentation about [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/) to learn how to achieve this in general.
 
 If something needs to be done only once during the first start of a fresh container you just created, like after upgrading to a new version of the FHEM Docker Image, the `*-init.sh` scripts are the right place:
 
@@ -123,9 +134,9 @@ If something needs to be done every time you (re)start your container, the `*-st
 ### Tweak container settings using environment variables
 
 * Change FHEM logfile format:
-	To set a different logfile path and format (default is ./log/fhem-%Y-%m.log):
+	To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
 
-		-e LOGFILE=./log/fhem-%Y-%m.log
+		-e LOGFILE=./log/fhem-%Y-%m-%d.log
 
 * Change FHEM local Telnet port for health check and container restart handling:
 	To set a different Telnet port for local connection during health check and container restart (default is 7072):
@@ -231,7 +242,7 @@ When running in host network mode, the gateway will reflect your actual network 
 
 Also, for host.docker.internal, the SSH host key will automatically be added and updated in `/opt/fhem/.ssh/known_hosts` so that FHEM modules and other scripts can automatically connect without any further configuration effort. Note that the SSH client keys that FHEM will use to authenticate itself are shown as readings in the DockerImageInfo device in FHEM. You may copy & paste those to the destination host into the respective destination user home directory with filename `~/.ssh/authorized_keys`.
 
-If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` below).
+If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` above).
 
 
 ## Adding Git for version control of your Home Automation Docker containers
@@ -257,7 +268,7 @@ Follow initial setup steps:
 
 	All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
 	You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
-	Note that if you are using configDB already, you need to ensure Docker compatibility before starting the container for the very first time (see `DOCKER_*` environment variables below).
+	Note that if you are using configDB already, you need to ensure Docker compatibility before starting the container for the very first time (see `DOCKER_*` environment variables above).
 
 3. Create a local Git repository and add all files as an initial commit:
 

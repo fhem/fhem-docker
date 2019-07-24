@@ -38,7 +38,7 @@ ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
 ARG L_URL="https://hub.docker.com/r/fhem/fhem-${ARCH}_${PLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
-ARG L_VENDOR="FHEM"
+ARG L_VENDOR="Julian Pawlowski"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${ARCH}_${PLATFORM}"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
@@ -47,7 +47,7 @@ ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
 ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
 ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
-ARG L_VENDOR_FHEM="FHEM"
+ARG L_VENDOR_FHEM="FHEM e.V."
 ARG L_LICENSES_FHEM="GPL-2.0"
 ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
 
@@ -88,7 +88,8 @@ ENV LANG=en_US.UTF-8 \
    LC_TELEPHONE=de_DE.UTF-8 \
    LC_TIME=de_DE.UTF-8 \
    TERM=xterm \
-   TZ=Europe/Berlin
+   TZ=Europe/Berlin \
+   LOGFILE=./log/fhem-%Y-%m-%d.log
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
@@ -188,9 +189,12 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         libarchive-zip-perl \
         libcgi-pm-perl \
         libcpanel-json-xs-perl \
+        libdbd-mariadb-perl \
         libdbd-mysql \
         libdbd-mysql-perl \
         libdbd-pg-perl \
+        libdbd-pgsql \
+        libdbd-sqlite3 \
         libdbd-sqlite3-perl \
         libdbi-perl \
         libdevice-serialport-perl \
