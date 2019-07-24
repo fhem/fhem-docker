@@ -5,8 +5,8 @@ CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 TELNETPORT="${TELNETPORT:-7072}"
 STATE=0
 
-if [ "${CONFIGTYPE}" != "configDB" ] && [ -s ${FHEM_DIR}/${CONFIGTYPE} ] && [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .+ telnet ${TELNETPORT}")" ]; then
-  TELNETPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ telnet ' | head -1 | cut -d ' ' -f 4)"
+if [ "${CONFIGTYPE}" != "configDB" ] && [ -s ${FHEM_DIR}/${CONFIGTYPE} ] && [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
+  TELNETPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .* telnet ' | head -1 | cut -d ' ' -f 4)"
 
   if [ -z "${TELNETPORT}"]; then
     echo "Telnet(undefined): FAILED;"

@@ -495,15 +495,15 @@ function StartFHEM {
     if [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
 
       ## Find Telnet access details
-      if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .+ telnet ${TELNETPORT}")" ]; then
-        CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ telnet ' | head -1 | cut -d ' ' -f 4)"
+      if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
+        CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .* telnet ' | head -1 | cut -d ' ' -f 4)"
         if [ -z "${CUSTOMPORT}"]; then
           echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
         else
           TELNETPORT=${CUSTOMPORT}
         fi
       fi
-      TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .+ telnet ${TELNETPORT}" | head -1 | cut -d " " -f 2)"
+      TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}" | head -1 | cut -d " " -f 2)"
       TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr .* validFor .*${TELNETDEV}.*" | head -1 | cut -d " " -f 2)"
 
       ## Enforce local telnet access w/o password
@@ -518,6 +518,7 @@ function StartFHEM {
       fi
 
       # Optional
+      sed -i "s,define \(.*\) FileLog \(./log/fhem-\S*\) fakelog$,define \1 FileLog ${LOGFILE%/*} fakelog," ${FHEM_DIR}/${CONFIGTYPE}
       sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
     fi
 
