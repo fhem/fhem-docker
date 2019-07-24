@@ -518,7 +518,8 @@ function StartFHEM {
       fi
 
       # Optional
-      sed -i "s,define \(.*\) FileLog \(./log/fhem-\S*\) fakelog$,define \1 FileLog ${LOGFILE%/*} fakelog," ${FHEM_DIR}/${CONFIGTYPE}
+      sed -i "s,define \(.*\) FileLog \(./log/fhem-\S*\) fakelog$,define \1 FileLog ${LOGFILE#${FHEM_DIR}/} fakelog," ${FHEM_DIR}/${CONFIGTYPE}
+      sed -i "s,attr global logfile.*,attr global logfile ${LOGFILE#${FHEM_DIR}/}," ${FHEM_DIR}/${CONFIGTYPE}
       sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
     fi
 
