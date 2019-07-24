@@ -206,7 +206,7 @@ if [ -d "/fhem" ]; then
     cd - 2>&1>/dev/null
   else
     echo "$i. Updating existing FHEM installation in ${FHEM_DIR}"
-    cp -f ${FHEM_DIR}/fhem.cfg ${FHEM_DIR}/fhem.cfg.bak
+    [ -s ${FHEM_DIR}/${CONFIGTYPE} ] && cp -f ${FHEM_DIR}/${CONFIGTYPE} ${FHEM_DIR}/${CONFIGTYPE}.bak
     cp -f /fhem/FHEM/99_DockerImageInfo.pm ${FHEM_DIR}/FHEM/
   fi
   (( i++ ))
@@ -488,31 +488,34 @@ function StartFHEM {
     echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !'
   else
 
-    ## Find Telnet access details
-    if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
-      CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define telnetPort telnet ' | cut -d ' ' -f 4)"
-      if [ -z "${CUSTOMPORT}"]; then
-        echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
-      else
-        TELNETPORT=${CUSTOMPORT}
-      fi
-    fi
-    TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}" | cut -d " " -f 2)"
-    TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr .* validFor .*${TELNETDEV}.*" | cut -d " " -f 2)"
+    if [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
 
-    ## Enforce local telnet access w/o password
-    if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
-      if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
-        echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
-        sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/${CONFIGTYPE}
-      else
-        echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
-        sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/${CONFIGTYPE}
+      ## Find Telnet access details
+      if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .+ telnet ${TELNETPORT}")" ]; then
+        CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .+ telnet ' | head -1 | cut -d ' ' -f 4)"
+        if [ -z "${CUSTOMPORT}"]; then
+          echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
+        else
+          TELNETPORT=${CUSTOMPORT}
+        fi
       fi
-    fi
+      TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .+ telnet ${TELNETPORT}" | head -1 | cut -d " " -f 2)"
+      TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr .* validFor .*${TELNETDEV}.*" | head -1 | cut -d " " -f 2)"
 
-    # Optional
-    sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
+      ## Enforce local telnet access w/o password
+      if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
+        if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
+          echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
+          sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/${CONFIGTYPE}
+        else
+          echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
+          sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/${CONFIGTYPE}
+        fi
+      fi
+
+      # Optional
+      sed -i "s,attr global dnsServer.*,attr global dnsServer ${DNS}," ${FHEM_DIR}/${CONFIGTYPE}
+    fi
 
     echo " done"
   fi
@@ -522,7 +525,7 @@ function StartFHEM {
   [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
 
   FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
-  PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
+  export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
   export FHEM_GLOBALATTR="${FHEM_GLOBALATTR:-${FHEM_GLOBALATTR_DEF}}"
 
   # Set default language settings, based on https://wiki.debian.org/Locale
