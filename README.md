@@ -74,7 +74,7 @@ The platform repositories will also allow you to choose more specific build tags
 The FHEM log file is mirrored to the Docker console output in order to give input for any Docker related tools. However, if the log file becomes too big, this will lead to some performance implications.
 For that reason, the default value of the global attribute `logfile` is different from the FHEM default configuration and set to a daily file (`attr global logfile ./log/fhem-%Y-%m-%d.log`).
 
-It is highly recommended to keep this setting. Please note that FileLog devices are not adjusted automatically so you may want to update any FileLog devices you might have to watch the log file from within FHEM.
+It is highly recommended to keep this setting. Please note that FileLog devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
 ### Add custom packages
 
