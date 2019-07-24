@@ -69,6 +69,13 @@ The platform repositories will also allow you to choose more specific build tags
 
 ## Customize your container configuration
 
+### Performance implications
+
+The FHEM log file is mirrored to the Docker console output in order to give input for any Docker related tools. However, if the log file becomes too big, this will lead to some performance implications.
+For that reason, the default value of the global attribute `logfile` is different from the FHEM default configuration and set to a daily file (`attr global logfile ./log/fhem-%Y-%m-%d.log`).
+
+It is highly recommended to keep this setting. Please note that FileLog devices are not adjusted automatically so you may want to update any FileLog devices you might have to watch the log file from within FHEM.
+
 ### Add custom packages
 
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
@@ -127,9 +134,9 @@ If something needs to be done every time you (re)start your container, the `*-st
 ### Tweak container settings using environment variables
 
 * Change FHEM logfile format:
-	To set a different logfile path and format (default is ./log/fhem-%Y-%m.log):
+	To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
 
-		-e LOGFILE=./log/fhem-%Y-%m.log
+		-e LOGFILE=./log/fhem-%Y-%m-%d.log
 
 * Change FHEM local Telnet port for health check and container restart handling:
 	To set a different Telnet port for local connection during health check and container restart (default is 7072):

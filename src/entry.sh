@@ -237,12 +237,12 @@ fi
 # determine global logfile
 if [ -z "${LOGFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
-    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m-%d.log"
   elif [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
     GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
-    LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+    LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m-%d.log}"
   else
-    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
+    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m-%d.log"
   fi
 else
   LOGFILE="${FHEM_DIR}/${LOGFILE}"

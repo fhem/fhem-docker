@@ -88,7 +88,8 @@ ENV LANG=en_US.UTF-8 \
    LC_TELEPHONE=de_DE.UTF-8 \
    LC_TIME=de_DE.UTF-8 \
    TERM=xterm \
-   TZ=Europe/Berlin
+   TZ=Europe/Berlin \
+   LOGFILE: ./log/fhem-%Y-%m-%d.log
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/
