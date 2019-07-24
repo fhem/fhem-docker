@@ -238,9 +238,11 @@ fi
 if [ -z "${LOGFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
     LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
-  else
+  elif [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
     GLOGFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global logfile' | cut -d ' ' -f 4)
     LOGFILE="${FHEM_DIR}/${GLOGFILE:-./log/fhem-%Y-%m.log}"
+  else
+    LOGFILE="${FHEM_DIR}/./log/fhem-%Y-%m.log"
   fi
 else
   LOGFILE="${FHEM_DIR}/${LOGFILE}"
@@ -250,9 +252,11 @@ fi
 if [ -z "${PIDFILE}" ]; then
   if [ "${CONFIGTYPE}" == "configDB" ]; then
     PIDFILE="${FHEM_DIR}/./log/fhem.pid"
-  else
+  elif [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
     GPIDFILE=$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^attr global pidfilename' | cut -d ' ' -f 4)
     PIDFILE="${FHEM_DIR}/${GPIDFILE:-./log/fhem.pid}"
+  else
+    PIDFILE="${FHEM_DIR}/./log/fhem.pid"
   fi
 else
   PIDFILE="${FHEM_DIR}/${PIDFILE}"
