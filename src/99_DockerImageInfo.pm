@@ -11,7 +11,7 @@ sub DockerImageInfo_Initialize($) {
     $hash->{AttrList} = $readingFnAttributes;
 
     # add userattr to FHEMWEB devices to control healthcheck
-    foreach devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1") {
+    foreach (devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1")) {
         addToDevAttrList( $_, 'DockerHealthCheck:1,0' );
     }
 
