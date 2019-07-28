@@ -361,6 +361,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
               Net::MQTT::Constants \
               Net::MQTT::Simple \
               Net::WebSocket::Server \
+              Amazon::SNS \
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
