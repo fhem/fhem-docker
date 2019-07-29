@@ -89,7 +89,15 @@ ENV LANG=en_US.UTF-8 \
    LC_TIME=de_DE.UTF-8 \
    TERM=xterm \
    TZ=Europe/Berlin \
-   LOGFILE=./log/fhem-%Y-%m-%d.log
+   LOGFILE=./log/fhem-%Y-%m-%d.log \
+   TELNETPORT=7072 \
+   FHEM_UID=6061 \
+   FHEM_GID=6061 \
+   BLUETOOTH_GID=6001 \
+   GPIO_GID=6002 \
+   I2C_GID=6003 \
+   TIMEOUT=10 \
+   CONFIGTYPE=fhem.cfg
 
 # Install base environment
 COPY ./src/qemu-* /usr/bin/

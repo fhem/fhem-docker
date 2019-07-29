@@ -14,7 +14,7 @@ if [ "${CONFIGTYPE}" != "configDB" ] && [ -s ${FHEM_DIR}/${CONFIGTYPE} ] && [ -z
   fi
 fi
 
-FHEMWEB=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1" 2>/dev/null )
+FHEMWEB=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0" 2>/dev/null )
 if [ $? -ne 0 ] || [ -z "${FHEMWEB}" ]; then
   RETURN="Telnet(${TELNETPORT}): FAILED;"
   STATE=1

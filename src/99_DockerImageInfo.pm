@@ -10,6 +10,11 @@ sub DockerImageInfo_Initialize($) {
     $hash->{DefFn}    = "DockerImageInfo_Define";
     $hash->{AttrList} = $readingFnAttributes;
 
+    # add userattr to FHEMWEB devices to control healthcheck
+    foreach (devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1")) {
+        addToDevAttrList( $_, 'DockerHealthCheck:1,0' );
+    }
+
     return FHEM::Meta::InitMod( __FILE__, $hash );
 }
 
@@ -196,8 +201,8 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
-  "version": "v0.5.0",
-  "x_release_date": "2019-04-02",
+  "version": "v0.6.0",
+  "x_release_date": "2019-07-28",
   "release_status": "stable",
   "license": [
     "MIT"

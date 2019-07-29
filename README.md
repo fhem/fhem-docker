@@ -74,7 +74,7 @@ The platform repositories will also allow you to choose more specific build tags
 The FHEM log file is mirrored to the Docker console output in order to give input for any Docker related tools. However, if the log file becomes too big, this will lead to some performance implications.
 For that reason, the default value of the global attribute `logfile` is different from the FHEM default configuration and set to a daily file (`attr global logfile ./log/fhem-%Y-%m-%d.log`).
 
-It is highly recommended to keep this setting. Please note that FileLog devices are not adjusted automatically so you may want to update any FileLog devices you might have to watch the log file from within FHEM.
+It is highly recommended to keep this setting. Please note that FileLog devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
 ### Add custom packages
 
@@ -119,6 +119,20 @@ If something needs to be done every time you (re)start your container, the `*-st
 * `/post-start.sh`, `/docker/post-start.sh`
 
 	This script will be run every time the container starts and after the FHEM process was already started.
+
+
+### Role of the telnet device in FHEM
+The Docker container will need to communicate with FHEM to shutdown nicely instead of just killing the process. For this to work properly, a `telnet` device is of paramount importance. Unless you are using configDB, the container will try to automatically detect and adjust your telnet configuration for it to work. If for any reason that fails or you are using configDB, it is your own obligation to configure such `telnet` device (`define telnetPort telnet 7072`). It may listen on the standard port 7072 or can be any other port (see environment variable `TELNETPORT` to re-configure it).
+
+It is enough for the `telnet` device to only listen on the loopback device (aka localhost) but it _cannot_ have any password protection enabled for loopback connections. If you require your `telnet` instance to listen for external connections, it is usually best-practice to set a password for it. In that case, make sure that any `allowed` device you might have configured for this purpose only requires a password for non-loopback connections (e.g. using attribute `globalpassword` instead of `password` - also see [allowed commandref](https://fhem.de/commandref.html#allowed)). The same applies when using the deprecated attribute `password` for the `telnet` device itself (see [telnet commandref](https://fhem.de/commandref.html#telnet)).
+
+
+### Docker health check control
+The image comes with a built-in script to check availability and HTTP response codes of every FHEMWEB instance. It will also require a functional `telnet` device in your FHEM configuration (see [Role of the telnet device in FHEM](#role-of-the-telnet-device-in-fhem)).
+
+If for whatever reason you want to disable checking a specific FHEMWEB instance, you may set the user attribute `DockerHealthCheck` to 0 on that particular FHEMWEB device.
+
+Note that the health check itself cannot be entirely disabled as it will ensure to notify you about any false `telnet` device configuration, hindering proper shutdown of FHEM when triggered by Docker or OS shutdown procedure.
 
 
 ### Map USB devices to your container
@@ -200,9 +214,9 @@ If something needs to be done every time you (re)start your container, the `*-st
 
     	-e CONFIGTYPE=configDB
 	
-	Note that some essential global configuration that is affecting FHEM during startup is being enforced using FHEM\_GLOBALATTR environment variable (nofork=0 and updateInBackground=1; logfile and pidfilename according, based on environment variables LOGFILE and PIDFILE). These settings cannot be changed during runtime in FHEM and any setting that might be in your configDB configuration will be overwritten the next time you save your configuration.
+	Note that some essential global configuration that is affecting FHEM during startup is being enforced using FHEM\_GLOBALATTR environment variable (nofork=0 and updateInBackground=1; logfile and pidfilename accordingly, based on environment variables LOGFILE and PIDFILE). These settings cannot be changed during runtime in FHEM and any setting that might be in your configDB configuration will be overwritten the next time you save your configuration. It might happen that FHEM will show you some warnings as part of the "message of the day" (motd attribute), stating that an attribute is read-only. That's okay, just clear that message and save your FHEM configuration at least once so the configuration is back in sync.
 
-	Last but not least you need to  make sure that there is an existing telnet device defined (`define telnetPort telnet 7072`) so that health check can be performed properly and DockerImageInfo can be updated. Global listening for external requests is not needed, localhost is sufficient. Note to make use of the environment variable TELNETPORT mentioned above if you wish to use a different port. Note that restrictions using the 'allowed' module is usually not necessary. Should you set any restrictions, make sure that there is no password for localhost connections (e.g. use attribue 'globalpassword=1' instead of 'password=1').
+	Last but not least you need to make sure the telnet device configuration [described above](#role-of-the-telnet-device-in-fhem) is correct.
 
 * Starting the demo:
 	To start the demo environment:
