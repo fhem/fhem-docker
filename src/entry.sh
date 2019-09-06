@@ -18,6 +18,8 @@ export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 FHEM_UID="${FHEM_UID:-6061}"
 FHEM_GID="${FHEM_GID:-6061}"
+FHEM_PERM_DIR="0750"
+FHEM_PERM_FILE="0640"
 
 FHEM_CLEANINSTALL=1
 
@@ -297,10 +299,9 @@ chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}/ 2>&1>/dev/null
 (( i++ ))
 echo "$i. Enforcing file and directory permissions for ${FHEM_DIR} ..."
-find ${FHEM_DIR}/ -type d -exec chmod --quiet 750 {} \;
-chmod --quiet 755 ${FHEM_DIR}/
-find ${FHEM_DIR}/ -type f -exec chmod --quiet 640 {} \;
-chmod 750 ${FHEM_DIR}/fhem.pl
+find ${FHEM_DIR}/ -type d -exec chmod --quiet ${FHEM_PERM_DIR} {} \;
+find ${FHEM_DIR}/ -type f -exec chmod --quiet ${FHEM_PERM_FILE} {} \;
+chmod u+x ${FHEM_DIR}/fhem.pl
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null

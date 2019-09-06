@@ -169,6 +169,21 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
     	-e FHEM_GID=6061
 
+* Change FHEM directory permissions:
+	To set different directory permissions for `FHEM_DIR` (default is 0750):
+
+		-e FHEM_PERM_DIR=0750
+
+* Change FHEM file permissions:
+	To set different file permissions for `FHEM_DIR` (default is 0640):
+
+		-e FHEM_PERM_FILE=0640
+
+* Change umask:
+	To set a different umask for `FHEM_UID` (default is 0037):
+
+    	-e UMASK=0037
+
 * Change Bluetooth group ID:
 	To set a different GID for the group 'bluetooth' (default is 6001):
 
