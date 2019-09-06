@@ -437,8 +437,9 @@ echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..
 cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k1,2 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/
+chmod 640 ${FHEM_DIR}/.ssh/known_hosts
 chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
-chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
+chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
 (( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
