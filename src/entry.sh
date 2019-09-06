@@ -300,6 +300,7 @@ chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}
 (( i++ ))
 echo "$i. Enforcing file and directory permissions for ${FHEM_DIR} ..."
 find ${FHEM_DIR}/ -type d -exec chmod --quiet ${FHEM_PERM_DIR} {} \;
+chmod --quiet go-w ${FHEM_DIR}
 find ${FHEM_DIR}/ -type f -exec chmod --quiet ${FHEM_PERM_FILE} {} \;
 chmod u+x ${FHEM_DIR}/fhem.pl
 (( i++ ))
@@ -371,6 +372,8 @@ chown --quiet --no-dereference root:${FHEM_GID} /etc/sudoers.d/fhem* 2>&1>/dev/n
 
 # SSH key: Ed25519
 mkdir -p ${FHEM_DIR}/.ssh
+chmod 700 ${FHEM_DIR}/.ssh
+[ -e ${FHEM_DIR}/.ssh/authorized_keys ] && chmod 600 ${FHEM_DIR}/.ssh/authorized_keys
 if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
   echo "$i. Generating SSH Ed25519 client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_ed25519*
