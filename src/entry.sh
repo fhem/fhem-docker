@@ -18,8 +18,12 @@ export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 FHEM_UID="${FHEM_UID:-6061}"
 FHEM_GID="${FHEM_GID:-6061}"
+FHEM_PERM_DIR="0750"
+FHEM_PERM_FILE="0640"
 
 FHEM_CLEANINSTALL=1
+
+UMASK="${UMASK:-0037}"
 
 BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
 GPIO_GID="${GPIO_GID:-6002}"
@@ -294,6 +298,12 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}/ 2>&1>/dev/null
 (( i++ ))
+echo "$i. Enforcing file and directory permissions for ${FHEM_DIR} ..."
+find ${FHEM_DIR}/ -type d -exec chmod --quiet ${FHEM_PERM_DIR} {} \;
+chmod --quiet go-w ${FHEM_DIR}
+find ${FHEM_DIR}/ -type f -exec chmod --quiet ${FHEM_PERM_FILE} {} \;
+chmod u+x ${FHEM_DIR}/fhem.pl
+(( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
 find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
@@ -362,6 +372,8 @@ chown --quiet --no-dereference root:${FHEM_GID} /etc/sudoers.d/fhem* 2>&1>/dev/n
 
 # SSH key: Ed25519
 mkdir -p ${FHEM_DIR}/.ssh
+chmod 700 ${FHEM_DIR}/.ssh
+[ -e ${FHEM_DIR}/.ssh/authorized_keys ] && chmod 600 ${FHEM_DIR}/.ssh/authorized_keys
 if [ ! -s ${FHEM_DIR}/.ssh/id_ed25519 ]; then
   echo "$i. Generating SSH Ed25519 client certificate for user 'fhem' ..."
   rm -f ${FHEM_DIR}/.ssh/id_ed25519*
@@ -425,8 +437,9 @@ echo "$i. Updating SSH key pinning and SSH client permissions for user 'fhem' ..
 cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k1,2 > ${FHEM_DIR}/.ssh/known_hosts.tmp
 mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
 chown -R fhem.fhem ${FHEM_DIR}/.ssh/
+chmod 640 ${FHEM_DIR}/.ssh/known_hosts
 chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
-chmod 644 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
+chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
 (( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
@@ -560,6 +573,7 @@ function StartFHEM {
       [[ $n = 'PYTHON'* ]] && export "$n"
   done < <(env -0)
 
+  umask ${UMASK}
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
   su fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
