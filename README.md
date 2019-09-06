@@ -29,8 +29,8 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 
 This image provides 2 different variants:
 
-- `latest` (default)
-- `dev`
+* `latest` (default)
+* `dev`
 
 You can use one of those variants by adding them to the docker image name like this:
 
@@ -49,15 +49,15 @@ This is a multi-platform image, providing support for the following platforms:
 
 Linux:
 
-- `x86-64/AMD64` [Link](https://hub.docker.com/r/fhem/fhem-amd64_linux/)
-- `i386` [Link](https://hub.docker.com/r/fhem/fhem-i386_linux/)
-- `ARM32v5, armel` [Link](https://hub.docker.com/r/fhem/fhem-arm32v5_linux/)
-- `ARM32v7, armhf` [Link](https://hub.docker.com/r/fhem/fhem-arm32v7_linux/)
-- `ARM64v8, arm64` [Link](https://hub.docker.com/r/fhem/fhem-arm64v8_linux/)
+* `x86-64/AMD64` [Link](https://hub.docker.com/r/fhem/fhem-amd64_linux/)
+* `i386` [Link](https://hub.docker.com/r/fhem/fhem-i386_linux/)
+* `ARM32v5, armel` [Link](https://hub.docker.com/r/fhem/fhem-arm32v5_linux/)
+* `ARM32v7, armhf` [Link](https://hub.docker.com/r/fhem/fhem-arm32v7_linux/)
+* `ARM64v8, arm64` [Link](https://hub.docker.com/r/fhem/fhem-arm64v8_linux/)
 
 Windows:
 
-- currently not supported
+* currently not supported
 
 The main repository will allow you to install on any of these platforms.
 In case you would like to specifically choose your platform, go to the platform-related repository by clicking on the respective link above.
@@ -77,19 +77,19 @@ It is highly recommended to keep this setting. Please note that FileLog devices 
 
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
 
-- Debian APT packages:
+* Debian APT packages:
 
         -e APT_PKGS="package1 package2"
 
-- Perl CPAN modules:
+* Perl CPAN modules:
 
         -e CPAN_PKGS="App::Name1 App::Name2"
 
-- Python PIP packages:
+* Python PIP packages:
 
         -e PIP_PKGS="package1 package2"
 
-- Node.js NPM packages:
+* Node.js NPM packages:
 
         -e NPM_PKGS="package1 package2"
 
@@ -99,21 +99,21 @@ In case you need to perform further changes to the container before it is ready 
 
 If something needs to be done only once during the first start of a fresh container you just created, like after upgrading to a new version of the FHEM Docker Image, the `*-init.sh` scripts are the right place:
 
-- `/pre-init.sh`, `/docker/pre-init.sh`
+* `/pre-init.sh`, `/docker/pre-init.sh`
 
     This script will be run at the very beginning of the initialization of the new container, even before any custom packages will be installed.
 
-- `/post-init.sh`, `/docker/post-init.sh`
+* `/post-init.sh`, `/docker/post-init.sh`
 
     This script will be run at the very end of the initialization of the new container, also after your local FHEM configuration was checked and adjusted for compatibility with the container. Custom packages you defined using the environment variables mentioned above will be installed already at this point in time. This is likely the best place for you to do any final changes to the environment that need to be done only once for the lifetime of that container.
 
 If something needs to be done every time you (re)start your container, the `*-start.sh` scripts are the right place:
 
-- `/pre-start.sh`, `/docker/pre-start.sh`
+* `/pre-start.sh`, `/docker/pre-start.sh`
 
     This script will be run every time the container starts, even before the FHEM Docker Image's own startup preparations. FHEM will not yet be running at this point in time.
 
-- `/post-start.sh`, `/docker/post-start.sh`
+* `/post-start.sh`, `/docker/post-start.sh`
 
     This script will be run every time the container starts and after the FHEM process was already started.
 
@@ -143,64 +143,64 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
 ### Tweak container settings using environment variables
 
-- Change FHEM logfile format:
+* Change FHEM logfile format:
     To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
 
         -e LOGFILE=./log/fhem-%Y-%m-%d.log
 
-- Change FHEM local Telnet port for health check and container restart handling:
+* Change FHEM local Telnet port for health check and container restart handling:
     To set a different Telnet port for local connection during health check and container restart (default is 7072):
 
         -e TELNETPORT=7072
 
     Note that this is of paramount importance if you are running more than one instance in host network mode on the same server, otherwise the instances will interfere each other with their restart behaviours.
 
-- Change FHEM system user ID:
+* Change FHEM system user ID:
     To set a different UID for the user `fhem` (default is 6061):
 
         -e FHEM_UID=6061
 
-- Change FHEM group ID:
+* Change FHEM group ID:
     To set a different GID for the group `fhem` (default is 6061):
 
         -e FHEM_GID=6061
 
-- Change FHEM directory permissions:
+* Change FHEM directory permissions:
     To set different directory permissions for `$FHEM_DIR` (default is 0750):
 
         -e FHEM_PERM_DIR=0750
 
-- Change FHEM file permissions:
+* Change FHEM file permissions:
     To set different file permissions for `$FHEM_DIR` (default is 0640):
 
         -e FHEM_PERM_FILE=0640
 
-- Change umask:
+* Change umask:
     To set a different umask for `FHEM_UID` (default is 0037):
 
         -e UMASK=0037
 
-- Change Bluetooth group ID:
+* Change Bluetooth group ID:
     To set a different GID for the group `bluetooth` (default is 6001):
 
         -e BLUETOOTH_GID=6001
 
-- Change GPIO group ID:
+* Change GPIO group ID:
     To set a different GID for the group `gpio` (default is 6002):
 
         -e GPIO_GID=6002
 
-- Change I2C group ID:
+* Change I2C group ID:
     To set a different GID for the group `i2c` (default is 6003):
 
         -e I2C_GID=6003
 
-- Change shutdown timeout:
+* Change shutdown timeout:
     To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
         -e TIMEOUT=10
 
-- Set locale:
+* Set locale:
     For maximum compatibility, standard locale is set to US english with some refinements towards the European standards and German defaults. This may be changed according to your needs (also see [Debian Wiki](https://wiki.debian.org/Locale) for more information):
 
         -e LANG=en_US.UTF-8
@@ -215,12 +215,12 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
         -e LC_TELEPHONE=de_DE.UTF-8
         -e LC_TIME=de_DE.UTF-8
 
-- Set timezone:
+* Set timezone:
     Set a specific timezone in [POSIX format](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
 
         -e TZ=Europe/Berlin
 
-- Using configDB:
+* Using configDB:
     Should you be using FHEM config type [`configDB`](https://fhem.de/commandref.html#configdb), you need to change the FHEM configuration source for correct startup by setting the following environment variable:
 
         -e CONFIGTYPE=configDB
@@ -229,12 +229,12 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
     Last but not least you need to make sure the telnet device configuration [described above](#role-of-the-telnet-device-in-fhem) is correct.
 
-- Starting the demo:
+* Starting the demo:
     To start the demo environment:
 
         -e CONFIGTYPE=fhem.cfg.demo
 
-- Set Docker host IPv4 address for host.docker.internal:
+* Set Docker host IPv4 address for host.docker.internal:
 
         -e DOCKER_HOST=172.17.0.1
 
@@ -242,13 +242,13 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     In case the container is running in network host network mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
     host.docker.internal will also be evaluated automatically for SSH connection on port 22 by adding the servers public key to `/opt/fhem/.ssh/known_hosts` so that unattended connectivity for scripts is available.
 
-- Set Docker gateway IPv4 address for gateway.docker.internal:
+* Set Docker gateway IPv4 address for gateway.docker.internal:
 
         -e DOCKER_GW=172.17.0.1
 
     If this variable is not present, the gateway will automatically be detected.
 
-- Manipulating software in the container using their own environment variables:
+* Manipulating software in the container using their own environment variables:
     For security reasons, only allowed environment variables are passed to the FHEM user environment. To control certain behaviours of Perl, Node.js and Python, those language interpreters come with their own environment variables. Any variable that was set for the container and with a prefix of either PERL, NODE or PYTHON is exported to the FHEM user environment so it is available there during runtime of the fhem.pl main process and subsequently all its child processes.
 
 ## Further tweaks for your FHEM configuration
@@ -257,8 +257,8 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
 If you would like to connect to a service that is running on your Docker host itself or to a container that is running in host network mode, you may use the following DNS alias names that are automatically being added to /etc/hosts during container bootup:
 
-- gateway.docker.internal
-- host.docker.internal
+* gateway.docker.internal
+* host.docker.internal
 
 That is, if you did not configure those in your local DNS, of course.
 
