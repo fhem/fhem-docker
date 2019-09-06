@@ -21,6 +21,8 @@ FHEM_GID="${FHEM_GID:-6061}"
 
 FHEM_CLEANINSTALL=1
 
+UMASK="${UMASK:-0037}"
+
 BLUETOOTH_GID="${BLUETOOTH_GID:-6001}"
 GPIO_GID="${GPIO_GID:-6002}"
 I2C_GID="${I2C_GID:-6003}"
@@ -294,6 +296,12 @@ echo "$i. Enforcing user and group ownership for ${FHEM_DIR} to fhem:fhem ..."
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${FHEM_DIR}/ 2>&1>/dev/null
 chown --recursive --quiet --no-dereference ${FHEM_UID}:${FHEM_GID} ${LOGFILE%/*}/ 2>&1>/dev/null
 (( i++ ))
+echo "$i. Enforcing file and directory permissions for ${FHEM_DIR} ..."
+find ${FHEM_DIR}/ -type d -exec chmod --quiet 750 {} \;
+chmod --quiet 755 ${FHEM_DIR}/
+find ${FHEM_DIR}/ -type f -exec chmod --quiet 640 {} \;
+chmod 750 ${FHEM_DIR}/fhem.pl
+(( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
 find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
@@ -560,6 +568,7 @@ function StartFHEM {
       [[ $n = 'PYTHON'* ]] && export "$n"
   done < <(env -0)
 
+  umask ${UMASK}
   echo -n -e "\nStarting FHEM ...\n"
   trap "StopFHEM" SIGTERM
   su fhem -c "cd "${FHEM_DIR}"; perl fhem.pl "$CONFIGTYPE""
