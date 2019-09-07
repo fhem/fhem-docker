@@ -98,7 +98,7 @@ You may define several different types of packages to be installed automatically
 For security and functional reasons, directory and file permissions for FHEM will be set during every container startup.
 That means that directories and files can only be opened by members of the [`$FHEM_GID`](#tweak-container-settings-using-environment-variables) user group or the [`$FHEM_UID`](#tweak-container-settings-using-environment-variables) user itself. Also, the execution bit for files is only kept for a limited set of file names and directories, which are:
 
-* files named *.pl, *.py, *.sh
+* files named `*.pl`, `*.py`, `*.sh`
 * every file that is stored in any directory named `bin` or `sbin`
 * every file that is stored in any directory containing the string `script` in its name
 
