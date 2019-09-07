@@ -99,8 +99,10 @@ For security and functional reasons, directory and file permissions for FHEM wil
 That means that directories and files can only be opened by members of the [`$FHEM_GID`](#tweak-container-settings-using-environment-variables) user group or the [`$FHEM_UID`](#tweak-container-settings-using-environment-variables) user itself. Also, the execution bit for files is only kept for a limited set of file names and directories, which are:
 
 * files named *.pl, *.py, *.sh
-* every file that is stored in any directory named bin or sbin
+* every file that is stored in any directory named `bin` or `sbin`
 * every file that is stored in any directory containing the string `script` in its name
+
+Should you require any different permissions, you may read the next section to learn more about how to make changes using custom post init script `/post-init.sh` or `/docker/post-init.sh`.
 
 ### Make any other changes during container start
 
