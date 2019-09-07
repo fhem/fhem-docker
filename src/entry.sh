@@ -302,7 +302,12 @@ echo "$i. Enforcing file and directory permissions for ${FHEM_DIR} ..."
 find ${FHEM_DIR}/ -type d -exec chmod --quiet ${FHEM_PERM_DIR} {} \;
 chmod --quiet go-w ${FHEM_DIR}
 find ${FHEM_DIR}/ -type f -exec chmod --quiet ${FHEM_PERM_FILE} {} \;
-chmod u+x ${FHEM_DIR}/fhem.pl
+find ${FHEM_DIR}/ -type f -name '*.pl' -exec chmod --quiet u+x {} \;
+find ${FHEM_DIR}/ -type f -name '*.py' -exec chmod --quiet u+x {} \;
+find ${FHEM_DIR}/ -type f -name '*.sh' -exec chmod --quiet u+x {} \;
+find ${FHEM_DIR}/ -path '*/bin/*' -type f -exec chmod --quiet u+x {} \;
+find ${FHEM_DIR}/ -path '*/sbin/*' -type f -exec chmod --quiet u+x {} \;
+find ${FHEM_DIR}/ -path '*/*script*/*' -type f -exec chmod --quiet u+x {} \;
 (( i++ ))
 echo "$i. Correcting group ownership for /dev/tty* ..."
 find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
