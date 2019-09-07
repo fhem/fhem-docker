@@ -93,6 +93,15 @@ You may define several different types of packages to be installed automatically
 
         -e NPM_PKGS="package1 package2"
 
+### Directory and file permissions
+
+For security and functional reasons, directory and file permissions for FHEM will be set during every container startup.
+That means that directories and files can only be opened by members of the [`$FHEM_GID`](#tweak-container-settings-using-environment-variables) user group or the [`$FHEM_UID`](#tweak-container-settings-using-environment-variables) user itself. Also, the execution bit for files is only kept for a limited set of file names and directories, which are:
+
+* files named *.pl, *.py, *.sh
+* every file that is stored in any directory named bin or sbin
+* every file that is stored in any directory containing the string `script` in its name
+
 ### Make any other changes during container start
 
 In case you need to perform further changes to the container before it is ready for your FHEM instance to operate, there are a couple of entry points for your own scripts that will be run automatically if they are found at the right place. In order to achieve this, you need to mount the script file itself or a complete folder that contains that script to the respective destination inside your container. See Docker documentation about [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/) to learn how to achieve this in general.
