@@ -102,7 +102,7 @@ That means that directories and files can only be opened by members of the [`$FH
 * every file that is stored in any directory named `bin` or `sbin`
 * every file that is stored in any directory containing the string `script` in its name
 
-Should you require any different permissions, you may read the next section to learn more about how to make changes using custom post init script `/post-init.sh` or `/docker/post-init.sh`.
+Should you require any different permissions, you may read the next section to learn more about how to make any changes using custom pre start script `/pre-start.sh` or `/docker/pre-start.sh`.
 
 ### Make any other changes during container start
 
