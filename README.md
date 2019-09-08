@@ -8,20 +8,24 @@ A basic Docker image for [FHEM](https://fhem.de/) house automation system, based
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/).
 We recommend pulling from the [main repository](https://hub.docker.com/r/fhem/fhem/) to allow automatic download of the correct image for your system platform:
 
-    docker pull fhem/fhem
+```console
+docker pull fhem/fhem
+```
 
 To start your container right away:
 
-    docker run -d --name fhem -p 8083:8083 fhem/fhem
+```console
+docker run -d --name fhem -p 8083:8083 fhem/fhem
+```
 
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
-    docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
+```console
+docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
+```
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
-After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants:
-
-    http://xxx.xxx.xxx.xxx:8083/
+After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants like `http://xxx.xxx.xxx.xxx:8083/`.
 
 You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information about how to use and configure FHEM.
 
@@ -34,7 +38,9 @@ This image provides 2 different variants:
 
 You can use one of those variants by adding them to the docker image name like this:
 
-    docker pull fhem/fhem:latest
+```console
+docker pull fhem/fhem:latest
+```
 
 If you do not specify any variant, `latest` will always be the default.
 
@@ -79,19 +85,27 @@ You may define several different types of packages to be installed automatically
 
 * Debian APT packages:
 
-        -e APT_PKGS="package1 package2"
+    ```shell
+    -e APT_PKGS="package1 package2"
+    ```
 
 * Perl CPAN modules:
 
-        -e CPAN_PKGS="App::Name1 App::Name2"
+    ```shell
+    -e CPAN_PKGS="App::Name1 App::Name2"
+    ```
 
 * Python PIP packages:
 
-        -e PIP_PKGS="package1 package2"
+    ```shell
+    -e PIP_PKGS="package1 package2"
+    ```
 
 * Node.js NPM packages:
 
-        -e NPM_PKGS="package1 package2"
+    ```shell
+    -e NPM_PKGS="package1 package2"
+    ```
 
 ### Directory and file permissions
 
@@ -146,95 +160,126 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
 1. Find out the USB device path/address from your Docker host machine first:
 
-        lsusb -v | grep -E '\<(Bus|iProduct|bDeviceClass|bDeviceProtocol)' 2>/dev/null
+    ```console
+    lsusb -v | grep -E '\<(Bus|iProduct|bDeviceClass|bDeviceProtocol)' 2>/dev/null
+    ```
 
 2. You may then derive the device path from it and add the following parameter to your container run command:
 
-        --device=/dev/bus/usb/001/002
+    ```shell
+    --device=/dev/bus/usb/001/002
+    ```
 
 ### Tweak container settings using environment variables
 
 * Change FHEM logfile format:
     To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
 
-        -e LOGFILE=./log/fhem-%Y-%m-%d.log
+    ```shell
+    -e LOGFILE=./log/fhem-%Y-%m-%d.log
+    ```
 
 * Change FHEM local Telnet port for health check and container restart handling:
     To set a different Telnet port for local connection during health check and container restart (default is 7072):
 
-        -e TELNETPORT=7072
+    ```shell
+    -e TELNETPORT=7072
+    ```
 
     Note that this is of paramount importance if you are running more than one instance in host network mode on the same server, otherwise the instances will interfere each other with their restart behaviours.
 
 * Change FHEM system user ID:
     To set a different UID for the user `fhem` (default is 6061):
 
-        -e FHEM_UID=6061
+    ```shell
+    -e FHEM_UID=6061
+    ```
 
 * Change FHEM group ID:
     To set a different GID for the group `fhem` (default is 6061):
 
-        -e FHEM_GID=6061
+    ```shell
+    -e FHEM_GID=6061
+    ```
 
 * Change FHEM directory permissions:
     To set different directory permissions for `$FHEM_DIR` (default is 0750):
 
-        -e FHEM_PERM_DIR=0750
+    ```shell
+    -e FHEM_PERM_DIR=0750
+    ```
 
 * Change FHEM file permissions:
     To set different file permissions for `$FHEM_DIR` (default is 0640):
 
-        -e FHEM_PERM_FILE=0640
+    ```shell
+    -e FHEM_PERM_FILE=0640
+    ```
 
 * Change umask:
     To set a different umask for `FHEM_UID` (default is 0037):
 
+    ```shell
         -e UMASK=0037
 
 * Change Bluetooth group ID:
     To set a different GID for the group `bluetooth` (default is 6001):
 
-        -e BLUETOOTH_GID=6001
+    ```shell
+    -e BLUETOOTH_GID=6001
+    ```
 
 * Change GPIO group ID:
     To set a different GID for the group `gpio` (default is 6002):
 
-        -e GPIO_GID=6002
+    ```shell
+    -e GPIO_GID=6002
+    ```
 
 * Change I2C group ID:
     To set a different GID for the group `i2c` (default is 6003):
 
-        -e I2C_GID=6003
+    ```shell
+    -e I2C_GID=6003
+    ```
 
 * Change shutdown timeout:
     To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
-        -e TIMEOUT=10
+    ```shell
+    -e TIMEOUT=10
+    ```
 
 * Set locale:
     For maximum compatibility, standard locale is set to US english with some refinements towards the European standards and German defaults. This may be changed according to your needs (also see [Debian Wiki](https://wiki.debian.org/Locale) for more information):
 
-        -e LANG=en_US.UTF-8
-        -e LANGUAGE=en_US:en
-        -e LC_ADDRESS=de_DE.UTF-8
-        -e LC_MEASUREMENT=de_DE.UTF-8
-        -e LC_MESSAGES=en_DK.UTF-8
-        -e LC_MONETARY=de_DE.UTF-8
-        -e LC_NAME=de_DE.UTF-8
-        -e LC_NUMERIC=de_DE.UTF-8
-        -e LC_PAPER=de_DE.UTF-8
-        -e LC_TELEPHONE=de_DE.UTF-8
-        -e LC_TIME=de_DE.UTF-8
+    ```shell
+    -e LANG=en_US.UTF-8
+    -e LANGUAGE=en_US:en
+    -e LC_ADDRESS=de_DE.UTF-8
+    -e LC_MEASUREMENT=de_DE.UTF-8
+    -e LC_MESSAGES=en_DK.UTF-8
+    -e LC_MONETARY=de_DE.UTF-8
+    -e LC_NAME=de_DE.UTF-8
+    -e LC_NUMERIC=de_DE.UTF-8
+    -e LC_PAPER=de_DE.UTF-8
+    -e LC_TELEPHONE=de_DE.UTF-8
+    -e LC_TIME=de_DE.UTF-8
+    ```
 
 * Set timezone:
     Set a specific timezone in [POSIX format](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
 
-        -e TZ=Europe/Berlin
+    ```shell
+    -e TZ=Europe/Berlin
+    ```
 
 * Using configDB:
     Should you be using FHEM config type [`configDB`](https://fhem.de/commandref.html#configdb), you need to change the FHEM configuration source for correct startup by setting the following environment variable:
 
-        -e CONFIGTYPE=configDB
+    ```shell
+    -e CONFIGTYPE=configDB
+    ```
 
     Note that some essential global configuration that is affecting FHEM during startup is being enforced using FHEM\_GLOBALATTR environment variable (nofork=0 and updateInBackground=1; logfile and pidfilename accordingly, based on environment variables LOGFILE and PIDFILE). These settings cannot be changed during runtime in FHEM and any setting that might be in your configDB configuration will be overwritten the next time you save your configuration. It might happen that FHEM will show you some warnings as part of the "message of the day" (motd attribute), stating that an attribute is read-only. That's okay, just clear that message and save your FHEM configuration at least once so the configuration is back in sync.
 
@@ -243,11 +288,15 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 * Starting the demo:
     To start the demo environment:
 
-        -e CONFIGTYPE=fhem.cfg.demo
+    ```shell
+    -e CONFIGTYPE=fhem.cfg.demo
+    ```
 
 * Set Docker host IPv4 address for host.docker.internal:
 
-        -e DOCKER_HOST=172.17.0.1
+    ```shell
+    -e DOCKER_HOST=172.17.0.1
+    ```
 
     If this variable is not present, host IP will automatically be detected based on the subnet network gateway (also see variable `DOCKER_GW` below).
     In case the container is running in network host network mode, host.docker.internal is set to 127.0.127.2 to allow loopback network connectivity.
@@ -255,7 +304,9 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
 * Set Docker gateway IPv4 address for gateway.docker.internal:
 
-        -e DOCKER_GW=172.17.0.1
+    ```shell
+    -e DOCKER_GW=172.17.0.1
+    ```
 
     If this variable is not present, the gateway will automatically be detected.
 
@@ -291,15 +342,19 @@ Follow initial setup steps:
 
 1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
 
-        sudo mkdir -p /docker/home
-        sudo curl -fsSL -o /docker/home/docker-compose.yml https://github.com/fhem/fhem-docker/raw/master/docker-compose.yml
-        sudo curl -fsSL -o /docker/home/.gitignore https://github.com/fhem/fhem-docker/raw/master/.gitignore
+    ```console
+    sudo mkdir -p /docker/home
+    sudo curl -fsSL -o /docker/home/docker-compose.yml https://github.com/fhem/fhem-docker/raw/master/docker-compose.yml
+    sudo curl -fsSL -o /docker/home/.gitignore https://github.com/fhem/fhem-docker/raw/master/.gitignore
+    ```
 
     Note that the sub-directory "home" will be the base prefix name for all    your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
 
 2. Being in /docker/home, run command to start your Docker stack:
 
-        cd /docker/home; sudo docker-compose up -d
+    ```console
+    cd /docker/home; sudo docker-compose up -d
+    ```
 
     All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
     You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
@@ -307,32 +362,42 @@ Follow initial setup steps:
 
 3. Create a local Git repository and add all files as an initial commit:
 
-        cd /docker/home
-        sudo git init
-        sudo git add -A
-        sudo git commit -m "Initial commit"
+    ```console
+    cd /docker/home
+    sudo git init
+    sudo git add -A
+    sudo git commit -m "Initial commit"
+    ```
 
     Run the following command whenever you would like to mark changes as permanent:
 
-        cd /docker/home; sudo git add -A; sudo git commit -m "FHEM update"
+    ```console
+    cd /docker/home; sudo git add -A; sudo git commit -m "FHEM update"
+    ```
 
     Note: This will also add any new files within your whole Docker Stack outside of the ./fhem/ folder.
     Please see Git documentation for details and further commands.
 
 4. Optional - Add remote repository for external backup. It is strongly recommended to have your external repository set to _private_ before doing so:
 
-        sudo git remote add origin git@github.com:user/repo.git
-        sudo git push --force --set-upstream origin master
+    ```console
+    sudo git remote add origin git@github.com:user/repo.git
+    sudo git push --force --set-upstream origin master
+    ```
 
     Note that after updating your local repository as described above, you also    want to push those changes to the remote server:
 
-        cd /docker/home; sudo git push
+    ```console
+    cd /docker/home; sudo git push
+    ```
 
     To restore your Docker Stack from remote Git backup on a fresh Docker host installation:
 
-        sudo mkdir -p /docker
-        cd /docker; sudo git clone git@github.com:user/repo.git
-        cd /docker/home; sudo docker-compose up -d
+    ```console
+    sudo mkdir -p /docker
+    cd /docker; sudo git clone git@github.com:user/repo.git
+    cd /docker/home; sudo docker-compose up -d
+    ```
 
 ___
 [Production ![Build Status](https://travis-ci.com/fhem/fhem-docker.svg?branch=master)](https://travis-ci.com/fhem/fhem-docker)
