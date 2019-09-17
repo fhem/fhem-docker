@@ -53,6 +53,7 @@ sub DockerImageInfo_Define($$) {
 
     if ( -e '/.dockerenv' ) {
         $defs{$name}{STATE} = "Initialized";
+        DockerImageInfo_GetImageInfo();
     }
     else {
         $defs{$name}{STATE} = "ERROR: Host is not a container";
@@ -66,19 +67,18 @@ sub DockerImageInfo_Undefine($$) {
     delete $modules{'DockerImageInfo'}{defptr};
 }
 
+sub DockerImageInfo_HealthCheck() {
+    return "undefined"
+      unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
+    my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
+    $defs{$n}{STATE} = 'ok';
+}
+
 sub DockerImageInfo_GetImageInfo() {
-    return
-      unless ($init_done);
     return "undefined"
       unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
     my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
 
-    my $now = time;
-    return "deferred"
-      if ( defined( $defs{$n}{UPDATED} ) && $now < $defs{$n}{UPDATED} + 900. );
-    $defs{$n}{UPDATED} = $now;
-
-    $defs{$n}{STATE} = 'ok';
     readingsBeginUpdate( $defs{$n} );
 
     my $NAME;

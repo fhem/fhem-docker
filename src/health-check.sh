@@ -52,7 +52,7 @@ else
 
   # Update docker module data
   if [ -s /image_info ]; then
-    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{ DockerImageInfo_GetImageInfo();; }" 2>/dev/null )
+    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{ DockerImageInfo_HealthCheck();; }" 2>/dev/null )
     [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:${RET};" || RETURN="${RETURN} DockerImageInfo:OK;"
   fi
 
