@@ -65,6 +65,7 @@ sub DockerImageInfo_Define($$) {
 sub DockerImageInfo_Undefine($$) {
     my ( $hash, $def ) = @_;
     delete $modules{'DockerImageInfo'}{defptr};
+    return undef;
 }
 
 sub DockerImageInfo_HealthCheck() {
@@ -72,6 +73,7 @@ sub DockerImageInfo_HealthCheck() {
       unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
     my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
     $defs{$n}{STATE} = 'ok';
+    return undef;
 }
 
 sub DockerImageInfo_GetImageInfo() {
