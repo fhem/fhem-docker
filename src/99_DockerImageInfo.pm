@@ -65,7 +65,6 @@ sub DockerImageInfo_Define($$) {
 sub DockerImageInfo_Undefine($$) {
     my ( $hash, $def ) = @_;
     delete $modules{'DockerImageInfo'}{defptr};
-    return undef;
 }
 
 sub DockerImageInfo_HealthCheck() {
@@ -73,7 +72,7 @@ sub DockerImageInfo_HealthCheck() {
       unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
     my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
     $defs{$n}{STATE} = 'ok';
-    return undef;
+    return "";
 }
 
 sub DockerImageInfo_GetImageInfo() {
@@ -150,7 +149,6 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
         `cat /docker.hostnetwork` );
 
     readingsEndUpdate( $defs{$n}, 1 );
-    return undef;
 }
 
 1;
