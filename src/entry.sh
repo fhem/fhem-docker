@@ -363,6 +363,7 @@ echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -q update" >> /etc/sudoers.d/fhe
 echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -s -q -V upgrade" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V upgrade" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade" >> /etc/sudoers.d/fhem-docker
+echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm list *" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm outdated *" >> /etc/sudoers.d/fhem-docker
 echo "fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm update *" >> /etc/sudoers.d/fhem-docker
 
