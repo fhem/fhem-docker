@@ -411,14 +411,14 @@ MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@op
 fi
 
 # Adding local hosts file
-if [ -z $(dig +short -t a gateway.docker.internal.) ]; then
+if [ -z "$(dig +short -t a gateway.docker.internal.)" ]; then
   echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
   if [ -n "${DOCKER_GW}" ]; then
     grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "${DOCKER_GW}\tgateway.docker.internal" >> /etc/hosts
   fi
   (( i++ ))
 fi
-if [ -z $(dig +short -t a host.docker.internal.) ]; then
+if [ -z "$(dig +short -t a host.docker.internal.)" ]; then
   echo "$i. Adding host.docker.internal to /etc/hosts ..."
   if [ -n "${DOCKER_HOST}" ]; then
     grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
