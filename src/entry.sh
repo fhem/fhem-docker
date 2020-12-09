@@ -18,8 +18,8 @@ export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 FHEM_UID="${FHEM_UID:-6061}"
 FHEM_GID="${FHEM_GID:-6061}"
-FHEM_PERM_DIR="0750"
-FHEM_PERM_FILE="0640"
+FHEM_PERM_DIR="${FHEM_PERM_DIR:-0750}"
+FHEM_PERM_FILE="${FHEM_PERM_FILE:-0640}"
 
 FHEM_CLEANINSTALL=1
 
@@ -547,7 +547,7 @@ function StartFHEM {
 
   # Generate environment variables for user 'fhem'
 
-  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
+  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL
 
   FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
   export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
