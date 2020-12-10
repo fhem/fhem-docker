@@ -398,7 +398,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
-      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_10.x | LC_ALL=C bash - \
+      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
       && if [ ! -e /usr/bin/npm ]; then \
