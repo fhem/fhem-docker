@@ -358,7 +358,6 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
               Alien::Base::ModuleBuild \
               Alien::Sodium \
               Crypt::Argon2 \
-              Crypt::NaCl::Sodium \
               Crypt::OpenSSL::AES \
               Device::SMBus \
               Net::MQTT::Constants \
