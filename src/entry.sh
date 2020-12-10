@@ -138,7 +138,7 @@ if [ -d "/fhem" ]; then
       if [ "${MTYPE}" = "i386" ]; then
         curl -fsSL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
       else
-        curl -fsSL https://deb.nodesource.com/setup_10.x | bash - >>/pkgs.npm 2>&1
+        curl -fsSL https://deb.nodesource.com/setup_14.x | bash - >>/pkgs.npm 2>&1
       fi
       (( i++ ))
 
