@@ -22,13 +22,74 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - name: Checkout this repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Get git vars
+        shell: bash
+        run: |
+          echo "::set-output name=BRANCH::$(echo "${GITHUB_REF#refs/*/}")"
+          echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
+        id: gitVars
 
+      - name: Get latest svn revision from remote
+        id: svnRemote
+        run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
+
+      - name: Cache fhem 
+        id: cache-fhem
+        uses: actions/cache@v2
+        with:
+          path: ./src/fhem/trunk
+          key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
+          restore-keys: |
+            ${{ runner.os }}-fhemsvn-
+
+      - name: Checkout fhem from svn
+        if: steps.cache-fhem.outputs.cache-hit != 'true'
+        run: svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk >/dev/null;
+
+      - name: Update fhem from svn
+        if: steps.cache-fhem.outputs.cache-hit == 'true'
+        run: svn update
+        working-directory: ./src/fhem/trunk
+
+      - name: get svn vars
+        id: svnVars
+        run: |
+          echo "::set-output name=FHEM_REVISION_LATEST::$( cd ./src/fhem/trunk; svn info --show-item last-changed-revision)"
+          echo "::set-output name=FHEM_VERSION::$( cd ./src/fhem/trunk; svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+
+      - name: prepare some vars
+        id: buildVars
+        run: |
+          VARIANT_FHEM="${{ steps.svnVars.outputs.FHEM_VERSION }}-s${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}"
+          VARIANT_IMAGE="${{ steps.gitVars.outputs.IMAGE_VERSION }}-${{ steps.gitVars.outputs.BRANCH }}"
+          echo "::set-output name=VARIANT::$(echo "${VARIANT_FHEM}_${VARIANT_IMAGE}")"
+          echo "::set-output name=VARIANT_IMAGE::$(echo "$VARIANT_IMAGE")"
+          echo "::set-output name=VARIANT_FHEM::$(echo "$VARIANT_FHEM")"
+          echo "::set-output name=BUILD_DATE::$(  date --iso-8601=seconds --utc )"
+          # detect rolling branch
+          if [[ ${{ steps.gitVars.outputs.BRANCH }} == "master" ]]; then
+          echo "::set-output name=TAG_ROLLING::latest"
+          else
+          echo "::set-output name=TAG_ROLLING::$( echo "${{ steps.gitVars.outputs.BRANCH }}" )"
+          fi
+
+      - name: Check variables
+        run: |
+          echo FHEM_REVISION_LATEST: ${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+          echo FHEM_VERSION: ${{ steps.svnVars.outputs.FHEM_VERSION }}
+          echo IMAGE_VERSION: ${{ steps.gitVars.outputs.IMAGE_VERSION }}
+          echo BUILD_DATE: ${{ steps.buildVars.outputs.BUILD_DATE }}
+          echo BRANCH: ${{ steps.gitVars.outputs.BRANCH }}
+          echo VARIANT: ${{ steps.buildVars.outputs.VARIANT }}
+          echo VARIANT_IMAGE: ${{ steps.buildVars.outputs.VARIANT_IMAGE }}
+          echo VARIANT_FHEM: ${{ steps.buildVars.outputs.VARIANT_FHEM }}
+          echo VAROLLING_TAG: ${{ steps.buildVars.outputs.TAG_ROLLING }}
+          
       - name: Docker Setup QEMU
         uses: docker/setup-qemu-action@v1.0.1
         with:
@@ -38,13 +99,44 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           context: .
+          load: true  
           file: ./Dockerfile
-          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,
+          # platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64,
+          platforms: linux/arm/v6,linux/arm/v7
           push: false
-          tags: |
-            user/app:latest
-            user/app:1.0.0
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: fhem:${{ steps.buildVars.outputs.VARIANT }}
+          build-args: |
+            PLATFORM=linux
+            BUILD_DATE=${{ steps.buildVars.outputs.BUILD_DATE }}
+            TAG=${{ steps.buildVars.outputs.VARIANT }}
+            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
+            IMAGE_VERSION=${{ steps.buildVars.outputs.VARIANT }}
+            IMAGE_VCS_REF=${{ github.sha }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            IMAGE_LAYER_SYS_EXT=0
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=0
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=0
+            IMAGE_LAYER_PYTHON=0
+            IMAGE_LAYER_PYTHON_EXT=0
+            IMAGE_LAYER_NODEJS=0
+            IMAGE_LAYER_NODEJS_EXT=0
+
+
+
