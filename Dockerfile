@@ -1,11 +1,14 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
-FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
+FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
+
+ARG TARGETPLATFORM
+
+ARG ARCH=${TARGETPLATFORM}
+
+
 
 # Arguments to instantiate as variables
-ARG BASE_IMAGE
-ARG BASE_IMAGE_TAG
-ARG ARCH="amd64"
 ARG PLATFORM="linux"
 ARG TAG=""
 ARG TAG_ROLLING=""
@@ -17,25 +20,25 @@ ARG IMAGE_VERSION=""
 
 # Custom build options:
 #  Disable certain image layers using build env variables if desired
-ARG IMAGE_LAYER_SYS_EXT
-ARG IMAGE_LAYER_PERL_EXT
-ARG IMAGE_LAYER_DEV
-ARG IMAGE_LAYER_PERL_CPAN
-ARG IMAGE_LAYER_PERL_CPAN_EXT
-ARG IMAGE_LAYER_PYTHON
-ARG IMAGE_LAYER_PYTHON_EXT
-ARG IMAGE_LAYER_NODEJS
-ARG IMAGE_LAYER_NODEJS_EXT
+ARG IMAGE_LAYER_SYS_EXT="1"
+ARG IMAGE_LAYER_PERL_EXT="1"
+ARG IMAGE_LAYER_DEV="1"
+ARG IMAGE_LAYER_PERL_CPAN="1"
+ARG IMAGE_LAYER_PERL_CPAN_EXT="1"
+ARG IMAGE_LAYER_PYTHON="1"
+ARG IMAGE_LAYER_PYTHON_EXT="1"
+ARG IMAGE_LAYER_NODEJS="1"
+ARG IMAGE_LAYER_NODEJS_EXT="1"
 
 # Custom installation packages
-ARG APT_PKGS
-ARG CPAN_PKGS
-ARG PIP_PKGS
-ARG NPM_PKGS
+ARG APT_PKGS=""
+ARG CPAN_PKGS=""
+ARG PIP_PKGS=""
+ARG NPM_PKGS=""
 
 # Re-usable variables during build
 ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
-ARG L_URL="https://hub.docker.com/r/fhem/fhem-${ARCH}_${PLATFORM}"
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETARCH}_${PLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="Julian Pawlowski"
@@ -397,7 +400,8 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
     ; fi
 
 # Add nodejs app layer
-RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && [ "${ARCH}" != "arm32v5" ]; then \
+RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && ( [ "${ARCH}" == "AMD64" ] || [ "${ARCH}" == "ARMv7" ] || [ "${ARCH}" == "ARM64v8" ]  ||  \
+         [ ${TARGETPLATFORM} == 'linux/amd64' ] || [ ${TARGETPLATFORM} == 'linux/arm/v7' ] || [ ${TARGETPLATFORM} == 'linux/arm64' ] ) ; then \
       LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
