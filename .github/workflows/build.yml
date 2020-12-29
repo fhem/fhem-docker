@@ -6,7 +6,9 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the dev branch
   push:
-    branches: [ dev ]
+    branches:
+    - "dev*"  # Support wildcard matching
+
   pull_request:
     branches: [ dev ]
 
