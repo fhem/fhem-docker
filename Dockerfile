@@ -38,12 +38,12 @@ ARG NPM_PKGS=""
 
 # Re-usable variables during build
 ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
-ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETARCH}_${PLATFORM}"
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="Julian Pawlowski"
 ARG L_LICENSES="MIT"
-ARG L_TITLE="fhem-${ARCH}_${PLATFORM}"
+ARG L_TITLE="fhem-${TARGETPLATFORM}"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
@@ -105,7 +105,7 @@ ENV LANG=en_US.UTF-8 \
    TIMEOUT=10 \
    CONFIGTYPE=fhem.cfg
 
-# Install base environment
+# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
 COPY ./src/qemu-* /usr/bin/
 COPY src/entry.sh /entry.sh
 COPY src/ssh_known_hosts.txt /ssh_known_hosts.txt
@@ -400,8 +400,7 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
     ; fi
 
 # Add nodejs app layer
-RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) && ( [ "${ARCH}" == "AMD64" ] || [ "${ARCH}" == "ARMv7" ] || [ "${ARCH}" == "ARM64v8" ]  ||  \
-         [ ${TARGETPLATFORM} == 'linux/amd64' ] || [ ${TARGETPLATFORM} == 'linux/arm/v7' ] || [ ${TARGETPLATFORM} == 'linux/arm64' ] ) ; then \
+RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
       LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
            nodejs \
@@ -429,7 +428,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
     ; fi
 
 # Add FHEM app layer
-# Note: Manual checkout is required if build is not run by Travis:
+# Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 COPY src/fhem/trunk/fhem/ /fhem/
 
