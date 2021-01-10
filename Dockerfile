@@ -478,7 +478,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 
-COPY src/99_DockerImageInfo.pm src/fhem/trunk/fhem/ /fhem/
+COPY src/FHEM src/fhem/trunk/fhem/ /fhem/
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
 # Arguments to instantiate as variables
