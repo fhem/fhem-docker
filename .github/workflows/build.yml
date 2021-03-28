@@ -42,7 +42,7 @@ jobs:
 
       - name: Cache fhem 
         id: cache-fhem
-        uses: actions/cache@v2
+        uses: actions/cache@v2.1.4
         with:
           path: ./src/fhem/trunk
           key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
@@ -97,7 +97,7 @@ jobs:
         uses: docker/setup-buildx-action@v1
       
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v2.1.4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
@@ -177,7 +177,7 @@ jobs:
 
       - name: Get cached fhem 
         id: cache-fhem
-        uses: actions/cache@v2
+        uses: actions/cache@v2.1.4
         with:
           path: ./src/fhem/trunk
           key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
@@ -228,7 +228,7 @@ jobs:
         uses: docker/setup-buildx-action@v1
       
       - name: Cache Docker layers
-        uses: actions/cache@v2
+        uses: actions/cache@v2.1.4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
