@@ -45,7 +45,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-utils=1.8.2.2 \
-        ca-certificates=20200601~deb10u1 \
+        ca-certificates=20200601~deb10u2 \
         gnupg=2.2.12-1+deb10u1 \
         locales=2.28-10 \
     && LC_ALL=C c_rehash \
@@ -67,7 +67,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         avrdude=6.3-20171130+svn1429-2 \
         bluez=5.50-1.2~deb10u1 \
         curl=7.64.0-4+deb10u1 \
-        dnsutils=1:9.11.5.P4+dfsg-5.1+deb10u2 \
+        dnsutils=1:9.11.5.P4+dfsg-5.1+deb10u3 \
         etherwake=1.09-4+b1 \
         fonts-liberation=1:1.07.4-9 \
         i2c-tools=4.1-1 \
@@ -83,10 +83,10 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         procps=2:3.3.15-2 \
         sendemail=1.56-5 \
         sqlite3=3.27.2-3+deb10u1 \
-        subversion=1.10.4-1+deb10u1 \
-        sudo=1.8.27-1+deb10u2 \
+        subversion=1.10.4-1+deb10u2 \
+        sudo=1.8.27-1+deb10u3 \
         telnet=0.17-41.2 \
-        unzip=6.0-23+deb10u1 \
+        unzip=6.0-23+deb10u2 \
         usbutils=1:010-3 \
         wget=1.20.1-1.1 \        
         ${APT_PKGS} \
