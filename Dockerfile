@@ -1,6 +1,6 @@
-ARG BASE_IMAGE="debian"
-ARG BASE_IMAGE_TAG="buster-20201209-slim"
-FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
+#ARG BASE_IMAGE="debian"
+#ARG BASE_IMAGE_TAG="buster-20210408-slim"
+FROM --platform=$TARGETPLATFORM debian:buster-20210408-slim
 
 ARG TARGETPLATFORM
 
@@ -57,16 +57,16 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && echo "Europe/Berlin" > /etc/timezone \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     \
-    && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-    && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+#    && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
+#    && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
+#    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb=1:8.1.0+r23-5 \
         android-libadb=1:8.1.0+r23-5 \
-        avahi-daemon=0.7-4+b1 \
+        avahi-daemon=0.7-4+deb10u1 \
         avrdude=6.3-20171130+svn1429-2 \
         bluez=5.50-1.2~deb10u1 \
-        curl=7.64.0-4+deb10u1 \
+        curl=7.64.0-4+deb10u2 \   
         dnsutils=1:9.11.5.P4+dfsg-5.1+deb10u3 \
         etherwake=1.09-4+b1 \
         fonts-liberation=1:1.07.4-9 \
@@ -106,7 +106,7 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         libdbd-pgsql=0.9.0-6+b1 \
         libdbd-sqlite3=0.9.0-6+b1 \
         libdbd-sqlite3-perl=1.62-3 \
-        libdbi-perl=1.642-1+deb10u1 \
+        libdbi-perl=1.642-1+deb10u2 \
         libdevice-serialport-perl=1.04-3+b6 \
         libdevice-usb-perl=0.37-2+b1 \
         libgd-graph-perl=1.54~ds-2 \
@@ -170,7 +170,7 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         mplayer=2:1.3.0-8+b4 \
         nmap=7.70+dfsg1-6+deb10u1 \
         normalize-audio=0.7.7-15 \
-        snmp=5.7.3+dfsg-5+deb10u1 \
+        snmp=5.7.3+dfsg-5+deb10u2 \
         snmp-mibs-downloader=1.2 \
         sox=14.4.2+git20190427-1 \
         vorbis-tools=1.4.0-11 \
@@ -357,10 +357,10 @@ RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] 
         autoconf=2.69-11 \
         automake=1:1.16.1-4 \
         build-essential=12.6 \
-        libavahi-compat-libdnssd-dev=0.7-4+b1 \
+        libavahi-compat-libdnssd-dev=0.7-4+deb10u1 \
         libdb-dev=5.3.1+nmu1 \
         libsodium-dev=1.0.17-1 \
-        libssl-dev=1.1.1d-0+deb10u4 \
+        libssl-dev=1.1.1d-0+deb10u6 \
         libtool=2.4.6-9 \
         libusb-1.0-0-dev=2:1.0.22-2 \
         patch=2.7.6-3+deb10u1 \
