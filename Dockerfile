@@ -67,7 +67,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         avahi-daemon \
         avrdude \
         bluez \
-        curl 
+        curl \
         dnsutils \
         etherwake \
         fonts-liberation \
@@ -89,7 +89,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         telnet \
         unzip \
         usbutils \
-        wget 
+        wget \
         ${APT_PKGS} \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
@@ -272,7 +272,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libcrypt-unixcrypt-xs-perl \
         libcrypt-urandom-perl \
         libcrypt-util-perl \
-        libcrypt-x509-perl 
+        libcrypt-x509-perl \
         libcryptx-perl \
         libdata-dump-perl \
         libdatetime-format-strptime-perl \
