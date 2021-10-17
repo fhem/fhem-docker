@@ -221,7 +221,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libauthen-smb-perl \
         libauthen-tacacsplus-perl \
         libauthen-u2f-perl \
-        libauthen-u2f-tester-perl 
+        libauthen-u2f-tester-perl \
         libclass-dbi-mysql-perl \
         libclass-isa-perl \
         libclass-loader-perl \
