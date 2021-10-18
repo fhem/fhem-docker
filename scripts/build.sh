@@ -12,12 +12,21 @@ cd "$(readlink -f "$(dirname "${BASH_SOURCE}")")"/..
 BUILD_DATE=$( date --iso-8601=seconds --utc )
 BASE="fhem/fhem-${LABEL}"
 BASE_IMAGE="debian"
-BASE_IMAGE_TAG="buster"
+BASE_IMAGE_TAG="bullseye"
 
 # Download dependencies if not existing
 if [ ! -d ./src/fhem ]; then
   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
 fi
+if [ ! -s ~/.docker/cli-plugins/docker-buildx ]; then
+ echo "Try Installing buildx"
+ export DOCKER_BUILDKIT=1
+ docker build --platform=local -o . git://github.com/docker/buildx
+ mkdir -p ~/.docker/cli-plugins
+ mv buildx ~/.docker/cli-plugins/docker-buildx
+fi 
+
+
 FHEM_VERSION="$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
 FHEM_REVISION_LATEST="$( cd ./src/fhem/trunk; svn info -r HEAD | grep "Revision" | cut -d " " -f 2 )"
 
@@ -79,7 +88,7 @@ else
   echo "No prior build found for ${BASE}:${TAG} on Docker Hub registry"
 fi
 
-docker build \
+docker buildx build \
   $( [ -n "${CACHE_TAG}" ] && echo -n "--cache-from "${BASE}:${CACHE_TAG}"" ) \
   --tag "${BASE}:${VARIANT}" \
   --build-arg BASE_IMAGE=${BASE_IMAGE} \
@@ -93,6 +102,7 @@ docker build \
   --build-arg IMAGE_VCS_REF=${TRAVIS_COMMIT} \
   --build-arg FHEM_VERSION=${VARIANT_FHEM} \
   --build-arg VCS_REF=${FHEM_REVISION_LATEST} \
+  --platform linux/amd64 \
   .
 
 # Add rolling tag to this build
