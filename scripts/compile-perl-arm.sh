@@ -42,18 +42,18 @@ sudo sbuild-update --keygen
 sudo chown -R $USER:sbuild ~/.gnupg/
 sudo su -c "grep -q /etc/hosts /etc/schroot/sbuild/copyfiles || echo /etc/hosts >> /etc/schroot/sbuild/copyfiles"
 
-mk-sbuild --target=armel buster
-mk-sbuild --target=armhf buster
-mk-sbuild --target=arm64 buster
+mk-sbuild --target=armel bullseye
+mk-sbuild --target=armhf bullseye
+mk-sbuild --target=arm64 bullseye
 
 curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v4.0.0/x86_64_qemu-arm-static.tar.gz | tar zx -C ~/
 curl -fsSL https://github.com/multiarch/qemu-user-static/releases/download/v4.0.0/x86_64_qemu-aarch64-static.tar.gz | tar zx -C ~/
 chmod a+x qemu-*-static
-sudo cp -f qemu-arm-static /var/lib/schroot/chroots/buster-amd64-armel/usr/bin
-sudo cp -f qemu-arm-static /var/lib/schroot/chroots/buster-amd64-armhf/usr/bin
-sudo cp -f qemu-aarch64-static /var/lib/schroot/chroots/buster-amd64-arm64/usr/bin
+sudo cp -f qemu-arm-static /var/lib/schroot/chroots/bullseye-amd64-armel/usr/bin
+sudo cp -f qemu-arm-static /var/lib/schroot/chroots/bullseye-amd64-armhf/usr/bin
+sudo cp -f qemu-aarch64-static /var/lib/schroot/chroots/bullseye-amd64-arm64/usr/bin
 
-sbuild --chroot buster-amd64-armhf --arch armhf -j8
+sbuild --chroot bullseye-amd64-armhf --arch armhf -j8
 
 ARCHLIST="arm32v5 arm32v7 aarch64"
 for ARCH in $ARCHLIST; do
