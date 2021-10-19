@@ -29,10 +29,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@3.6.0
+
       - name: Get git vars
         shell: bash
         run: |
-          echo "::set-output name=BRANCH::$(echo "${GITHUB_REF#refs/*/}")"
+          echo "::set-output name=BRANCH::$(echo "${{ env.GITHUB_REF_SLUG }}")"
           echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
         id: gitVars
 
@@ -163,11 +166,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@3.6.0
+
       - name: Get git vars
         shell: bash
         run: |
           echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
-          echo "::set-output name=BRANCH::$(echo "${GITHUB_REF#refs/*/}")"
+          echo "::set-output name=BRANCH::$(echo "${{ env.GITHUB_REF_SLUG }}")"
 
         id: gitVars
 
@@ -240,7 +246,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.CR_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push cross compiled full blown image on supported platforms
         uses: docker/build-push-action@v2
