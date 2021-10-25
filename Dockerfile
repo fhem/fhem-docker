@@ -1,6 +1,6 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="bullseye"
-FROM ${BASE_IMAGE}:${BASE_IMAGE_TAG}
+FROM debian:bullseye-20211011-slim
 
 ARG TARGETPLATFORM
 

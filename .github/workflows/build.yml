@@ -279,7 +279,7 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=1
             IMAGE_LAYER_NODEJS=1
             IMAGE_LAYER_NODEJS_EXT=1
-            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Buster.
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Bullseye.
 
       - name: Build and push cross compiled base image on supported platforms
         uses: docker/build-push-action@v2
@@ -312,5 +312,5 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=0
             IMAGE_LAYER_NODEJS=0
             IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Buster.
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
             
