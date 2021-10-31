@@ -75,7 +75,7 @@ if [ -d "/fhem" ]; then
     (( i++ ))
   fi
 
-  if [ -d /docker ] && [ -s /docker/pre-init.sh ]; then
+  if [ -s /docker/pre-init.sh ]; then
     echo "$i. Running /docker/pre-init.sh script"
     [ ! -w /docker/pre-init.sh ] || chmod 755 /docker/pre-init.sh
     [ ! -x /docker/pre-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-init.sh
@@ -224,7 +224,7 @@ if [ -d "/fhem" ]; then
     (( i++ ))
   fi
 
-  if [ -d /docker ] && [ -s /docker/post-init.sh ]; then
+  if [ -s /docker/post-init.sh ]; then
     echo "$i. Running /docker/post-init.sh script"
     [ ! -w /docker/post-init.sh ] || chmod 755 /docker/post-init.sh
     [ ! -x /docker/post-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-init.sh
@@ -493,7 +493,7 @@ function StartFHEM {
     [ ! -x /pre-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-start.sh
   fi
 
-  if [ -d /docker ] && [ -s /docker/pre-start.sh ]; then
+  if [ -s /docker/pre-start.sh ]; then
     echo "$i. Running /docker/pre-start.sh script"
     [ ! -w /docker/pre-start.sh ] || chmod 755 /docker/pre-start.sh
     [ ! -x /docker/pre-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-start.sh
@@ -603,7 +603,7 @@ function StartFHEM {
     [ ! -x /post-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-start.sh
   fi
 
-  if [ -d /docker ] && [ -s /docker/post-start.sh ]; then
+  if [ -s /docker/post-start.sh ]; then
     echo "Running /docker/post-start.sh script"
     [ ! -w /docker/post-start.sh ] || chmod 755 /docker/post-start.sh
     [ ! -x /docker/post-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
