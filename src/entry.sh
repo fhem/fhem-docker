@@ -219,14 +219,14 @@ if [ -d "/fhem" ]; then
 
   if [ -s /post-init.sh ]; then
     echo "$i. Running /post-init.sh script"
-    chmod 755 /post-init.sh
+    [ ! -w /post-init.sh ] || chmod 755 /post-init.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-init.sh
     (( i++ ))
   fi
 
   if [ -d /docker ] && [ -s /docker/post-init.sh ]; then
     echo "$i. Running /docker/post-init.sh script"
-    chmod 755 /docker/post-init.sh
+    [ ! -w /docker/post-init.sh ] || chmod 755 /docker/post-init.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-init.sh
     (( i++ ))
   fi
@@ -599,13 +599,13 @@ function StartFHEM {
 
   if [ -s /post-start.sh ]; then
     echo "Running /post-start.sh script ..."
-    chmod 755 /post-start.sh
+    [ ! -w /post-start.sh ] || chmod 755 /post-start.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-start.sh
   fi
 
   if [ -d /docker ] && [ -s /docker/post-start.sh ]; then
     echo "Running /docker/post-start.sh script"
-    chmod 755 /docker/post-start.sh
+    [ ! -w /docker/post-start.sh ] || chmod 755 /docker/post-start.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
   fi
 
