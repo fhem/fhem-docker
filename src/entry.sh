@@ -70,14 +70,14 @@ if [ -d "/fhem" ]; then
 
   if [ -s /pre-init.sh ]; then
     echo "$i. Running /pre-init.sh script"
-    chmod 755 /pre-init.sh
+    [ ! -w /pre-init.sh ] || chmod 755 /pre-init.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-init.sh
     (( i++ ))
   fi
 
   if [ -d /docker ] && [ -s /docker/pre-init.sh ]; then
     echo "$i. Running /docker/pre-init.sh script"
-    chmod 755 /docker/pre-init.sh
+    [ ! -w /docker/pre-init.sh ] || chmod 755 /docker/pre-init.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-init.sh
     (( i++ ))
   fi
@@ -489,13 +489,13 @@ function StartFHEM {
 
   if [ -s /pre-start.sh ]; then
     echo "Running /pre-start.sh script ..."
-    chmod 755 /pre-start.sh
+    [ ! -w /pre-start.sh ] || chmod 755 /pre-start.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-start.sh
   fi
 
   if [ -d /docker ] && [ -s /docker/pre-start.sh ]; then
     echo "$i. Running /docker/pre-start.sh script"
-    chmod 755 /docker/pre-start.sh
+    [ ! -w /docker/pre-start.sh ] || chmod 755 /docker/pre-start.sh
     DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-start.sh
     (( i++ ))
   fi
