@@ -159,7 +159,7 @@ jobs:
 
       - name: Inspect and run integration tests
         run: |
-          docker image inspect fhem:${{ steps.buildVars.outputs.VARIANT }}
+          docker image inspect fhem:${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           ./scripts/test-integration.sh;
 
       - name: Run build in unittests
