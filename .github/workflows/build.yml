@@ -118,10 +118,10 @@ jobs:
           flavor: |
              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=pr,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v2
@@ -134,7 +134,8 @@ jobs:
           push: false
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: fhem:${{ steps.buildVars.outputs.VARIANT }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
