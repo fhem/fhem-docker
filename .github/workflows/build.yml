@@ -21,7 +21,9 @@ jobs:
   test_build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile, Dockerfile-bullseye]
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -103,9 +105,23 @@ jobs:
         uses: actions/cache@v2.1.6
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
           restore-keys: |
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
              ${{ runner.os }}-buildx-
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: fhem/fhem-docker
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v2
@@ -113,19 +129,21 @@ jobs:
         with:
           context: .
           load: true  
-          file: ./Dockerfile
+          file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: fhem:${{ steps.buildVars.outputs.VARIANT }}
           build-args: |
-            PLATFORM=linux
-            BUILD_DATE=${{ steps.buildVars.outputs.BUILD_DATE }}
-            TAG=${{ steps.buildVars.outputs.VARIANT }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ALEXAFHEM_VERSION=0.5.61
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
-            IMAGE_VERSION=${{ steps.buildVars.outputs.VARIANT }}
-            IMAGE_VCS_REF=${{ github.sha }}
             FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
             VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
             IMAGE_LAYER_SYS_EXT=1
