@@ -164,7 +164,7 @@ jobs:
 
       - name: Run build in unittests
         run: |
-          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite fhem:${{ steps.buildVars.outputs.VARIANT }} )
+          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
           until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
           do sleep 1;
