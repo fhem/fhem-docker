@@ -502,7 +502,7 @@ ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="Julian Pawlowski"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${TARGETPLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
