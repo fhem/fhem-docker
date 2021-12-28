@@ -292,10 +292,10 @@ jobs:
         id: docker_build
         with:
           context: .
-          load: true  
+          load: false  
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: ${{ steps.meta.outputs.tags }}
@@ -339,10 +339,10 @@ jobs:
         id: docker_build_base
         with:
           context: .
-          load: true  
+          load: false  
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           tags: ${{ steps.meta.outputs.tags }}
@@ -368,38 +368,3 @@ jobs:
             IMAGE_LAYER_NODEJS=0
             IMAGE_LAYER_NODEJS_EXT=0
             L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
-
-            
-      - name: Build and push cross compiled base image on supported platforms
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          load: false  
-          file: ./Dockerfile
-          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
-          push: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/fhem-minimal-experimental:${{ steps.buildVars.outputs.TAG_ROLLING }}
-
-          build-args: |
-            PLATFORM=linux
-            BUILD_DATE=${{ steps.buildVars.outputs.BUILD_DATE }}
-            TAG=${{ steps.buildVars.outputs.VARIANT }}
-            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
-            IMAGE_VERSION=${{ steps.buildVars.outputs.VARIANT }}
-            IMAGE_VCS_REF=${{ github.sha }}
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=0
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=0
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=0
-            IMAGE_LAYER_PYTHON=0
-            IMAGE_LAYER_PYTHON_EXT=0
-            IMAGE_LAYER_NODEJS=0
-            IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
-            
