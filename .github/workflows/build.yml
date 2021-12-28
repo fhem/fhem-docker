@@ -101,15 +101,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       
-      - name: Cache Docker layers
-        uses: actions/cache@v2.1.6
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
-          restore-keys: |
-             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
-             ${{ runner.os }}-buildx-
-
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v3
@@ -132,8 +123,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -257,15 +248,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       
-      - name: Cache Docker layers
-        uses: actions/cache@v2.1.6
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
-          restore-keys: |
-             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
-             ${{ runner.os }}-buildx-
-
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1 
         with:
@@ -296,8 +278,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
