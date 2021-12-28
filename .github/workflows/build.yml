@@ -177,6 +177,9 @@ jobs:
   published_build:
     runs-on: ubuntu-latest
     needs: test_build
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile, Dockerfile-bullseye]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -188,12 +191,14 @@ jobs:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@3.6.0
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@3.6.0
+
       - name: Get git vars
         shell: bash
         run: |
           echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
           echo "::set-output name=BRANCH::$(echo "${{ env.GITHUB_REF_SLUG }}")"
-
         id: gitVars
 
       - name: Get latest svn revision from remote
@@ -256,9 +261,10 @@ jobs:
         uses: actions/cache@v2.1.6
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
           restore-keys: |
-           ${{ runner.os }}-buildx-
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
+             ${{ runner.os }}-buildx-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1 
@@ -267,26 +273,41 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: fhem/fhem-docker
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+
       - name: Build and push cross compiled full blown image on supported platforms
         uses: docker/build-push-action@v2
+        id: docker_build
         with:
           context: .
-          load: false  
-          file: ./Dockerfile
+          load: true  
+          file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/fhem-experimental:${{ steps.buildVars.outputs.TAG_ROLLING }}
-
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            PLATFORM=linux
-            BUILD_DATE=${{ steps.buildVars.outputs.BUILD_DATE }}
-            TAG=${{ steps.buildVars.outputs.VARIANT }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ALEXAFHEM_VERSION=0.5.61
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
-            IMAGE_VERSION=${{ steps.buildVars.outputs.VARIANT }}
-            IMAGE_VCS_REF=${{ github.sha }}
             FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
             VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
             IMAGE_LAYER_SYS_EXT=1
@@ -298,8 +319,56 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=1
             IMAGE_LAYER_NODEJS=1
             IMAGE_LAYER_NODEJS_EXT=1
-            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Bullseye.
 
+      - name: Docker meta
+        id: meta_base
+        uses: docker/metadata-action@v3
+        with:
+          images: fhem/fhem-minimal-docker
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+
+      - name: Build and push cross compiled base image on supported platforms
+        uses: docker/build-push-action@v2
+        id: docker_build_base
+        with:
+          context: .
+          load: true  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+          push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ALEXAFHEM_VERSION=0.5.61
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            IMAGE_LAYER_SYS_EXT=0
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=0
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=0
+            IMAGE_LAYER_PYTHON=0
+            IMAGE_LAYER_PYTHON_EXT=0
+            IMAGE_LAYER_NODEJS=0
+            IMAGE_LAYER_NODEJS_EXT=0
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
+
+            
       - name: Build and push cross compiled base image on supported platforms
         uses: docker/build-push-action@v2
         with:
@@ -331,5 +400,5 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=0
             IMAGE_LAYER_NODEJS=0
             IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
             
