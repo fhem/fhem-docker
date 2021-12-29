@@ -47,7 +47,7 @@ jobs:
 
       - name: Cache fhem 
         id: cache-fhem
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ./src/fhem/trunk
           key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
@@ -195,7 +195,7 @@ jobs:
 
       - name: Get cached fhem 
         id: cache-fhem
-        uses: actions/cache@v2.1.6
+        uses: actions/cache@v2.1.7
         with:
           path: ./src/fhem/trunk
           key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
@@ -246,6 +246,7 @@ jobs:
         uses: docker/setup-buildx-action@v1
       
       - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v1 
         with:
           registry: ghcr.io
