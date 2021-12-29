@@ -121,7 +121,6 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
           restore-keys: |
              ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
-             ${{ runner.os }}-buildx-
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v2
@@ -283,7 +282,6 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
           restore-keys: |
              ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
-             ${{ runner.os }}-buildx-
 
       - name: Build and push cross compiled full blown image on supported platforms
         uses: docker/build-push-action@v2
@@ -322,7 +320,7 @@ jobs:
       - name: echo log
         if: failure()
         run: |
-          cat /root/.npm/_logs/*
+          sudo cat /root/.npm/_logs/*
 
       #- uses: actions/upload-artifact@v2
       #  if: failure()
