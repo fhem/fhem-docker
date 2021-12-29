@@ -319,11 +319,16 @@ jobs:
             IMAGE_LAYER_NODEJS=1
             IMAGE_LAYER_NODEJS_EXT=1
 
-      - uses: actions/upload-artifact@v2
+      - name: echo log
         if: failure()
-        with:
-          name: my-artifact
-          path: /root/.npm/_logs/
+        run: |
+          cat /root/.npm/_logs/*
+
+      #- uses: actions/upload-artifact@v2
+      #  if: failure()
+      #  with:
+      #    name: my-artifact
+      #    path: /root/.npm/_logs/
 
       - name: Docker meta
         id: meta_base
