@@ -132,7 +132,7 @@ jobs:
           platforms: linux/amd64
           push: false
           #cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -172,6 +172,15 @@ jobs:
           echo -e "\n"
           docker exec ${CONTAINER} /bin/bash -c 'prove --recurse /opt/fhem/t/FHEM' || true
           docker container rm $CONTAINER --force --volumes
+      
+        # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
 
   published_build:
     runs-on: ubuntu-latest
@@ -292,8 +301,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          #cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -317,21 +326,6 @@ jobs:
             IMAGE_LAYER_NODEJS=1
             IMAGE_LAYER_NODEJS_EXT=1
 
-      - name: echo log
-        if: failure()
-        run: |
-          sudo cat /root/.npm/_logs/*
-
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-
-      #- uses: actions/upload-artifact@v2
-      #  if: failure()
-      #  with:
-      #    name: my-artifact
-      #    path: /root/.npm/_logs/
-
       - name: Docker meta
         id: meta_base
         uses: docker/metadata-action@v3
@@ -354,8 +348,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache-new
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: ${{ steps.meta_base.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
           build-args: |
@@ -378,3 +372,11 @@ jobs:
             IMAGE_LAYER_NODEJS=0
             IMAGE_LAYER_NODEJS_EXT=0
             L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
+
+        # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
