@@ -114,6 +114,15 @@ jobs:
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
+      - name: Cache Docker layers
+        uses: actions/cache@v2.1.6
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
+          restore-keys: |
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
+             ${{ runner.os }}-buildx-
+
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v2
         id: docker_build
@@ -123,8 +132,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -244,7 +253,7 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      
+
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v1 
@@ -267,6 +276,15 @@ jobs:
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
+      - name: Cache Docker layers
+        uses: actions/cache@v2.1.6
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
+          restore-keys: |
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
+             ${{ runner.os }}-buildx-
+
       - name: Build and push cross compiled full blown image on supported platforms
         uses: docker/build-push-action@v2
         id: docker_build
@@ -276,8 +294,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -329,8 +347,8 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
           tags: ${{ steps.meta_base.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
           build-args: |
