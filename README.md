@@ -9,8 +9,8 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 
 
 ## Installation
-Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/FHEM) 
-Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages/container/package/fhem/fhem) to allow automatic image for your system.
+Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
+Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
 ### From Docker Hub
 Currently outdated but still available
@@ -28,7 +28,7 @@ Updated versions based on
 - NodeJS 14 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
         docker pull ghcr.io/fhem/fhem/fhem-docker:bullseye
 
@@ -37,7 +37,7 @@ NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tr
 - NodeJS 14 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
         docker pull ghcr.io/fhem/fhem/fhem-docker:buster
 
