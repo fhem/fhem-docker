@@ -12,6 +12,11 @@ on:
   pull_request:
     branches: [ dev ]
 
+release:
+    types: # This configuration does not affect the page_build event above
+      - published
+      - released
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
