@@ -12,7 +12,7 @@ on:
   pull_request:
     branches: [ dev ]
 
-release:
+  release:
     types: # This configuration does not affect the page_build event above
       - published
       - released
