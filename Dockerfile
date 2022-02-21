@@ -45,7 +45,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        apt-transport-https \
         apt-utils \
         ca-certificates \
         gnupg \
