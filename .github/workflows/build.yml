@@ -8,6 +8,7 @@ on:
   push:
     branches:
     - "dev*"  # Support wildcard matching
+    - "master"
 
   pull_request:
     branches: [ dev ]
