@@ -1,0 +1,388 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Build and Test
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the dev branch
+  push:
+    branches:
+    - "dev*"  # Support wildcard matching
+
+  pull_request:
+    branches: [ dev ]
+
+  release:
+    types: # This configuration does not affect the page_build event above
+      - published
+      - released
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  test_build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile, Dockerfile-bullseye]
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@3.6.0
+
+      - name: Get git vars
+        shell: bash
+        run: |
+          echo "::set-output name=BRANCH::$(echo "${{ env.GITHUB_REF_SLUG }}")"
+          echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
+        id: gitVars
+
+      - name: Get latest svn revision from remote server
+        id: svnRemote
+        run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
+
+      - name: Cache fhem 
+        id: cache-fhem
+        uses: actions/cache@v2.1.7
+        with:
+          path: ./src/fhem/trunk
+          key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
+          restore-keys: |
+            ${{ runner.os }}-fhemsvn-
+
+      - name: Update or checkout fhem from svn
+        if: steps.cache-fhem.outputs.cache-hit != 'true'
+        run: svn update ./src/fhem/trunk/  || svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
+
+      - name: get svn vars
+        id: svnVars
+        run: |
+          echo "::set-output name=FHEM_REVISION_LATEST::$( cd ./src/fhem/trunk; svn info --show-item last-changed-revision)"
+          echo "::set-output name=FHEM_VERSION::$( cd ./src/fhem/trunk; svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+
+      - name: prepare some vars
+        id: buildVars
+        run: |
+          VARIANT_FHEM="${{ steps.svnVars.outputs.FHEM_VERSION }}-s${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}"
+          VARIANT_IMAGE="${{ steps.gitVars.outputs.IMAGE_VERSION }}-${{ steps.gitVars.outputs.BRANCH }}"
+          echo "::set-output name=VARIANT::$(echo "${VARIANT_FHEM}_${VARIANT_IMAGE}")"
+          echo "::set-output name=VARIANT_IMAGE::$(echo "$VARIANT_IMAGE")"
+          echo "::set-output name=VARIANT_FHEM::$(echo "$VARIANT_FHEM")"
+          echo "::set-output name=BUILD_DATE::$(  date --iso-8601=seconds --utc )"
+          # detect rolling branch
+          if [[ ${{ steps.gitVars.outputs.BRANCH }} == "master" ]]; then
+          echo "::set-output name=TAG_ROLLING::latest"
+          else
+          echo "::set-output name=TAG_ROLLING::$( echo "${{ steps.gitVars.outputs.BRANCH }}" | tr '[A-Z]' '[a-z]' )"
+          fi
+
+      - name: Check variables
+        run: |
+          echo FHEM_REVISION_LATEST: ${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+          echo FHEM_VERSION: ${{ steps.svnVars.outputs.FHEM_VERSION }}
+          echo IMAGE_VERSION: ${{ steps.gitVars.outputs.IMAGE_VERSION }}
+          echo BUILD_DATE: ${{ steps.buildVars.outputs.BUILD_DATE }}
+          echo BRANCH: ${{ steps.gitVars.outputs.BRANCH }}
+          echo VARIANT: ${{ steps.buildVars.outputs.VARIANT }}
+          echo VARIANT_IMAGE: ${{ steps.buildVars.outputs.VARIANT_IMAGE }}
+          echo VARIANT_FHEM: ${{ steps.buildVars.outputs.VARIANT_FHEM }}
+          echo VAROLLING_TAG: ${{ steps.buildVars.outputs.TAG_ROLLING }}
+          
+      - name: Docker Setup QEMU
+        uses: docker/setup-qemu-action@v1.2.0
+        with:
+          image: tonistiigi/binfmt:latest
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: fhem/fhem-docker
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2.1.6
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
+          restore-keys: |
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
+
+      - name: Build for test full blown amd64 
+        uses: docker/build-push-action@v2
+        id: docker_build
+        with:
+          context: .
+          load: true  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          #cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ALEXAFHEM_VERSION=0.5.61
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            IMAGE_LAYER_SYS_EXT=1
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=1
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=1
+            IMAGE_LAYER_PYTHON=1
+            IMAGE_LAYER_PYTHON_EXT=1
+            IMAGE_LAYER_NODEJS=1
+            IMAGE_LAYER_NODEJS_EXT=0
+
+      - name: Inspect and run integration tests
+        run: |
+          docker image inspect ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          ./scripts/test-integration.sh;
+
+      - name: Run build in unittests
+        run: |
+          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
+          sleep 15;
+          until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
+          do sleep 1;
+          echo -n "."; 
+          done;
+          echo -e "\n"
+          docker exec ${CONTAINER} /bin/bash -c 'prove --recurse /opt/fhem/t/FHEM' || true
+          docker container rm $CONTAINER --force --volumes
+      
+        # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+
+  published_build:
+    runs-on: ubuntu-latest
+    needs: test_build
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile, Dockerfile-bullseye]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@3.6.0
+
+      - name: Get git vars
+        shell: bash
+        run: |
+          echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
+          echo "::set-output name=BRANCH::$(echo "${{ env.GITHUB_REF_SLUG }}")"
+        id: gitVars
+
+      - name: Get latest svn revision from remote
+        id: svnRemote
+        run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
+
+      - name: Get cached fhem 
+        id: cache-fhem
+        uses: actions/cache@v2.1.7
+        with:
+          path: ./src/fhem/trunk
+          key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
+          restore-keys: |
+            ${{ runner.os }}-fhemsvn-
+
+      - name: get svn vars
+        id: svnVars
+        run: |
+          echo "::set-output name=FHEM_REVISION_LATEST::$( cd ./src/fhem/trunk; svn info --show-item last-changed-revision)"
+          echo "::set-output name=FHEM_VERSION::$( cd ./src/fhem/trunk; svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+
+      - name: prepare some vars
+        id: buildVars
+        run: |
+          VARIANT_FHEM="${{ steps.svnVars.outputs.FHEM_VERSION }}-s${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}"
+          VARIANT_IMAGE="${{ steps.gitVars.outputs.IMAGE_VERSION }}-${{ steps.gitVars.outputs.BRANCH }}"
+          echo "::set-output name=VARIANT::$(echo "${VARIANT_FHEM}_${VARIANT_IMAGE}")"
+          echo "::set-output name=VARIANT_IMAGE::$(echo "$VARIANT_IMAGE")"
+          echo "::set-output name=VARIANT_FHEM::$(echo "$VARIANT_FHEM")"
+          echo "::set-output name=BUILD_DATE::$(  date --iso-8601=seconds --utc )"
+          # detect rolling branch
+          if [[ ${{ steps.gitVars.outputs.BRANCH }} == "master" ]]; then
+          echo "::set-output name=TAG_ROLLING::latest"
+          else
+          echo "::set-output name=TAG_ROLLING::$( echo "${{ steps.gitVars.outputs.BRANCH }}" | tr '[A-Z]' '[a-z]' )"
+          fi
+
+      - name: Check variables
+        run: |
+          echo FHEM_REVISION_LATEST: ${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+          echo FHEM_VERSION: ${{ steps.svnVars.outputs.FHEM_VERSION }}
+          echo IMAGE_VERSION: ${{ steps.gitVars.outputs.IMAGE_VERSION }}
+          echo BUILD_DATE: ${{ steps.buildVars.outputs.BUILD_DATE }}
+          echo BRANCH: ${{ steps.gitVars.outputs.BRANCH }}
+          echo VARIANT: ${{ steps.buildVars.outputs.VARIANT }}
+          echo VARIANT_IMAGE: ${{ steps.buildVars.outputs.VARIANT_IMAGE }}
+          echo VARIANT_FHEM: ${{ steps.buildVars.outputs.VARIANT_FHEM }}
+          echo VAROLLING_TAG: ${{ steps.buildVars.outputs.TAG_ROLLING }}
+          
+      - name: Docker Setup QEMU
+        uses: docker/setup-qemu-action@v1.2.0
+        with:
+          image: tonistiigi/binfmt:latest
+          platforms: all
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1 
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/fhem/fhem-docker
+
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2.1.6
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
+          restore-keys: |
+             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
+
+      - name: Build and push cross compiled full blown image on supported platforms
+        uses: docker/build-push-action@v2
+        id: docker_build
+        with:
+          context: .
+          load: false  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm/v7,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            ALEXAFHEM_VERSION=0.5.61
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            IMAGE_LAYER_SYS_EXT=1
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=1
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=1
+            IMAGE_LAYER_PYTHON=1
+            IMAGE_LAYER_PYTHON_EXT=1
+            IMAGE_LAYER_NODEJS=1
+            IMAGE_LAYER_NODEJS_EXT=0
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Bullseye.
+
+      - name: Docker meta
+        id: meta_base
+        uses: docker/metadata-action@v3
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/fhem/fhem-minimal-docker
+          flavor: |
+             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+
+      - name: Build and push cross compiled base image on supported platforms
+        uses: docker/build-push-action@v2
+        id: docker_build_base
+        with:
+          context: .
+          load: false  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          cache-from: type=local,src=/tmp/.buildx-cache-new
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          tags: ${{ steps.meta_base.outputs.tags }}
+          labels: ${{ steps.meta_base.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            TAG_ROLLING=${{ steps.buildVars.outputs.TAG_ROLLING }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            IMAGE_LAYER_SYS_EXT=0
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=0
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=0
+            IMAGE_LAYER_PYTHON=0
+            IMAGE_LAYER_PYTHON_EXT=0
+            IMAGE_LAYER_NODEJS=0
+            IMAGE_LAYER_NODEJS_EXT=0
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
+
+        # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache

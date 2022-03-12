@@ -14,12 +14,12 @@ RESTART="${RESTART:-1}"
 TELNETPORT="${TELNETPORT:-7072}"
 CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
 DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | sed -e 's/^nameserver[ \t]*//' )
-export DOCKER_GW="${DOCKER_GW:-$(ip -4 route list match 0/0 | cut -d' ' -f3)}"
+export DOCKER_GW="${DOCKER_GW:-$(netstat -r -n | grep ^0.0.0.0 | awk '{print $2}')}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 FHEM_UID="${FHEM_UID:-6061}"
 FHEM_GID="${FHEM_GID:-6061}"
-FHEM_PERM_DIR="0750"
-FHEM_PERM_FILE="0640"
+FHEM_PERM_DIR="${FHEM_PERM_DIR:-0750}"
+FHEM_PERM_FILE="${FHEM_PERM_FILE:-0640}"
 
 FHEM_CLEANINSTALL=1
 
@@ -70,15 +70,15 @@ if [ -d "/fhem" ]; then
 
   if [ -s /pre-init.sh ]; then
     echo "$i. Running /pre-init.sh script"
-    chmod 755 /pre-init.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-init.sh
+    [ ! -w /pre-init.sh ] || chmod 755 /pre-init.sh
+    [ ! -x /pre-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-init.sh
     (( i++ ))
   fi
 
-  if [ -d /docker ] && [ -s /docker/pre-init.sh ]; then
+  if [ -s /docker/pre-init.sh ]; then
     echo "$i. Running /docker/pre-init.sh script"
-    chmod 755 /docker/pre-init.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-init.sh
+    [ ! -w /docker/pre-init.sh ] || chmod 755 /docker/pre-init.sh
+    [ ! -x /docker/pre-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-init.sh
     (( i++ ))
   fi
 
@@ -138,7 +138,7 @@ if [ -d "/fhem" ]; then
       if [ "${MTYPE}" = "i386" ]; then
         curl -fsSL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
       else
-        curl -fsSL https://deb.nodesource.com/setup_10.x | bash - >>/pkgs.npm 2>&1
+        curl -fsSL https://deb.nodesource.com/setup_14.x | bash - >>/pkgs.npm 2>&1
       fi
       (( i++ ))
 
@@ -219,15 +219,15 @@ if [ -d "/fhem" ]; then
 
   if [ -s /post-init.sh ]; then
     echo "$i. Running /post-init.sh script"
-    chmod 755 /post-init.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-init.sh
+    [ ! -w /post-init.sh ] || chmod 755 /post-init.sh
+    [ ! -x /post-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-init.sh
     (( i++ ))
   fi
 
-  if [ -d /docker ] && [ -s /docker/post-init.sh ]; then
+  if [ -s /docker/post-init.sh ]; then
     echo "$i. Running /docker/post-init.sh script"
-    chmod 755 /docker/post-init.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-init.sh
+    [ ! -w /docker/post-init.sh ] || chmod 755 /docker/post-init.sh
+    [ ! -x /docker/post-init.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-init.sh
     (( i++ ))
   fi
 
@@ -411,14 +411,14 @@ MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@op
 fi
 
 # Adding local hosts file
-if [ -z $(dig +short -t a gateway.docker.internal.) ]; then
+if [ -z "$(dig +short -t a gateway.docker.internal.)" ]; then
   echo "$i. Adding gateway.docker.internal to /etc/hosts ..."
   if [ -n "${DOCKER_GW}" ]; then
     grep -q -E "gateway\.docker\.internal" /etc/hosts || echo -e "${DOCKER_GW}\tgateway.docker.internal" >> /etc/hosts
   fi
   (( i++ ))
 fi
-if [ -z $(dig +short -t a host.docker.internal.) ]; then
+if [ -z "$(dig +short -t a host.docker.internal.)" ]; then
   echo "$i. Adding host.docker.internal to /etc/hosts ..."
   if [ -n "${DOCKER_HOST}" ]; then
     grep -q -E "host\.docker\.internal" /etc/hosts || echo -e "${DOCKER_HOST}\thost.docker.internal" >> /etc/hosts
@@ -489,14 +489,14 @@ function StartFHEM {
 
   if [ -s /pre-start.sh ]; then
     echo "Running /pre-start.sh script ..."
-    chmod 755 /pre-start.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-start.sh
+    [ ! -w /pre-start.sh ] || chmod 755 /pre-start.sh
+    [ ! -x /pre-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /pre-start.sh
   fi
 
-  if [ -d /docker ] && [ -s /docker/pre-start.sh ]; then
+  if [ -s /docker/pre-start.sh ]; then
     echo "$i. Running /docker/pre-start.sh script"
-    chmod 755 /docker/pre-start.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-start.sh
+    [ ! -w /docker/pre-start.sh ] || chmod 755 /docker/pre-start.sh
+    [ ! -x /docker/pre-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/pre-start.sh
     (( i++ ))
   fi
 
@@ -547,7 +547,7 @@ function StartFHEM {
 
   # Generate environment variables for user 'fhem'
 
-  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL  
+  [ "${USER_LC_ALL}" != '' ] && LC_ALL="${USER_LC_ALL}" || unset LC_ALL
 
   FHEM_GLOBALATTR_DEF="nofork=0 updateInBackground=1 logfile=${LOGFILE#${FHEM_DIR}/} pidfilename=${PIDFILE#${FHEM_DIR}/}"
   export PERL_JSON_BACKEND="${PERL_JSON_BACKEND:-Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP}"
@@ -599,14 +599,14 @@ function StartFHEM {
 
   if [ -s /post-start.sh ]; then
     echo "Running /post-start.sh script ..."
-    chmod 755 /post-start.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-start.sh
+    [ ! -w /post-start.sh ] || chmod 755 /post-start.sh
+    [ ! -x /post-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /post-start.sh
   fi
 
-  if [ -d /docker ] && [ -s /docker/post-start.sh ]; then
+  if [ -s /docker/post-start.sh ]; then
     echo "Running /docker/post-start.sh script"
-    chmod 755 /docker/post-start.sh
-    DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
+    [ ! -w /docker/post-start.sh ] || chmod 755 /docker/post-start.sh
+    [ ! -x /docker/post-start.sh ] || DEBIAN_FRONTEND=noninteractive LC_ALL=C /docker/post-start.sh
   fi
 
   PrintNewLines

@@ -1,74 +1,92 @@
+[![Main branch - Build and Test](https://github.com/fhem/fhem-docker/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/fhem/fhem-docker/actions/workflows/build.yml)
+[![Development branch - Build and Test](https://github.com/fhem/fhem-docker/actions/workflows/build.yml/badge.svg?branch=dev)](https://github.com/fhem/fhem-docker/actions/workflows/build.yml)
+___
+# Docker image for FHEM
 
-# Basic Docker image for FHEM
+A Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian.
 
-A basic Docker image for [FHEM](https://fhem.de/) house automation system, based on Debian Buster.
+
+
 
 ## Installation
+Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
+Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
-Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/).
-We recommend pulling from the [main repository](https://hub.docker.com/r/fhem/fhem/) to allow automatic download of the correct image for your system platform:
+### From Docker Hub
+Currently outdated but still available
+- debian stretch
 
-```console
-docker pull fhem/fhem
-```
+        docker pull fhem/fhem
 
-To start your container right away:
+### From Github container registry
 
-```console
-docker run -d --name fhem -p 8083:8083 fhem/fhem
-```
+#### Image with serval Services installed
 
+Updated versions based on 
+- debian bullseye 
+- Perl 5.32.1
+- NodeJS 14 LTS
+- Python 3
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+
+        docker pull ghcr.io/fhem/fhem/fhem-docker:bullseye
+
+- debian buster
+- Perl 5.28.1
+- NodeJS 14 LTS
+- Python 3
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+
+        docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+
+ are available.
+
+
+
+#### Image with perl core services installed
+
+- debian bullseye 
+- Perl 5.32.1
+- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+
+        docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:bullseye
+
+- debian buster
+- Perl 5.28.1
+- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+
+        docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:buster
+
+ are available.
+
+
+#### To start your container right away:
+
+        docker run -d --name fhem -p 8083:8083 docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+
+#### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
-```console
-docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem fhem/fhem
-```
+
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem docker pull ghcr.io/fhem/fhem/fhem-docker:buster
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
+
+
+### Access FHEM
+
 After starting your container, you may now start your favorite browser to open one of FHEM's web interface variants like `http://xxx.xxx.xxx.xxx:8083/`.
 
 You may want to have a look to the [FHEM documentation sources](https://fhem.de/#Documentation) for further information about how to use and configure FHEM.
 
-### Image flavors
 
-This image provides 2 different variants:
-
-* `latest` (default)
-* `dev`
-
-You can use one of those variants by adding them to the docker image name like this:
-
-```console
-docker pull fhem/fhem:latest
-```
-
-If you do not specify any variant, `latest` will always be the default.
-
-`latest` will give you the current stable Docker image, including up-to-date FHEM.
-`dev` will give you the latest development Docker image, including up-to-date FHEM.
+### Update strategy
 
 Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
-### Supported platforms
 
-This is a multi-platform image, providing support for the following platforms:
-
-Linux:
-
-* `x86-64/AMD64` [Link](https://hub.docker.com/r/fhem/fhem-amd64_linux/)
-* `i386` [Link](https://hub.docker.com/r/fhem/fhem-i386_linux/)
-* `ARM32v5, armel` [Link](https://hub.docker.com/r/fhem/fhem-arm32v5_linux/)
-* `ARM32v7, armhf` [Link](https://hub.docker.com/r/fhem/fhem-arm32v7_linux/)
-* `ARM64v8, arm64` [Link](https://hub.docker.com/r/fhem/fhem-arm64v8_linux/)
-
-Windows:
-
-* currently not supported
-
-The main repository will allow you to install on any of these platforms.
-In case you would like to specifically choose your platform, go to the platform-related repository by clicking on the respective link above.
-
-The platform repositories will also allow you to choose more specific build tags beside the rolling tags latest or dev.
 
 ## Customize your container configuration
 
@@ -398,8 +416,3 @@ Follow initial setup steps:
     cd /docker; sudo git clone git@github.com:user/repo.git
     cd /docker/home; sudo docker-compose up -d
     ```
-
-___
-[Production ![Build Status](https://travis-ci.com/fhem/fhem-docker.svg?branch=master)](https://travis-ci.com/fhem/fhem-docker)
-
-[Development ![Build Status](https://travis-ci.com/fhem/fhem-docker.svg?branch=dev)](https://travis-ci.com/fhem/fhem-docker)
