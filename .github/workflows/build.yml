@@ -47,7 +47,7 @@ jobs:
 
       - name: Prepare SVN repository checkout and variables
         id: prepareSVN
-        uses: ./.github/workflows/prepare-svn.yml        
+        uses: ./.github/workflows/prepare-svn
 
       - name: Docker Setup QEMU
         uses: docker/setup-qemu-action@v1.2.0
