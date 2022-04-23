@@ -163,6 +163,7 @@ jobs:
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
           DOCKERFILE: ${{ matrix.dockerfile }}
           CACHE_PATH: '/tmp/.buildx-cache'
+          CACHE_TAG: "full"
 
       - name: Docker meta
         id: meta
