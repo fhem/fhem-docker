@@ -57,7 +57,7 @@ jobs:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-          DOCKERFILE: $ {{ matrix.dockerfile }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
           CACHE_PATH: '/tmp/.buildx-cache'
 
       - name: Docker meta
@@ -161,7 +161,7 @@ jobs:
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-          DOCKERFILE: $ {{ matrix.dockerfile }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
           CACHE_PATH: '/tmp/.buildx-cache'
 
       - name: Docker meta
