@@ -47,7 +47,7 @@ runs:
         path: ${{ inputs.CACHE_PATH }}
         key: ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}-${{ github.sha }}
         restore-keys: |
-            ${{ runner.os }}-buildx-${{ matrix.DOCKERFILE }}
+            ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request' && inputs.DOCKER_HUB_USERNAME != null && inputs.DOCKER_HUB_ACCESS_TOKEN != null 
