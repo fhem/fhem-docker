@@ -486,7 +486,6 @@ COPY src/FHEM/ /fhem/FHEM
 # Arguments to instantiate as variables
 ARG PLATFORM="linux"
 ARG TAG=""
-ARG TAG_ROLLING=""
 ARG IMAGE_VCS_REF=""
 ARG VCS_REF=""
 ARG FHEM_VERSION=""
