@@ -41,7 +41,7 @@ runs:
       uses: docker/setup-buildx-action@v1
 
     - name: Cache Docker layers
-      if: {{ inputs.CACHE_PATH != null }}
+      if: inputs.CACHE_PATH != null 
       uses: actions/cache@v3
       with:
         path: ${{ inputs.CACHE_PATH }}
@@ -50,14 +50,14 @@ runs:
             ${{ runner.os }}-buildx-${{ matrix.DOCKERFILE }}
 
     - name: Login to DockerHub
-      if: {{ github.event_name != 'pull_request' && inputs.DOCKER_HUB_USERNAME != null && inputs.DOCKER_HUB_ACCESS_TOKEN != null }}
+      if: github.event_name != 'pull_request' && inputs.DOCKER_HUB_USERNAME != null && inputs.DOCKER_HUB_ACCESS_TOKEN != null 
       uses: docker/login-action@v1 
       with:
         username: ${{ inputs.DOCKER_HUB_USERNAME }}
-        password: ${{ inputss.DOCKER_HUB_ACCESS_TOKEN }}
+        password: ${{ inputs.DOCKER_HUB_ACCESS_TOKEN }}
 
     - name: Login to GitHub Container Registry
-      if: {{ github.event_name != 'pull_request' && inputs.GHCR_OWMER != null && inputs.GHCR_ACCESS_TOKEN != null }}
+      if: github.event_name != 'pull_request' && inputs.GHCR_OWMER != null && inputs.GHCR_ACCESS_TOKEN != null
       uses: docker/login-action@v1 
       with:
         registry: ghcr.io
