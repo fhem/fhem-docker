@@ -66,7 +66,7 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem/fhem-docker
-            fhem/fhem-docker
+            fhem/fhem
           flavor: |
               latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
@@ -170,7 +170,7 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem/fhem-docker
-            fhem/fhem-docker
+            fhem/fhem
           flavor: |
               latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
@@ -217,7 +217,9 @@ jobs:
         id: meta_base
         uses: docker/metadata-action@v3
         with:
-          images: ghcr.io/${{ github.repository_owner }}/fhem/fhem-minimal-docker
+          images: |
+             ghcr.io/${{ github.repository_owner }}/fhem/fhem-minimal-docker
+             fhem/fhem-minimal
           flavor: |
              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
