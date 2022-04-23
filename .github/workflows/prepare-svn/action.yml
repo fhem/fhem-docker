@@ -36,7 +36,7 @@ runs:
       id: svnVars
       working-directory: ./src/fhem/trunk
       run: |
-        FHEM_REVISION_LATEST=$( svn info --show-item last-changed-revision)"
-        FHEM_VERSION=$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )"
+        FHEM_REVISION_LATEST=$( svn info --show-item last-changed-revision)
+        FHEM_VERSION=$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )
         echo "::set-output name=VARIANT_FHEM::$(echo "${FHEM_VERSION}-s${FHEM_REVISION_LATEST}")"
         echo "::set-output name=FHEM_REVISION_LATEST::$(echo "$FHEM_REVISION_LATEST")"
