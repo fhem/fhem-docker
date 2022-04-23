@@ -73,9 +73,6 @@ jobs:
         id: buildVars
         run: |
           VARIANT_FHEM="${{ steps.svnVars.outputs.FHEM_VERSION }}-s${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}"
-          VARIANT_IMAGE="${{ steps.gitVars.outputs.IMAGE_VERSION }}-${{ env.GITHUB_REF_SLUG }}"
-          echo "::set-output name=VARIANT::$(echo "${VARIANT_FHEM}_${VARIANT_IMAGE}")"
-          echo "::set-output name=VARIANT_IMAGE::$(echo "$VARIANT_IMAGE")"
           echo "::set-output name=VARIANT_FHEM::$(echo "$VARIANT_FHEM")"
           echo "::set-output name=BUILD_DATE::$(  date --iso-8601=seconds --utc )"
           # detect rolling branch
@@ -91,8 +88,6 @@ jobs:
           echo FHEM_VERSION: ${{ steps.svnVars.outputs.FHEM_VERSION }}
           echo IMAGE_VERSION: ${{ steps.gitVars.outputs.IMAGE_VERSION }}
           echo BUILD_DATE: ${{ steps.buildVars.outputs.BUILD_DATE }}
-          echo VARIANT: ${{ steps.buildVars.outputs.VARIANT }}
-          echo VARIANT_IMAGE: ${{ steps.buildVars.outputs.VARIANT_IMAGE }}
           echo VARIANT_FHEM: ${{ steps.buildVars.outputs.VARIANT_FHEM }}
           echo VAROLLING_TAG: ${{ steps.buildVars.outputs.TAG_ROLLING }}
           
@@ -232,9 +227,6 @@ jobs:
         id: buildVars
         run: |
           VARIANT_FHEM="${{ steps.svnVars.outputs.FHEM_VERSION }}-s${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}"
-          VARIANT_IMAGE="${{ steps.gitVars.outputs.IMAGE_VERSION }}-${{ env.GITHUB_REF_SLUG }}"
-          echo "::set-output name=VARIANT::$(echo "${VARIANT_FHEM}_${VARIANT_IMAGE}")"
-          echo "::set-output name=VARIANT_IMAGE::$(echo "$VARIANT_IMAGE")"
           echo "::set-output name=VARIANT_FHEM::$(echo "$VARIANT_FHEM")"
           echo "::set-output name=BUILD_DATE::$(  date --iso-8601=seconds --utc )"
           # detect rolling branch
@@ -250,8 +242,6 @@ jobs:
           echo FHEM_VERSION: ${{ steps.svnVars.outputs.FHEM_VERSION }}
           echo IMAGE_VERSION: ${{ steps.gitVars.outputs.IMAGE_VERSION }}
           echo BUILD_DATE: ${{ steps.buildVars.outputs.BUILD_DATE }}
-          echo VARIANT: ${{ steps.buildVars.outputs.VARIANT }}
-          echo VARIANT_IMAGE: ${{ steps.buildVars.outputs.VARIANT_IMAGE }}
           echo VARIANT_FHEM: ${{ steps.buildVars.outputs.VARIANT_FHEM }}
           echo VAROLLING_TAG: ${{ steps.buildVars.outputs.TAG_ROLLING }}
           
