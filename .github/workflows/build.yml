@@ -45,7 +45,7 @@ jobs:
           echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
         id: gitVars
 
-      - run: echo ${{ needs.job1.outputs.firstword }} ${{ needs.job1.outputs.secondword }}
+      - name: Prepare SVN repository checkout and variables
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn.yml        
 
