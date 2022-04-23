@@ -13,6 +13,7 @@ runs:
   using: "composite"
   steps:
     - name: Get latest svn revision from remote server
+      shell: bash
       id: svnRemote
       run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
 
@@ -26,10 +27,12 @@ runs:
           ${{ runner.os }}-fhemsvn-
 
     - name: Update or checkout fhem from svn
+      shell: bash
       if: steps.cache-fhem.outputs.cache-hit != 'true'
       run: svn update ./src/fhem/trunk/  || svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
 
     - name: prepare svn vars
+      shell: bash
       id: svnVars
       run: |
         FHEM_REVISION_LATEST=$( cd ./src/fhem/trunk; svn info --show-item last-changed-revision)"
