@@ -27,6 +27,10 @@ inputs:
   CACHE_PATH:
     description: "path where to save cache"
     required: false
+  CACHE_TAG:
+    required: false
+    default: base
+    description: "Tag to differetiate Caches"
 
 runs:
   using: "composite"
@@ -45,7 +49,7 @@ runs:
       uses: actions/cache@v3
       with:
         path: ${{ inputs.CACHE_PATH }}
-        key: ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}-${{ github.sha }}
+        key: ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}-${{ inputs.CACHE_TAG }}-${{ github.sha }}
         restore-keys: |
             ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}
 
