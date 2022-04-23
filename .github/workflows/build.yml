@@ -53,8 +53,8 @@ jobs:
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
         with:
-          DOCKER_HUB_USERNAME: ${{ inputs.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_ACCESS_TOKEN: ${{ inputss.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
           DOCKERFILE: $ {{ matrix.dockerfile }}
@@ -157,8 +157,8 @@ jobs:
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
         with:
-          DOCKER_HUB_USERNAME: ${{ inputs.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_ACCESS_TOKEN: ${{ inputss.DOCKER_HUB_ACCESS_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
           DOCKERFILE: $ {{ matrix.dockerfile }}
