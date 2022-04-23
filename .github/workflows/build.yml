@@ -49,35 +49,32 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
-      - name: Docker Setup QEMU
-        uses: docker/setup-qemu-action@v1.2.0
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
         with:
-          image: tonistiigi/binfmt:latest
-          platforms: all
+          DOCKER_HUB_USERNAME: ${{ inputs.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ inputss.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: $ {{ matrix.dockerfile }}
+          CACHE_PATH: '/tmp/.buildx-cache'
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: fhem/fhem-docker
+          images: |
+            ghcr.io/${{ github.repository_owner }}/fhem/fhem-docker
+            fhem/fhem-docker
           flavor: |
-             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
             type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
-          restore-keys: |
-             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v2
@@ -155,30 +152,17 @@ jobs:
       - name: Prepare SVN repository checkout and variables
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
-          
-      - name: Docker Setup QEMU
-        uses: docker/setup-qemu-action@v1.2.0
-        with:
-          image: tonistiigi/binfmt:latest
-          platforms: all
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to DockerHub
-        if: github.event_name == 'release'
-        uses: docker/login-action@v1 
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v1 
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_HUB_USERNAME: ${{ inputs.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ inputss.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: $ {{ matrix.dockerfile }}
+          CACHE_PATH: '/tmp/.buildx-cache'
 
       - name: Docker meta
         id: meta
@@ -187,22 +171,13 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem/fhem-docker
             fhem/fhem-docker
-
           flavor: |
-             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
             type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
-          restore-keys: |
-             ${{ runner.os }}-buildx-${{ matrix.dockerfile }}
 
       - name: Build and push cross compiled full blown image on supported platforms
         uses: docker/build-push-action@v2
@@ -260,7 +235,7 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v6,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=local,src=/tmp/.buildx-cache-new
+          cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           tags: ${{ steps.meta_base.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
