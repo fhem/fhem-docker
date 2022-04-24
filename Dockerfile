@@ -30,8 +30,7 @@ ENV LANG=en_US.UTF-8 \
    TIMEOUT=10 \
    CONFIGTYPE=fhem.cfg
 
-# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
-COPY ./src/qemu-* /usr/bin/
+# Install base environment
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
 COPY src/find-* /usr/local/bin/
 
@@ -39,7 +38,6 @@ COPY src/find-* /usr/local/bin/
 ARG APT_PKGS=""
 
 RUN chmod 755 /*.sh /usr/local/bin/* \
-    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info \
     && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
