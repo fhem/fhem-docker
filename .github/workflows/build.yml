@@ -97,8 +97,8 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.prepareSVN.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
+            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
+            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
             IMAGE_LAYER_SYS_EXT=1
             IMAGE_LAYER_PERL_EXT=1
             IMAGE_LAYER_DEV=1
@@ -202,7 +202,7 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
             IMAGE_LAYER_SYS_EXT=1
             IMAGE_LAYER_PERL_EXT=1
             IMAGE_LAYER_DEV=1
@@ -250,7 +250,7 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
             IMAGE_LAYER_SYS_EXT=0
             IMAGE_LAYER_PERL_EXT=1
             IMAGE_LAYER_DEV=0
