@@ -1,0 +1,42 @@
+name: Reusable composit workflow which prepares svn 
+description: pull svn remote, extract svn ref and latest tag
+outputs:
+  VARIANT_FHEM:
+    description: "Combined string, with FHEM Version and latest svn commit id"
+    value: ${{ steps.svnVars.outputs.VARIANT_FHEM }}
+  FHEM_REVISION_LATEST:
+    description: "The revision Number pulled from SVN"
+    value: ${{ steps.svnVars.outputs.FHEM_REVISION_LATEST }}
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get latest svn revision from remote server
+      shell: bash
+      id: svnRemote
+      run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
+
+    - name: Cache fhem 
+      id: cache-fhem
+      uses: actions/cache@v3
+      with:
+        path: ./src/fhem/trunk
+        key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
+        restore-keys: |
+          ${{ runner.os }}-fhemsvn-
+
+    - name: Update or checkout fhem from svn
+      shell: bash
+      if: steps.cache-fhem.outputs.cache-hit != 'true'
+      run: svn update ./src/fhem/trunk/  || svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk;
+
+    - name: prepare svn vars
+      shell: bash
+      id: svnVars
+      working-directory: ./src/fhem/trunk
+      run: |
+        FHEM_REVISION_LATEST=$( svn info --show-item last-changed-revision)
+        FHEM_VERSION=$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )
+        echo "::set-output name=VARIANT_FHEM::$(echo "${FHEM_VERSION}-s${FHEM_REVISION_LATEST}")"
+        echo "::set-output name=FHEM_REVISION_LATEST::$(echo "$FHEM_REVISION_LATEST")"
