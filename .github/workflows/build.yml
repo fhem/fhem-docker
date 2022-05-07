@@ -78,7 +78,7 @@ jobs:
 
 
       - name: Build for test full blown amd64 
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         id: docker_build
         with:
           context: .
@@ -183,7 +183,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
 
       - name: Build and push cross compiled full blown image on supported platforms
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         id: docker_build
         with:
           context: .
@@ -233,7 +233,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
 
       - name: Build and push cross compiled base image on supported platforms
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         id: docker_build_base
         with:
           context: .
