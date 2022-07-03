@@ -325,7 +325,7 @@ if [[ -d /dev/serial/by-id ]]; then
   find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
   (( i++ ))
 fi
-if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
+if [[ "$(find /dev/ -name "gpio*"|wc -l)" -gt "0" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
   if [ -n "$(grep ^gpio: /etc/group)" ]; then
     sed -i "s/^gpio\:.*/gpio\:x\:${GPIO_GID}/" /etc/group
