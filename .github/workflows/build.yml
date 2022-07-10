@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@4.2.4
+        uses: rlespinasse/github-slug-action@4.2.5
 
       - name: Get git vars
         shell: bash
@@ -142,7 +142,7 @@ jobs:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@4.2.4
+        uses: rlespinasse/github-slug-action@4.2.5
 
       - name: Get git vars
         shell: bash
