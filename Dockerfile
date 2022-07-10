@@ -453,7 +453,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
           nodejs=14.* \
       && if [ ! -e /usr/bin/npm ]; then \
            LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-             npm=5.8.* \
+             npm=5.* \
       ; fi \
       && npm install -g --unsafe-perm --production \
           npm \
