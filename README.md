@@ -49,13 +49,13 @@ Updated versions based on
 
 - debian bullseye 
 - Perl 5.32.1
-- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
         docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:bullseye
 
 - debian buster
 - Perl 5.28.1
-- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
         docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:buster
 
