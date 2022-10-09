@@ -64,13 +64,13 @@ Updated versions based on
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:buster
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem/fhem-docker:buster
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
