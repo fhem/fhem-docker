@@ -342,6 +342,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libtime-period-perl \
         libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
+        libprotocol-websocket-perl \
         perl \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
