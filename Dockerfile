@@ -399,6 +399,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
               Net::MQTT::Simple \
               Net::WebSocket::Server \
               Device::Firmata \
+              Protocol::WebSocket \ 
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
