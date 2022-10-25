@@ -87,8 +87,8 @@ jobs:
           platforms: linux/amd64
           push: false
           cache-from: | 
-            type=gha,scope=full_linux/amd64
-          cache-to: type=gha,mode=max,scope=full_linux/amd64
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -190,9 +190,9 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           cache-from: | 
-            type=gha,scope=full_linux/amd64
-            type=gha,scope=full_linux/cross
-          cache-to: type=gha,mode=max,scope=full_linux/cross
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -241,10 +241,10 @@ jobs:
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           cache-from: | 
-            type=gha,scope=full_linux/amd64
-            type=gha,scope=full_linux/cross
-            type=gha,scope=base_linux/cross
-          cache-to: type=gha,mode=max,scope=base_linux/cross
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/cross-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/cross-${{ matrix.dockerfile }}
           tags: ${{ steps.meta_base.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
           build-args: |
