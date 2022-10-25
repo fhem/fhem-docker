@@ -43,7 +43,8 @@ jobs:
       - name: Get git vars
         shell: bash
         run: |
-          echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
+          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
+
         id: gitVars
 
       - name: Prepare SVN repository checkout and variables
@@ -59,7 +60,6 @@ jobs:
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
           DOCKERFILE: ${{ matrix.dockerfile }}
-          CACHE_PATH: '/tmp/.buildx-cache'
 
       - name: Docker meta
         id: meta
@@ -86,15 +86,15 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
+          cache-from: | 
+            type=gha,scope=full_linux/amd64
+          cache-to: type=gha,mode=max,scope=full_linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            ALEXAFHEM_VERSION=0.5.61
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -147,7 +147,7 @@ jobs:
       - name: Get git vars
         shell: bash
         run: |
-          echo "::set-output name=IMAGE_VERSION::$( git describe --tags --dirty --match "v[0-9]*")"
+          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
         id: gitVars
 
       - name: Prepare SVN repository checkout and variables
@@ -163,8 +163,6 @@ jobs:
           GHCR_OWNER: ${{ github.repository_owner }} 
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
           DOCKERFILE: ${{ matrix.dockerfile }}
-          CACHE_PATH: '/tmp/.buildx-cache'
-          CACHE_TAG: "full"
 
       - name: Docker meta
         id: meta
@@ -191,15 +189,16 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: | 
+            type=gha,scope=full_linux/amd64
+            type=gha,scope=full_linux/cross
+          cache-to: type=gha,mode=max,scope=full_linux/cross
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            ALEXAFHEM_VERSION=0.5.61
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -214,7 +213,7 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=1
             IMAGE_LAYER_NODEJS=1
             IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Bullseye.
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
 
       - name: Docker meta
         id: meta_base
@@ -241,8 +240,11 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          cache-from: | 
+            type=gha,scope=full_linux/amd64
+            type=gha,scope=full_linux/cross
+            type=gha,scope=base_linux/cross
+          cache-to: type=gha,mode=max,scope=base_linux/cross
           tags: ${{ steps.meta_base.outputs.tags }}
           labels: ${{ steps.meta_base.outputs.labels }}
           build-args: |
@@ -263,12 +265,4 @@ jobs:
             IMAGE_LAYER_PYTHON_EXT=0
             IMAGE_LAYER_NODEJS=0
             IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Bullseye.
-
-        # Temp fix
-        # https://github.com/docker/build-push-action/issues/252
-        # https://github.com/moby/buildkit/issues/1896
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
