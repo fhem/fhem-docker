@@ -45,6 +45,7 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         apt-utils \
+        ca-certificates \
         gnupg \
         locales \
     && LC_ALL=C c_rehash \
