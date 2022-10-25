@@ -55,10 +55,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
-    \
-#    && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-#    && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-#    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
         android-libadb \
@@ -173,6 +169,8 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         snmp-mibs-downloader \
         sox \
         vorbis-tools \
+        gstreamer1.0-tools \
+        libsox-fmt-all \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
@@ -392,9 +390,10 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
            if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
-              Alien::Sodium \
+              Alien::Sodium@1.0.8.0 \
               Crypt::Argon2 \
               Crypt::OpenSSL::AES \
+              Crypt::NaCl::Sodium \
               Device::SMBus \
               Net::MQTT::Constants \
               Net::MQTT::Simple \
