@@ -1,6 +1,6 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
-FROM debian:buster-20221219-slim
+FROM debian:buster-20230109-slim
 
 ARG TARGETPLATFORM
 
