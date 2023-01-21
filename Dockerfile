@@ -382,6 +382,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
           Perl::PrereqScanner::NotQuiteLite \
+          Readonly \
       && if [ "${CPAN_PKGS}" != "" ]; then \
           cpanm \
            ${CPAN_PKGS} \
@@ -492,11 +493,12 @@ ARG IMAGE_VERSION=""
 ARG BUILD_DATE=""
 
 # Re-usable variables during build
-ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
+
+ARG L_AUTHORS=""
 ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
-ARG L_VENDOR="Julian Pawlowski"
+ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${TARGETPLATFORM}"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."

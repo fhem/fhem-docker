@@ -384,6 +384,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
           Perl::PrereqScanner::NotQuiteLite \
+          Readonly \
       && if [ "${CPAN_PKGS}" != "" ]; then \
           cpanm \
            ${CPAN_PKGS} \
