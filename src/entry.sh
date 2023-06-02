@@ -448,23 +448,21 @@ chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
 (( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
-# ToDo: Increment by 1
-[ -s "$( date +"${LOGFILE}" )" ] && OLDLINES=$( wc -l < "$( date +"${LOGFILE}" )" ) || OLDLINES=0
-[ "${OLDLINES}" -gt 0 ] && ((OLDLINES++))
+[ -s "$( date +"${LOGFILE}" )" ] && OLDLINES=$( wc -l < "$( date +"${LOGFILE}" )" ) || OLDLINES=-1
 
 FOUND=false
 MAXLINES=0
 function PrintNewLines {
   LOGFILENAME=$( date +"${LOGFILE}" )
   if [ -s "${LOGFILENAME}" ]; then
-    mapfile -t logArray < <(tail -n "+${OLDLINES}" "${LOGFILENAME}" )
+    mapfile -t logArray < <(tail -n "+$((${OLDLINES} + 1))" "${LOGFILENAME}" )
     printf '%s\n' "${logArray[@]}" 
     [ -n "$1" ] && printf '%s\n' "${logArray[@]}" | grep -q -e "$1" && FOUND=true || FOUND=false
     if [ ${#logArray[@]} -eq 0 ]; then
       MAXLINES=$( wc -l < "${LOGFILENAME}" )
-  	  [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=0  # logfile rotation
+  	  [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=-1  # logfile rotation
     else
-      OLDLINES=$((${OLDLINES} + ${#logArray[@]} + 1))
+      OLDLINES=$((${OLDLINES} + ${#logArray[@]} ))
     fi
   fi
 }
