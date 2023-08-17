@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [Dockerfile, Dockerfile-bullseye]
+        dockerfile: [Dockerfile, Dockerfile-bullseye, Dockerfile-buster]
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository

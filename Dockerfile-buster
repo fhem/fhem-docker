@@ -1,7 +1,6 @@
 ARG BASE_IMAGE="debian"
-ARG BASE_IMAGE_TAG="bookworm"
-FROM debian:bookworm-20230814-slim
-
+ARG BASE_IMAGE_TAG="buster"
+FROM debian:buster-20230814-slim
 
 ARG TARGETPLATFORM
 
@@ -31,30 +30,41 @@ ENV LANG=en_US.UTF-8 \
    TIMEOUT=10 \
    CONFIGTYPE=fhem.cfg
 
-# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
+# Install base environment
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
+COPY src/find-* /usr/local/bin/
 
-#RUN chmod 755 /*.sh  \
-#    && sed -i "s/bookworm main/bookworm main contrib non-free/g" /etc/apt/sources.list \
-#    && sed -i "s/bookworm-updates main/bookworm-updates main contrib non-free/g" /etc/apt/sources.list \
-#    && sed -i "s/bookworm\/updates main/bookworm\/updates main contrib non-free/g" /etc/apt/sources.list \
-#    && sleep 0
+# Custom installation packages
+ARG APT_PKGS=""
 
-# Todo: Find source for installing 
-#        netcat \
-#        android-libadb \
-RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+RUN chmod 755 /*.sh /usr/local/bin/* \
+    && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
+    && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        apt-utils \
+        ca-certificates \
+        gnupg \
+        locales \
+    && LC_ALL=C c_rehash \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
+    && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
+    && LC_ALL=C locale-gen \
+    \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        gnupg \
+        adb \
+        android-libadb \
         avahi-daemon \
         avrdude \
         bluez \
         curl \
         dnsutils \
         etherwake \
+        fonts-liberation \
         i2c-tools \
         inetutils-ping \
         jq \
@@ -63,6 +73,7 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         lsb-release \
         mariadb-client \
         net-tools \
+        netcat \
         openssh-client \
         procps \
         sendemail \
@@ -73,11 +84,9 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         unzip \
         usbutils \
         wget \
-        cpanminus \
-        netcat-openbsd \
-        make \
+        ${APT_PKGS} \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Add Perl basic app layer for pre-compiled packages
 RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -135,15 +144,11 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         libyaml-perl \
         perl-base \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Custom image layers options:
 ARG IMAGE_LAYER_SYS_EXT="1"
 
-
-# Todo: Find source for installing 
-#        libttspico-utils \   [non-free]
-#        snmp-mibs-downloader [non-free] \
 # Add extended system layer
 RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
       LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -154,26 +159,25 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         ffmpeg \
         lame \
         libnmap-parser-perl \
+        libttspico-utils \
         mp3wrap \
         mpg123 \
         mplayer \
         nmap \
         normalize-audio \
         snmp \
+        snmp-mibs-downloader \
         sox \
         vorbis-tools \
         gstreamer1.0-tools \
         libsox-fmt-all \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
 
 # Custom image layers options:
 ARG IMAGE_LAYER_PERL_EXT="1"
-
-# Todo: Find source for installing 
-#        libcrypt-openssl-pkcs12-perl \
 
 # Add Perl extended app layer for pre-compiled packages
 RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
@@ -242,6 +246,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libcrypt-openssl-dsa-perl \
         libcrypt-openssl-ec-perl \
         libcrypt-openssl-pkcs10-perl \
+        libcrypt-openssl-pkcs12-perl \
         libcrypt-openssl-random-perl \
         libcrypt-openssl-rsa-perl \
         libcrypt-openssl-x509-perl \
@@ -334,30 +339,55 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libtime-period-perl \
         libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
-        libprotocol-websocket-perl \
-        libreadonly-perl \
-        libregexp-trie-perl \
-        libparse-distname-perl \
-        libperl-prereqscanner-notquitelite-perl \ 
-        cpanoutdated \
         perl \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
+# Custom image layers options:
+ARG IMAGE_LAYER_DEV="1"
+
+# Add development/compilation layer
+RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        libavahi-compat-libdnssd-dev \
+        libdb-dev \
+        libsodium-dev \
+        libssl-dev \
+        libtool \
+        libusb-1.0-0-dev \
+        patch \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
 
 
 # Custom image layers options:
 ARG IMAGE_LAYER_PERL_CPAN="1"
-ARG IMAGE_LAYER_PERL_CPAN_EXT="0"   # ToDo: Needs fix
+ARG IMAGE_LAYER_PERL_CPAN_EXT="1"
 
 # Custom installation packages
+ARG CPAN_PKGS=""
 
-#      cpanm --notest \
-#          CPAN::Plugin::Sysdeps \
 # Add Perl app layer for self-compiled modules
-RUN if [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
-       if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
+#  * exclude any ARM platforms due to long build time
+#  * manually pre-compiled ARM packages may be applied here
+RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://git.io/cpanm | perl - App::cpanminus \
+      && cpanm --notest \
+          App::cpanoutdated \
+          CPAN::Plugin::Sysdeps \
+          Perl::PrereqScanner::NotQuiteLite \
+          Readonly \
+      && if [ "${CPAN_PKGS}" != "" ]; then \
+          cpanm \
+           ${CPAN_PKGS} \
+         ; fi \
+      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
            if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
@@ -370,20 +400,87 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}"
               Net::MQTT::Simple \
               Net::WebSocket::Server \
               Device::Firmata \
+              Protocol::WebSocket \ 
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
 
+# Custom image layers options:
+ARG IMAGE_LAYER_PYTHON="1"
+ARG IMAGE_LAYER_PYTHON_EXT="1"
+
+# Custom installation packages
+ARG PIP_PKGS=""
+
+# Add Python app layer
+RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        python3 \
+        python3-dev \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+      && if [ "${PIP_PKGS}" != "" ]; then \
+           pip3 install \
+            ${PIP_PKGS} \
+         ; fi \
+      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+                python3-pychromecast \
+                speedtest-cli \
+                youtube-dl \
+             && ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli \
+        ; fi \
+      && rm -rf /root/.cpanm \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
+
+# Custom installation packages
+ARG NPM_PKGS=""
+
+# Custom image layers options:
+ARG IMAGE_LAYER_NODEJS="1"
+ARG IMAGE_LAYER_NODEJS_EXT="1"
+
+# Add nodejs app layer
+RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
+      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
+      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+          nodejs=14.* \
+      && if [ ! -e /usr/bin/npm ]; then \
+           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+             npm=5.* \
+      ; fi \
+      && npm install -g --unsafe-perm --production \
+          npm \
+      && if [ "${NPM_PKGS}" != "" ]; then \
+          npm install -g --unsafe-perm --production \
+           ${NPM_PKGS} \
+         ; fi \
+      && if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
+           npm install -g --unsafe-perm --production \
+            alexa-cookie2 \
+            alexa-fhem \
+            gassistant-fhem \
+            homebridge \
+            homebridge-fhem \
+            tradfri-fhem \
+        ; fi \
+      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    ; fi
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 
+COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
-#COPY src/fhem/trunk/fhem/ /fhem/
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
 # Arguments to instantiate as variables
@@ -396,14 +493,15 @@ ARG IMAGE_VERSION=""
 ARG BUILD_DATE=""
 
 # Re-usable variables during build
-ARG L_AUTHORS="Sidey79 (Forum.fhem.de:@Sidey79)"
+
+ARG L_AUTHORS=""
 ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
-ARG L_VENDOR="Julian Pawlowski"
+ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${TARGETPLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian bookworm."
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Buster."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
