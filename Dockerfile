@@ -33,20 +33,22 @@ ENV LANG=en_US.UTF-8 \
 
 # Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
-COPY src/find-* /usr/local/bin/
 
-RUN chmod 755 /*.sh /usr/local/bin/* \
-    && sed -i "s/bookworm main/bookworm main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/bookworm-updates main/bookworm-updates main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/bookworm\/updates main/bookworm\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        gnupg \
+#RUN chmod 755 /*.sh  \
+#    && sed -i "s/bookworm main/bookworm main contrib non-free/g" /etc/apt/sources.list \
+#    && sed -i "s/bookworm-updates main/bookworm-updates main contrib non-free/g" /etc/apt/sources.list \
+#    && sed -i "s/bookworm\/updates main/bookworm\/updates main contrib non-free/g" /etc/apt/sources.list \
+#    && sleep 0
+
+# Todo: Find source for installing 
+#        netcat \
+#        android-libadb \
+RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        android-libadb \
+        gnupg \
         avahi-daemon \
         avrdude \
         bluez \
@@ -61,7 +63,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         lsb-release \
         mariadb-client \
         net-tools \
-        netcat \
         openssh-client \
         procps \
         sendemail \
@@ -72,8 +73,11 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
         unzip \
         usbutils \
         wget \
+        cpanminus \
+        netcat-openbsd \
+        make \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 
 # Add Perl basic app layer for pre-compiled packages
 RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -131,11 +135,15 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
         libyaml-perl \
         perl-base \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 
 # Custom image layers options:
 ARG IMAGE_LAYER_SYS_EXT="1"
 
+
+# Todo: Find source for installing 
+#        libttspico-utils \   [non-free]
+#        snmp-mibs-downloader [non-free] \
 # Add extended system layer
 RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
       LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -146,25 +154,26 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         ffmpeg \
         lame \
         libnmap-parser-perl \
-        libttspico-utils \
         mp3wrap \
         mpg123 \
         mplayer \
         nmap \
         normalize-audio \
         snmp \
-        snmp-mibs-downloader \
         sox \
         vorbis-tools \
         gstreamer1.0-tools \
         libsox-fmt-all \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
     ; fi
 
 
 # Custom image layers options:
 ARG IMAGE_LAYER_PERL_EXT="1"
+
+# Todo: Find source for installing 
+#        libcrypt-openssl-pkcs12-perl \
 
 # Add Perl extended app layer for pre-compiled packages
 RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
@@ -233,7 +242,6 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libcrypt-openssl-dsa-perl \
         libcrypt-openssl-ec-perl \
         libcrypt-openssl-pkcs10-perl \
-        libcrypt-openssl-pkcs12-perl \
         libcrypt-openssl-random-perl \
         libcrypt-openssl-rsa-perl \
         libcrypt-openssl-x509-perl \
@@ -327,32 +335,29 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
         libprotocol-websocket-perl \
+        libreadonly-perl \
+        libregexp-trie-perl \
+        libparse-distname-perl \
+        libperl-prereqscanner-notquitelite-perl \ 
+        cpanoutdated \
         perl \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
     ; fi
 
 
 
 # Custom image layers options:
 ARG IMAGE_LAYER_PERL_CPAN="1"
-ARG IMAGE_LAYER_PERL_CPAN_EXT="1"
+ARG IMAGE_LAYER_PERL_CPAN_EXT="0"   # ToDo: Needs fix
 
 # Custom installation packages
 
+#      cpanm --notest \
+#          CPAN::Plugin::Sysdeps \
 # Add Perl app layer for self-compiled modules
 RUN if [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
-      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://git.io/cpanm | perl - App::cpanminus \
-      && cpanm --notest \
-          App::cpanoutdated \
-          CPAN::Plugin::Sysdeps \
-          Perl::PrereqScanner::NotQuiteLite \
-          Readonly \
-      && if [ "${CPAN_PKGS}" != "" ]; then \
-          cpanm \
-           ${CPAN_PKGS} \
-         ; fi \
-      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
+       if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
            if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
@@ -369,7 +374,7 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}"
          ; fi \
       && rm -rf /root/.cpanm \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*  \
     ; fi
 
 
@@ -377,8 +382,8 @@ RUN if [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}"
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 
-COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
+#COPY src/fhem/trunk/fhem/ /fhem/
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
 # Arguments to instantiate as variables
