@@ -1,6 +1,7 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
-FROM debian:buster-20230904-slim
+
+FROM debian:buster-20230904-slim as buster_base
 
 ARG TARGETPLATFORM
 
@@ -16,29 +17,12 @@ ENV LANG=en_US.UTF-8 \
    LC_TELEPHONE=de_DE.UTF-8 \
    LC_TIME=de_DE.UTF-8 \
    TERM=xterm \
-   TZ=Europe/Berlin \
-   LOGFILE=./log/fhem-%Y-%m-%d.log \
-   TELNETPORT=7072 \
-   FHEM_UID=6061 \
-   FHEM_GID=6061 \
-   FHEM_PERM_DIR=0750 \
-   FHEM_PERM_FILE=0640 \
-   UMASK=0037 \
-   BLUETOOTH_GID=6001 \
-   GPIO_GID=6002 \
-   I2C_GID=6003 \
-   TIMEOUT=10 \
-   CONFIGTYPE=fhem.cfg
-
-# Install base environment
-COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
-COPY src/find-* /usr/local/bin/
+   TZ=Europe/Berlin
 
 # Custom installation packages
 ARG APT_PKGS=""
 
-RUN chmod 755 /*.sh /usr/local/bin/* \
-    && sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
+RUN sed -i "s/buster main/buster main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster-updates main/buster-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/buster\/updates main/buster\/updates main contrib non-free/g" /etc/apt/sources.list \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -449,15 +433,15 @@ ARG IMAGE_LAYER_NODEJS_EXT="1"
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
-      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          nodejs=14.* \
+      mkdir -p /tmp/keyrings \
+      && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg \
+      && echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list \
+      && apt-get update \
+      && apt-get install nodejs -y \
       && if [ ! -e /usr/bin/npm ]; then \
            LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-             npm=5.* \
+             npm \
       ; fi \
-      && npm install -g --unsafe-perm --production \
-          npm \
       && if [ "${NPM_PKGS}" != "" ]; then \
           npm install -g --unsafe-perm --production \
            ${NPM_PKGS} \
@@ -472,15 +456,34 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
             tradfri-fhem \
         ; fi \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list \
     ; fi
+
+FROM buster_base as buster_with-fhem
+
+COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
+COPY src/find-* /usr/local/bin/
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
-
+# Install base environment
 COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
+
+# FHEM specific ENVs
+ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
+   TELNETPORT=7072 \
+   FHEM_UID=6061 \
+   FHEM_GID=6061 \
+   FHEM_PERM_DIR=0750 \
+   FHEM_PERM_FILE=0640 \
+   UMASK=0037 \
+   BLUETOOTH_GID=6001 \
+   GPIO_GID=6002 \
+   I2C_GID=6003 \
+   TIMEOUT=10 \
+   CONFIGTYPE=fhem.cfg
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
 # Arguments to instantiate as variables
@@ -537,7 +540,8 @@ LABEL org.opencontainers.image.created=${BUILD_DATE} \
    org.opencontainers.image.title=${L_TITLE} \
    org.opencontainers.image.description=${L_DESCR}
 
-RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+RUN  chmod 755 /*.sh /usr/local/bin/* \ 
+     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
 
 VOLUME [ "/opt/fhem" ]
 
