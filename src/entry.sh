@@ -456,12 +456,13 @@ function PrintNewLines {
   LOGFILENAME=$( date +"${LOGFILE}" )
   if [ -s "${LOGFILENAME}" ]; then
     mapfile -t logArray < <(tail -n "+$((${OLDLINES} + 1))" "${LOGFILENAME}" )
-    printf '%s\n' "${logArray[@]}" 
-    [ -n "$1" ] && printf '%s\n' "${logArray[@]}" | grep -q -e "$1" && FOUND=true || FOUND=false
+
     if [ ${#logArray[@]} -eq 0 ]; then
       MAXLINES=$( wc -l < "${LOGFILENAME}" )
-  	  [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=-1  # logfile rotation
+      [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=-1  # logfile rotation
     else
+      [ -n "$1" ] && printf '%s\n' "${logArray[@]}" | grep -q -e "$1" && FOUND=true || FOUND=false
+      printf '%s\n' "${logArray[@]}" 
       OLDLINES=$((${OLDLINES} + ${#logArray[@]} ))
     fi
   fi
