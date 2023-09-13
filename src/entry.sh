@@ -459,7 +459,7 @@ function PrintNewLines {
 
     if [ ${#logArray[@]} -eq 0 ]; then
       MAXLINES=$( wc -l < "${LOGFILENAME}" )
-      [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=-1  # logfile rotation
+      [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=0  # logfile rotation
     else
       [ -n "$1" ] && printf '%s\n' "${logArray[@]}" | grep -q -e "$1" && FOUND=true || FOUND=false
       printf '%s\n' "${logArray[@]}" 
