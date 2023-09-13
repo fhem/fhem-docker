@@ -35,7 +35,7 @@ runs:
         platforms: all
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request' && inputs.DOCKER_HUB_USERNAME != null && inputs.DOCKER_HUB_ACCESS_TOKEN != null 
