@@ -13,8 +13,6 @@ Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhe
 Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
 ### From Docker Hub
-Currently outdated but still available
-- debian stretch
 
         docker pull fhem/fhem
 
@@ -25,7 +23,7 @@ Currently outdated but still available
 Updated versions based on 
 - debian bullseye 
 - Perl 5.32.1
-- NodeJS 14 LTS
+- NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
@@ -34,7 +32,7 @@ Updated versions based on
 
 - debian buster
 - Perl 5.28.1
-- NodeJS 14 LTS
+- NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
@@ -64,7 +62,7 @@ Updated versions based on
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:buster
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:3-bullseye
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
