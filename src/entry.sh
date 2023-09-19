@@ -411,6 +411,8 @@ function fhemCleanInstall() {
 
   svn co https://svn.fhem.de/fhem/trunk/fhem /usr/src/fhem -q
   mv /usr/src/fhem/* ${FHEM_DIR} 2>&1>/dev/null
+  cp -f /fhem/FHEM/99_DockerImageInfo.pm ${FHEM_DIR}/FHEM/
+
 
   echo 'http://fhem.de/fhemupdate/controls_fhem.txt' > ${FHEM_DIR}/FHEM/controls.txt
   mv ${FHEM_DIR}/controls_fhem.txt ${FHEM_DIR}/FHEM/ 2>&1>/dev/null
