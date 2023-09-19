@@ -86,6 +86,7 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
+          target: with-fhem
           cache-from: | 
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
@@ -189,6 +190,7 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
+          target: with-fhem
           cache-from: | 
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
@@ -240,6 +242,7 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
+          target: with-fhem
           cache-from: | 
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}

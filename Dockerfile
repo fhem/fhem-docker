@@ -1,7 +1,7 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
 
-FROM debian:buster-20230904-slim as buster_base
+FROM debian:buster-20230904-slim as base
 
 ARG TARGETPLATFORM
 
@@ -459,7 +459,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list \
     ; fi
 
-FROM buster_base as buster_with-fhem
+FROM base as with-fhem
 
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
 COPY src/find-* /usr/local/bin/
@@ -468,7 +468,7 @@ COPY src/find-* /usr/local/bin/
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 # Install base environment
-COPY src/fhem/trunk/fhem/ /fhem/
+# COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
 
 # FHEM specific ENVs
@@ -552,3 +552,16 @@ HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /hea
 WORKDIR "/opt/fhem"
 ENTRYPOINT [ "/entry.sh" ]
 CMD [ "start" ]
+
+FROM with-fhem as with-fhem-bats
+
+RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    bats \
+    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+    && ln -s /opt/bats/bin/bats /usr/local/bin/bats
+
+WORKDIR /code/
+
+ENTRYPOINT [ "/usr/bin/bats" ]
