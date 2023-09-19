@@ -279,7 +279,7 @@ function setGlobal_LOGFILE() {
   [ -r "$cfgFile" ] ||                                { LOGFILE=$(prependFhemDirPath "$defaultLogfile"); return; }   # configfile not readable => default
 
   local cfgLogDef="$(getGlobalAttr "$cfgFile" "logfile" )"
-  [ -n "$cfgLogDef"] &&                               { LOGFILE=$(prependFhemDirPath "$cfgLogDef"); return; }        # found something in the configfile => use this
+  [ -n "$cfgLogDef" ] &&                               { LOGFILE=$(prependFhemDirPath "$cfgLogDef"); return; }        # found something in the configfile => use this
 
   LOGFILE=$(prependFhemDirPath "$defaultLogfile")
 }
@@ -301,7 +301,7 @@ function setGlobal_PIDFILE() {
   [ -r "$cfgFile" ] ||                                { PIDFILE=$(prependFhemDirPath "$defaultPidfile"); return; }   # configfile not readable => default
 
   local cfgPidDef="$(getGlobalAttr "$cfgFile" "pidfilename" )"
-  [ -n "$cfgPidDef"] &&                               { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
+  [ -n "$cfgPidDef" ] &&                               { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
 
   PIDFILE=$(prependFhemDirPath "$defaultPidfile")
 }
@@ -336,7 +336,7 @@ function runScript() {
 function aptInstall() {
   local inMessage="$1" ; shift 1
   local inLogFile="$1" ; shift 1
-  [ -n "$@" ] || return
+  [ -n "$*" ] || return
   printfInfo "${inMessage}\n"
   if [ "${gAptUpdateHasRun:-0}" == 0 ]; then
     DEBIAN_FRONTEND=noninteractive apt-get update >>"$inLogFile" 2>&1
@@ -406,8 +406,12 @@ function fhemCleanInstall() {
 
   printfInfo "Installing FHEM to ${FHEM_DIR}\n"
 
+  
   shopt -s dotglob nullglob 2>&1>/dev/null
-  mv -f /fhem/* ${FHEM_DIR}/ 2>&1>/dev/null
+
+  svn co https://svn.fhem.de/fhem/trunk/fhem /usr/src/fhem -q
+  mv /usr/src/fhem/* ${FHEM_DIR} 2>&1>/dev/null
+
   echo 'http://fhem.de/fhemupdate/controls_fhem.txt' > ${FHEM_DIR}/FHEM/controls.txt
   mv ${FHEM_DIR}/controls_fhem.txt ${FHEM_DIR}/FHEM/ 2>&1>/dev/null
   ( cd ${FHEM_DIR} ; perl ./contrib/commandref_modular.pl 2>&1>/dev/null )
@@ -874,6 +878,11 @@ function trapExitHandler() {
   exit $exitVal
 }
 
+if [ "$#" -ne 1 ]
+then
+  echo "FHEM will not be started, please provide argument \"start\"."
+  exit 0
+fi
 
 #====================================================================================================================-
 #--- Main script -----------------------------------------------------------------------------------------------------
