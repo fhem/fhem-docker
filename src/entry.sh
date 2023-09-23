@@ -36,6 +36,7 @@ declare -ri TIMEOUT_REAPPEAR=${TIMEOUT_REAPPEAR:-15}
 
 declare -r  RESTART="${RESTART:-1}"
 declare -r  CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
+declare -rix TELNETPORT="${TELNETPORT:-7072}"
 
 declare -r  UMASK="${UMASK:-0037}"
 
@@ -284,6 +285,43 @@ function setGlobal_LOGFILE() {
   LOGFILE=$(prependFhemDirPath "$defaultLogfile")
 }
 
+# Determine a telnet definition create one if none exists or patch existing
+#
+# Usage: setTelnet_DEFINITION
+# Global vars: CONFIGTYPE
+#              FHEM_DIR
+#
+function setTelnet_DEFINITION()
+{
+
+  [ "${CONFIGTYPE}" == "configDB" ] &&  {
+      echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !';
+      return;
+  }   # config is done inside DB => abort
+
+  local CUSTOMPORT=''
+  local TELNETDEV=''
+  local TELNETALLOWEDDEV=''
+
+  ## Find Telnet access details
+  if [ -z "$(grep -P "^define .* telnet ${TELNETPORT}" ${FHEM_DIR}/${CONFIGTYPE})" ]; then
+    echo "define telnetDocker telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
+  fi
+  
+  TELNETDEV="$(grep -P "^define .* telnet ${TELNETPORT}" ${FHEM_DIR}/${CONFIGTYPE} | head -1 | cut -d " " -f 2)"
+  TELNETALLOWEDDEV="$(grep -P "^attr .* validFor .*${TELNETDEV}.*" ${FHEM_DIR}/${CONFIGTYPE} | head -1 | cut -d " " -f 2)"
+
+  ## Enforce local telnet access w/o password
+  if [ -n "$(grep -P "^attr ${TELNETALLOWEDDEV} password.*" ${FHEM_DIR}/${CONFIGTYPE})"  ]; then
+    if [ -n "$(grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*" ${FHEM_DIR}/${CONFIGTYPE})"  ]; then
+      echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
+      sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/${CONFIGTYPE}
+    else
+      echo "  - Re-defined local password of Telnet allowed device '${TELNETALLOWEDDEV}' to global password"
+      sed -i "s,attr ${TELNETALLOWEDDEV} password,attr ${TELNETALLOWEDDEV} globalpassword," ${FHEM_DIR}/${CONFIGTYPE}
+    fi
+  fi 
+}
 
 # Determine PID file
 #
@@ -763,6 +801,7 @@ function checkFhemProcessExists() {
 # Main steps in here:
 #  - Run pre-start scripts
 #  - Start printing the logfile to the console
+#  - Create or patch Telnet Device for health check
 #  - Launch FHEM process
 #  - Run post-start scripts
 #
@@ -778,6 +817,8 @@ function startFhemProcess() {
   chown ${FHEM_UID}:${FHEM_GID} "$realLogFile"
   tailFileToConsoleStart "$realLogFile"    # Start writing the logfile to the console
 
+  setTelnet_DEFINITION
+  
   umask ${UMASK}
   printfInfo "Starting FHEM\n"
   su fhem -c "cd ${FHEM_DIR} ; perl fhem.pl $CONFIGTYPE"
@@ -792,6 +833,8 @@ function startFhemProcess() {
     printfErr "Fatal: No message from FHEM that server has started.\n"
     exit 1
   fi
+  
+  
   printfInfo "FHEM successfully started\n"
 
   runScript "/post-start.sh"
