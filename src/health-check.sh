@@ -1,69 +1,78 @@
 #!/bin/bash
 
-FHEM_DIR="/opt/fhem"
-CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
-TELNETPORT="${TELNETPORT:-7072}"
-STATE=0
+#--- Constants -------------------------------------------------------------------------------------------------------
 
-RUNNING_INSTANCES=$(pgrep -f "/bin/sh -c /health-check.sh" | wc -l)
+declare -r PID_FILE="/var/run/health-check.pid"
+declare -r URL_FILE="/tmp/health-check.urls"
+declare -r RESULT_FILE="/tmp/health-check.result"
 
-if [ "${RUNNING_INSTANCES}" -gt "1" ]; then
-  echo "Instance already running, aborting another one"
-  exit 1
-fi
 
-if [ "${CONFIGTYPE}" != "configDB" ] && [ -s "${FHEM_DIR}/${CONFIGTYPE}" ] && [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
-  TELNETPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .* telnet ' | head -1 | cut -d ' ' -f 4)"
+#--- Internal global -------------------------------------------------------------------------------------------------
 
-  if [ -z "${TELNETPORT}" ]; then
-    echo "Telnet(undefined): FAILED;"
-    exit 1
+declare -i gRetVal=0;
+declare    gRetMessage="";
+declare -i gSuccessCnt=0;
+declare -i gFailedCnt=0;
+
+
+#====================================================================================================================-
+#--- Functions -------------------------------------------------------------------------------------------------------
+
+# Handler function for actually stopping this script. Called either by
+#  - "exit" was called somewhere in the script
+#  - SIGTERM is received
+#
+# Usage: trapExitHandler
+# Global vars: gRetMessage
+#              gSuccessCnt
+#              gFailedCnt
+#              RESULT_FILE
+#              PID_FILE
+#
+function trapExitHandler() {
+  local -i exitVal=$?  # when "exit" was called, this holds the return value
+  trap - SIGTERM EXIT  # Avoid multiple calls to handler
+  echo "$gRetMessage"
+  if (($exitVal == 0)) ; then
+    echo -n "ok ($gSuccessCnt successful,  $gFailedCnt failed)" > $RESULT_FILE
+  else
+    echo -n "ERROR ($gSuccessCnt successful,  $gFailedCnt failed)" > $RESULT_FILE
   fi
-fi
+  rm -f $PID_FILE
+  exit $exitVal
+}
 
-FHEMWEB=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "jsonlist2 TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0" 2>/dev/null )
-if [ $? -ne 0 ] || [ -z "${FHEMWEB}" ]; then
-  RETURN="Telnet(${TELNETPORT}): FAILED;"
-  STATE=1
-else
-  RETURN="Telnet(${TELNETPORT}): OK;"
 
-  LEN=$( echo ${FHEMWEB} | jq -r '.Results | length' )
-  i=0
-  until [ "$i" == "${LEN}" ]; do
-    NAME=$( echo ${FHEMWEB} | jq -r ".Results[$i].Internals.NAME" )
-    PORT=$( echo ${FHEMWEB} | jq -r ".Results[$i].Internals.PORT" )
-    WEBNAME=$( echo ${FHEMWEB} | jq -r ".Results[$i].Attributes.webname" )
-    [[ -z "${WEBNAME}" ]] && WEBNAME="fhem"
-    HTTPS=$( echo ${FHEMWEB} | jq -r ".Results[$i].Attributes.HTTPS" )
-    [[ -n "${HTTPS}" && "${HTTPS}" == "1" ]] && PROTO=https || PROTO=http
+#====================================================================================================================-
+#--- Main script -----------------------------------------------------------------------------------------------------
 
-    FHEMWEB_STATE=$( curl \
-                      --silent \
-                      --insecure \
-                      --output /dev/null \
-                      --write-out "%{http_code}" \
-                      --user-agent 'FHEM-Docker/1.0 Health Check' \
-                      "${PROTO}://localhost:${PORT}/${WEBNAME}/healthcheck" )
-    if [ $? -ne 0 ] ||
-       [ -z "${FHEMWEB_STATE}" ] ||
-       [ "${FHEMWEB_STATE}" == "000" ] ||
-       [ "${FHEMWEB_STATE:0:1}" == "5" ]; then
-      RETURN="${RETURN} ${NAME}(${PORT}): FAILED;"
-      STATE=1
-    else
-      RETURN="${RETURN} ${NAME}(${PORT}): OK;"
-    fi
-    (( i++ ))
-  done
+[ -e $PID_FILE ] && { echo "Instance already running, aborting another one" ; exit 1; } # run before installing traphandler!
+trap trapExitHandler SIGTERM EXIT
 
-  # Update docker module data
-  if [ -s /image_info ]; then
-    RET=$( cd /opt/fhem; perl fhem.pl ${TELNETPORT} "{ DockerImageInfo_HealthCheck();; }" 2>/dev/null )
-    [ -n "${RET}" ] && RETURN="${RETURN} DockerImageInfo:${RET};" || RETURN="${RETURN} DockerImageInfo:OK;"
+echo "$$" > $PID_FILE
+
+[ -e $URL_FILE ] || { gRetMessage="Cannot read url file $URL_FILE" ; exit 1; }
+
+while IFS= read -r fhemUrl; do
+  fhemwebState=$( curl \
+                    --silent \
+                    --insecure \
+                    --output /dev/null \
+                    --write-out "%{http_code}" \
+                    --user-agent 'FHEM-Docker/1.0 Health Check' \
+                    "${fhemUrl}" )
+  if [ $? -ne 0 ] ||
+     [ -z "${fhemwebState}" ] ||
+     [ "${fhemwebState}" == "000" ] ||
+     [ "${fhemwebState:0:1}" == "5" ]; then
+    gRetMessage="$gRetMessage $fhemUrl: FAILED ($fhemwebState);"
+    gRetVal=1
+    ((gFailedCnt++))
+  else
+    gRetMessage="$gRetMessage $fhemUrl: OK;"
+    ((gSuccessCnt++))
   fi
+done < $URL_FILE
 
-fi
+exit $gRetVal
 
-echo -n ${RETURN}
-exit ${STATE}
