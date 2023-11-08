@@ -4,29 +4,28 @@ use strict;
 use warnings;
 use FHEM::Meta;
 
-sub DockerImageInfo_Initialize($) {
+sub DockerImageInfo_Initialize {
     my ($hash) = @_;
 
     $hash->{NOTIFYDEV} = "global"; # limit calls to notify
-    $hash->{DefFn}     = "DockerImageInfo_Define";
-    $hash->{NotifyFn}  = "DockerImageInfo_Notify";
-    $hash->{UndefFn}   = "DockerImageInfo_Undefine";
+    $hash->{DefFn}     = \&DockerImageInfo_Define;
+    $hash->{NotifyFn}  = \&DockerImageInfo_Notify;
+    $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
     $hash->{AttrList}  = $readingFnAttributes;
 
     return FHEM::Meta::InitMod( __FILE__, $hash );
 }
 
 ###################################
-sub DockerImageInfo_Define($$) {
+sub DockerImageInfo_Define {
     my ( $hash, $def ) = @_;
     my @a    = split( "[ \t][ \t]*", $def );
     my $name = $hash->{NAME};
 
-    return "Wrong syntax: use define <name> DockerImageInfo"
+    return q[Wrong syntax: use define <name> DockerImageInfo]
       if ( int(@a) != 2 );
 
-    return "This module may only be defined once, existing device: "
-      . $modules{ $hash->{TYPE} }{defptr}{NAME}
+    return q[This module may only be defined once, existing device: ]. $modules{ $hash->{TYPE} }{defptr}{NAME}
       if ( defined( $modules{ $hash->{TYPE} }{defptr} )
         && $init_done
         && !defined( $hash->{OLDDEF} ) );
@@ -37,16 +36,16 @@ sub DockerImageInfo_Define($$) {
     # create global unique device definition
     $modules{ $hash->{TYPE} }{defptr} = $hash;
 
-    $hash->{INFO_DIR} = "/tmp"; 
+    $hash->{INFO_DIR} = q[/tmp]; 
     #$hash->{INFO_DIR} = "/fhem-docker/var"; # TODO: Clean up dumping all files in the container root
-    $hash->{URL_FILE} = "$hash->{INFO_DIR}/health-check.urls";
-    $hash->{RESULT_FILE} = "$hash->{INFO_DIR}/health-check.result";
+    $hash->{URL_FILE} = qq[$hash->{INFO_DIR}/health-check.urls];
+    $hash->{RESULT_FILE} = qq[$hash->{INFO_DIR}/health-check.result];
 
     if ( $init_done && !defined( $hash->{OLDDEF} ) ) {
 
         # presets for FHEMWEB
         $attr{$name}{alias} = 'Docker Image Info';
-        $attr{$name}{devStateIcon} = '^ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
+        $attr{$name}{devStateIcon} = q[^ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red];
         $attr{$name}{group} = 'Update';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
@@ -58,14 +57,14 @@ sub DockerImageInfo_Define($$) {
         DockerImageInfo_GetImageInfo( $hash);
     }
     else {
-        $hash->{STATE} = "ERROR: Host is not a container";
+        $hash->{STATE} = q[ERROR: Host is not a container];
     }
 
     return undef;
 }
 
 
-sub DockerImageInfo_Notify($$)
+sub DockerImageInfo_Notify
 {
   my ($hash,$dev) = @_;
 
@@ -76,53 +75,53 @@ sub DockerImageInfo_Notify($$)
     # Update available infos
     DockerImageInfo_GetImageInfo( $hash);
 
-    foreach ( devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1") ) {
+    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1]) ) {
       # add userattr to FHEMWEB devices to control healthcheck
-      addToDevAttrList( $_, 'DockerHealthCheck:1,0' );
+      addToDevAttrList( $_, q[DockerHealthCheck:0,1] );
     }  
 
     my $urlFile = $hash->{URL_FILE};
     my $urlFileHdl;
     if(!open($urlFileHdl, ">$urlFile")) {
-      my $msg = "WriteStatefile: Cannot open $urlFile: $!";
+      my $msg = q[WriteStatefile: Cannot open $urlFile: $!];
       Log 1, $msg;
       return $msg;
     }
-    binmode($urlFileHdl, ":encoding(UTF-8)") if($unicodeEncoding);
-    foreach ( devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0") ) {
+    binmode($urlFileHdl, ':encoding(UTF-8)') if($unicodeEncoding);
+    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0]) ) {
       # build url and write it to healthcheck file
       my $webHash   = $defs{$_};
       my $port      = $webHash->{PORT};
-      my $webname   = AttrVal( $_, "webname", "fhem");
-      my $https     = AttrVal( $_, "HTTPS", "0");
+      my $webname   = AttrVal( $_, 'webname', 'fhem');
+      my $https     = AttrVal( $_, 'HTTPS', '0');
       my $proto     = ($https) ? 'https' : 'http';
-      print $urlFileHdl "$proto://localhost:$port/$webname/healthcheck\n";
+      print $urlFileHdl qq[$proto://localhost:$port/$webname/healthcheck\n];
     }
     close($urlFileHdl);
 
-    InternalTimer(gettimeofday()+30, "DockerImageInfo_GetStatus", $hash);
+    InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
   }
 
   return undef;
 }
 
 
-sub DockerImageInfo_Undefine($$) {
+sub DockerImageInfo_Undefine {
     my ( $hash, $def ) = @_;
     unlink( $hash->{URL_FILE});
     delete $modules{'DockerImageInfo'}{defptr};
 }
 
 
-sub DockerImageInfo_GetStatus($) {
+sub DockerImageInfo_GetStatus {
   my ( $hash ) = @_;
 
-  InternalTimer(gettimeofday()+30, "DockerImageInfo_GetStatus", $hash);
+  InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
 
   my $resultFile = $hash->{RESULT_FILE};
   my $resultFileHdl;
   if(!open($resultFileHdl, "<$resultFile")) {
-    my $msg = "Read result file: Cannot open $resultFile: $!";
+    my $msg = qq[Read result file: Cannot open $resultFile: $!];
     Log 1, $msg;
     $hash->{STATE} = $msg;
     return undef;
@@ -134,15 +133,14 @@ sub DockerImageInfo_GetStatus($) {
 }
 
 
-sub DockerImageInfo_GetImageInfo($) {
+sub DockerImageInfo_GetImageInfo {
     my ($hash) = @_;
 
     readingsBeginUpdate( $hash );
 
     my $NAME;
     my $VAL;
-    my @LINES = split( "\n",
-        `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
+    my @LINES = split( "\n", `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
 
     foreach my $LINE (@LINES) {
         next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/i );
@@ -165,9 +163,7 @@ sub DockerImageInfo_GetImageInfo($) {
     readingsBulkUpdateIfChanged( $hash, 'sudoers', $VAL );
 
     my $ID = `id`;
-    if ( $ID =~
-m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+\)))$/i
-      )
+    if ( $ID =~ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+\)))$/i  )
     {
         readingsBulkUpdateIfChanged( $hash, 'id.uid',   $1 );
         readingsBulkUpdateIfChanged( $hash, 'id.uname', $2 );
@@ -186,15 +182,15 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
         readingsBulkUpdateIfChanged( $hash, 'id.groups', $VAL );
     }
 
-    readingsBulkUpdateIfChanged( $hash, "ssh-id_ed25519.pub",    `cat ./.ssh/id_ed25519.pub` );
-    readingsBulkUpdateIfChanged( $hash, "ssh-id_rsa.pub",        `cat ./.ssh/id_rsa.pub` );
-    readingsBulkUpdateIfChanged( $hash, "container.hostname",    `cat /etc/hostname` );
-    readingsBulkUpdateIfChanged( $hash, "container.cap.e",       `cat /docker.container.cap.e` );
-    readingsBulkUpdateIfChanged( $hash, "container.cap.p",       `cat /docker.container.cap.p` );
-    readingsBulkUpdateIfChanged( $hash, "container.cap.i",       `cat /docker.container.cap.i` );
-    readingsBulkUpdateIfChanged( $hash, "container.id",          `cat /docker.container.id` );
-    readingsBulkUpdateIfChanged( $hash, "container.privileged",  `cat /docker.privileged` );
-    readingsBulkUpdateIfChanged( $hash, "container.hostnetwork", `cat /docker.hostnetwork` );
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_ed25519.pub],    `cat ./.ssh/id_ed25519.pub` );
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_rsa.pub],        `cat ./.ssh/id_rsa.pub` );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostname],    `cat /etc/hostname` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.e],       `cat /docker.container.cap.e` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.p],       `cat /docker.container.cap.p` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.i],       `cat /docker.container.cap.i` );
+    readingsBulkUpdateIfChanged( $hash, q[container.id],          `cat /docker.container.id` );
+    readingsBulkUpdateIfChanged( $hash, q[container.privileged],  `cat /docker.privileged` );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostnetwork], `cat /docker.hostnetwork` );
 
     readingsEndUpdate( $hash, 1 );
 }
