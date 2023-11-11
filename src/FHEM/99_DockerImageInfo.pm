@@ -200,14 +200,17 @@ sub DockerImageInfo_GetImageInfo {
 =pod
 =encoding utf8
 =item helper
+=item summary Kommunikationsmodul zwischen Docker Umgebung und FHEM
+=item summary_DE Commumnication between docker environment and FHEM
+
 =begin html
 
 <a name="DockerImageInfo"></a>
 <h3>DockerImageInfo</h3>
 <ul>
 
-  Show infos about the Docker image FHEM is running in.
-  Only works together with the fhem-docker image from https://hub.docker.com/r/fhem/fhem/ .
+  Show infos about the Docker image FHEM is running in and allows the configuration of the WEB definitions used for healthcheck.
+  Only works together with the fhem-docker image from  https://github.com/fhem/fhem-docker/ .
   <br><br>
 
   <a name="DockerImageInfodefine"></a>
@@ -222,6 +225,24 @@ sub DockerImageInfo_GetImageInfo {
     </ul>
   </ul>
   <br>
+
+  <a name="DockerImageInfoattr"></a>
+  <b>attr</b>
+  <ul>
+      <code>attr &lt;name&gt; &lt;attribute&gt; &lt;value&gt;</code>
+      <br><br>
+      See <a href="http://fhem.de/commandref.html#attr">commandref#attr</a> for more info about 
+      the attr command.
+      <br><br>
+      Attributes:
+      <ul>
+          <li><i>DockerHealthCheck</i> 0|1<br>
+              Attribute is available in all definitions of type WEB.
+              Default is, every definition is used for the healthcheck. 
+              The behaviuor can be diabled with this attribute.
+          </li>
+      </ul>
+  </ul>
 
 </ul>
 
@@ -233,8 +254,8 @@ sub DockerImageInfo_GetImageInfo {
 <h3>DockerImageInfo</h3>
 <ul>
 
-  Zeigt Informationen &uuml;ber das Docker Image, in dem FHEM gerade l&auml;ft.
-  Funktioniert nur mit dem fhem-docker image von https://hub.docker.com/r/fhem/fhem/ .
+  Zeigt Informationen &uuml;ber das Docker Image, in dem FHEM gerade l&auml;ft und ermöglicht die Konfiguration der WEB Definitionen für den Healthcheck
+  Funktioniert mit dem fhem-docker image von https://github.com/fhem/fhem-docker .
   <br><br>
 
   <a name="DockerImageInfodefine"></a>
@@ -248,6 +269,24 @@ sub DockerImageInfo_GetImageInfo {
       <code>define DockerImageInfo DockerImageInfo</code>
     </ul>
   </ul>
+
+  <a name="DockerImageInfoattr"></a>
+  <b>attr</b>
+  <ul>
+      <code>attr &lt;name&gt; &lt;attribute&gt; &lt;value&gt;</code>
+      <br><br>
+      See <a href="http://fhem.de/commandref.html#attr">commandref#attr</a> für mehr Information zum attr Kommando.
+      <br><br>
+      Attributes:
+      <ul>
+          <li><i>DockerHealthCheck</i> 0|1<br>
+              Das Attribute wird in allen Definition des Typs WEB bereitgestellt.
+              Der Standardwert ist, dass jede WEB Definition für den Healthcheck verwendet wird.
+              Mit diesem Attribut, kann der Healthcheck auf eine Webdefinition deaktiviert werden.
+          </li>
+      </ul>
+  </ul>
+
   <br>
 
 </ul>
@@ -256,8 +295,8 @@ sub DockerImageInfo_GetImageInfo {
 
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
-  "version": "v0.6.0",
-  "x_release_date": "2019-07-28",
+  "version": "v1.0.0",
+  "x_release_date": "2023-11-09",
   "release_status": "stable",
   "license": [
     "MIT"
@@ -277,7 +316,7 @@ sub DockerImageInfo_GetImageInfo {
     "loredo"
   ],
   "x_fhem_maintainer_github": [
-    "jpawlowski"
+    "sidey79"
   ],
   "prereqs": {
     "runtime": {
