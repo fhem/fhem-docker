@@ -19,7 +19,7 @@ set -o pipefail   # Distribute an error exit status through the whole pipe
 #--- Constants -------------------------------------------------------------------------------------------------------
 
 declare -r  FHEM_DIR="/opt/fhem"
-declare -ri gEnableDebug=0
+declare -i gEnableDebug=0
 
 
 #--- Exported environment settings for all parts of the script -------------------------------------------------------
@@ -469,7 +469,7 @@ function fhemCleanInstall() {
 
 define DockerImageInfo DockerImageInfo
 attr DockerImageInfo alias Docker Image Info
-attr DockerImageInfo devStateIcon ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red
+attr DockerImageInfo devStateIcon ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red
 attr DockerImageInfo group System
 attr DockerImageInfo icon docker
 attr DockerImageInfo room System
@@ -923,34 +923,33 @@ function trapExitHandler() {
   exit $exitVal
 }
 
-if [ "$#" -ne 1 ]
+# Run main script only if we have a parameter passed
+if [ "$#" -eq 1 ]
 then
-  echo "FHEM will not be started, please provide argument \"start\"."
-  exit 0
+  
+  #====================================================================================================================-
+  #--- Main script -----------------------------------------------------------------------------------------------------
+
+  collectDockerInfo
+
+  initialContainerSetup
+  if [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
+    printfErr "Fatal: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl\n"
+    exit 1
+  fi
+
+  # used by other maintenance scripts (can we get rid of that?)
+  [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
+
+  setGlobal_LOGFILE
+  setGlobal_PIDFILE
+
+  prepareFhemUser
+  prepareFhemShellEnv
+
+  trap trapExitHandler SIGTERM EXIT
+
+  startFhemProcess
+  keepFhemRunning
+
 fi
-
-#====================================================================================================================-
-#--- Main script -----------------------------------------------------------------------------------------------------
-
-collectDockerInfo
-
-initialContainerSetup
-if [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
-  printfErr "Fatal: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl\n"
-  exit 1
-fi
-
-# used by other maintenance scripts (can we get rid of that?)
-[ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
-
-setGlobal_LOGFILE
-setGlobal_PIDFILE
-
-prepareFhemUser
-prepareFhemShellEnv
-
-trap trapExitHandler SIGTERM EXIT
-
-startFhemProcess
-keepFhemRunning
-
