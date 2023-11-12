@@ -1,7 +1,9 @@
+# syntax=docker/dockerfile:1
+
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
 
-FROM debian:buster-20230904-slim as base
+FROM debian:buster-20231030-slim as base
 
 ARG TARGETPLATFORM
 
@@ -561,6 +563,11 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     && ln -s /opt/bats/bin/bats /usr/local/bin/bats
+
+ADD https://github.com/bats-core/bats-support.git#master /opt/bats/test_helper/bats-support
+ADD https://github.com/bats-core/bats-assert.git#master /opt/bats/test_helper/bats-assert
+ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
+ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
 
 WORKDIR /code/
 
