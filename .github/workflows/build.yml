@@ -106,7 +106,7 @@ jobs:
 
       - name: Run bats unittetss
         run: |
-          docker run --rm -v "${PWD}/src/tests/bats:/code" withfhem -t . 
+          docker run --rm -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -t . 
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v5
