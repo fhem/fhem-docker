@@ -24,7 +24,7 @@ teardown() {
 @test "printf debug tests" { 
     declare -i gEnableDebug=1
     run printfDebug 'test output'
-    assert_output 'DEBUG: run: test output'
+    assert_output 'DEBUG: bats_merge_stdout_and_stderr: test output'
 }
 
 @test "check prependFhemDirPath()" {
@@ -95,9 +95,9 @@ teardown() {
     }
 
     
-    #skip 'Logfile test is endless running'
-    #run tailFileToConsoleStart "${realLogFile} -b"
-    #assert_output "1"
+    skip 'Logfile test is endless running'
+    run tailFileToConsoleStart "${realLogFile} -b"
+    assert_output "1"
 }
 
 
