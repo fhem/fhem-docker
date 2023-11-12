@@ -1,7 +1,8 @@
-# syntax=docker/dockerfile:1.5-labs
+# syntax=docker/dockerfile:1
+
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="bullseye"
-FROM debian:bullseye-20230904-slim as base
+FROM debian:bullseye-20231030-slim  as base
 
 ARG TARGETPLATFORM
 

@@ -47,10 +47,6 @@ jobs:
 
         id: gitVars
 
-      - name: Prepare SVN repository checkout and variables
-        id: prepareSVN
-        uses: ./.github/workflows/prepare-svn
-
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -76,6 +72,41 @@ jobs:
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
+      - name: Build for bats test full blown amd64 
+        uses: docker/build-push-action@v5
+        id: docker_build
+        with:
+          context: .
+          load: true  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-bats
+          cache-from: | 
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
+          tags: bats-withfhem
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            IMAGE_LAYER_SYS_EXT=1
+            IMAGE_LAYER_PERL_EXT=1
+            IMAGE_LAYER_DEV=1
+            IMAGE_LAYER_PERL_CPAN=1
+            IMAGE_LAYER_PERL_CPAN_EXT=1
+            IMAGE_LAYER_PYTHON=1
+            IMAGE_LAYER_PYTHON_EXT=1
+            IMAGE_LAYER_NODEJS=1
+            IMAGE_LAYER_NODEJS_EXT=0
+
+      - name: Run bats unittetss
+        run: |
+          docker run --rm -v "${PWD}/src/tests/bats:/code" withfhem -t . 
 
       - name: Build for test full blown amd64 
         uses: docker/build-push-action@v5
