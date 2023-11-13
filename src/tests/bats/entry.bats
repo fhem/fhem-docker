@@ -7,12 +7,15 @@ setup() {
     load '/opt/bats/test_helper/bats-file/load.bash'
     load '/opt/bats/test_helper/bats-mock/load.bash'
 
-    #rm -rf /opt/fhem/* 
     source /entry.sh
+    export -f printfDebug
+    export -f printfInfo
+    
 }
 
 teardown() {
     rm -rf /opt/fhem/* 
+    
 }
 
 
@@ -40,7 +43,26 @@ teardown() {
     assert_output "/opt/fhem/logs/fhem-1-2-3.log"
 }
 
+@test "check getGlobalAttr()" {
+    bats_require_minimum_version 1.5.0
+
+    export FHEM_DIR="/opt/fhem"
+    export -f getGlobalAttr
+    
+    run ! getGlobalAttr /tmp/test.cfg "logfile"
+    run fhemCleanInstall
+
+    assert_file_exists /opt/fhem/fhem.cfg
+    run ! getGlobalAttr /opt/fhem/fhem.cfg "some"
+    run -0  getGlobalAttr /opt/fhem/fhem.cfg "logfile"
+
+    assert_file_contains /opt/fhem/fhem.cfg "attr global logfile"
+    run -0 getGlobalAttr /opt/fhem/fhem.cfg "logfile"
+
+}
+
 @test "check setGlobal_LOGFILE from default" {
+    
     export -f setGlobal_LOGFILE
     export -f prependFhemDirPath
     export FHEM_DIR="/opt/fhem"
@@ -55,12 +77,14 @@ teardown() {
     assert_file_exists /opt/fhem/fhem.cfg
     assert_file_contains /opt/fhem/fhem.cfg "define Logfile FileLog ./log/fhem-%Y-%m.log Logfile"
     assert_file_contains /opt/fhem/fhem.cfg "define DockerImageInfo DockerImageInfo"
+    assert_file_contains /opt/fhem/fhem.cfg "attr global logfile ./log/fhem-%Y-%m.log"
 
     export CONFIGTYPE="fhem.cfg"
     export -f setGlobal_LOGFILE
     export -f prependFhemDirPath
     export -f getGlobalAttr
-    run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE'
+
+    run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE;'
     assert_output "${FHEM_DIR}/log/fhem-%Y-%m.log"
 }
 
