@@ -226,7 +226,7 @@ function prependFhemDirPath() {
 function getGlobalAttr() {
   local -r inCfgFile="$1"
   local -r inAttr="$2"
-  awk 'BEGIN{ retVal=1} /^[[:space:]]*attr[[:space:]]+global[[:space:]]+'$inAttr'[[:space:]]+/{ print $4; retVal=0; } END{ exit retVal}' "$inCfgFile"
+  grep -Po "^\s*attr\s+global\s+$inAttr\s\K.*" "$inCfgFile"
 }
 
 
@@ -273,6 +273,8 @@ function collectDockerInfo() {
 function setGlobal_LOGFILE() {
   local -r defaultLogfile="./log/fhem-%Y-%m-%d.log"
 
+  
+  
   [ -n "${LOGFILE+x}" ] &&                            { LOGFILE=$(prependFhemDirPath "$LOGFILE"); return; }          # LOGFILE already set => use this
   [ "${CONFIGTYPE}" == "configDB" ] &&                { LOGFILE=$(prependFhemDirPath "$defaultLogfile"); return; }   # config is done inside DB => default
 
