@@ -10,6 +10,10 @@ setup() {
     source /entry.sh
     export -f printfDebug
     export -f printfInfo
+
+    # Sometimes perl or grep does not terminate, we will clean up
+    pkill tail || true
+    pkill grep || true
     
 }
 
@@ -17,7 +21,6 @@ teardown() {
     rm -rf /opt/fhem/* 
     
 }
-
 
 @test "printf info tests" { 
     run printfInfo 'test output'
@@ -101,27 +104,49 @@ teardown() {
     rm -r ${FHEM_DIR}   
 }
 
-@test "ceck tailFileToConsoleStart() Logfile monitoring" {
-    export LOGFILE="fhem-%Y-%m-%d.log"
-    realLogFile="$( date +"${LOGFILE}")"
-    declare -i gCurrentTailPid=0
+@test "ceck tailFileToConsoleStop() Logfile monitoring" {
+    # mock some functions
+    LOGFILE="fhem-%Y-%m-%d.log"
+    realLogFile="/tmp/$( date +"${LOGFILE}")"
+    export gCurrentTailPid=0
+    function getFhemPidNum() {
+      echo "1"
+    }
+
     export -f tailFileToConsoleStart
+    export -f tailFileToConsoleStop
+    export -f getFhemPidNum
 
+    tailFileToConsoleStart ${realLogFile} -b
+    run tailFileToConsoleStop
 
+    echo $gCurrentTailPid | assert_output ""
+}
+
+@test "ceck tailFileToConsoleStart() Logfile monitoring" {
     # mock some functions
     function getFhemPidNum() {
       echo "1"
     }
 
-    function tailFileToConsoleStop() { 
-        gCurrentTailFile=""
-        gCurrentTailPid=0
-    }
+    export LOGFILE="fhem-%Y-%m-%d.log"
+    export realLogFile="/tmp/$( date +"${LOGFILE}")"
+    export gCurrentTailPid=0
+    export -f tailFileToConsoleStart
+    export -f tailFileToConsoleStop
+    export -f getFhemPidNum
 
-    
-    skip 'Logfile test is endless running'
-    run tailFileToConsoleStart "${realLogFile} -b"
-    assert_output "1"
+    run bash -c 'tailFileToConsoleStart ${realLogFile} -b; sleep 1; tailFileToConsoleStop'
+    assert_output ""
+
+    echo "hello" > $realLogFile
+    run bash -c 'tailFileToConsoleStart ${realLogFile} -b; sleep 1; tailFileToConsoleStop'
+    assert_output "hello"
+
+
+    run bash -c 'tailFileToConsoleStart ${realLogFile}; sleep 1; echo "again" >> $realLogFile; sleep 1; tailFileToConsoleStop'
+    assert_output "again"
+    refute_output "hello"
 }
 
 
