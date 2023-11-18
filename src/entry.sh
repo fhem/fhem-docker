@@ -819,7 +819,7 @@ function startFhemProcess() {
   chown ${FHEM_UID}:${FHEM_GID} "$realLogFile"
   tailFileToConsoleStart "$realLogFile"    # Start writing the logfile to the console
 
-  setTelnet_DEFINITION
+  # setTelnet_DEFINITION
   
   umask ${UMASK}
   printfInfo "Starting FHEM\n"
