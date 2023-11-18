@@ -24,45 +24,29 @@ inputs:
     description: "name of the dockerfile, used for identify the cache"
     required: false
     default: "Dockerfile"
-  CACHE_PATH:
-    description: "path where to save cache"
-    required: false
-  CACHE_TAG:
-    required: false
-    default: base
-    description: "Tag to differetiate Caches"
 
 runs:
   using: "composite"
   steps:
     - name: Docker Setup QEMU
-      uses: docker/setup-qemu-action@v1.2.0
+      uses: docker/setup-qemu-action@v3
       with:
         image: tonistiigi/binfmt:latest
         platforms: all
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
-    - name: Cache Docker layers
-      if: inputs.CACHE_PATH != null 
-      uses: actions/cache@v3
-      with:
-        path: ${{ inputs.CACHE_PATH }}
-        key: ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}-${{ inputs.CACHE_TAG }}-${{ github.sha }}
-        restore-keys: |
-            ${{ runner.os }}-buildx-${{ inputs.DOCKERFILE }}
+      uses: docker/setup-buildx-action@v3
 
     - name: Login to DockerHub
       if: github.event_name != 'pull_request' && inputs.DOCKER_HUB_USERNAME != null && inputs.DOCKER_HUB_ACCESS_TOKEN != null 
-      uses: docker/login-action@v1 
+      uses: docker/login-action@v3
       with:
         username: ${{ inputs.DOCKER_HUB_USERNAME }}
         password: ${{ inputs.DOCKER_HUB_ACCESS_TOKEN }}
 
     - name: Login to GitHub Container Registry
       if: github.event_name != 'pull_request' && inputs.GHCR_OWNER != null && inputs.GHCR_ACCESS_TOKEN != null
-      uses: docker/login-action@v1 
+      uses: docker/login-action@v3 
       with:
         registry: ghcr.io
         username: ${{ inputs.GHCR_OWNER }}

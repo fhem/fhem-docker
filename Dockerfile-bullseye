@@ -1,7 +1,6 @@
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="bullseye"
-FROM debian:bullseye-20220509-slim
-
+FROM debian:bullseye-20231030-slim as bullseye_base
 
 ARG TARGETPLATFORM
 
@@ -17,29 +16,12 @@ ENV LANG=en_US.UTF-8 \
    LC_TELEPHONE=de_DE.UTF-8 \
    LC_TIME=de_DE.UTF-8 \
    TERM=xterm \
-   TZ=Europe/Berlin \
-   LOGFILE=./log/fhem-%Y-%m-%d.log \
-   TELNETPORT=7072 \
-   FHEM_UID=6061 \
-   FHEM_GID=6061 \
-   FHEM_PERM_DIR=0750 \
-   FHEM_PERM_FILE=0640 \
-   UMASK=0037 \
-   BLUETOOTH_GID=6001 \
-   GPIO_GID=6002 \
-   I2C_GID=6003 \
-   TIMEOUT=10 \
-   CONFIGTYPE=fhem.cfg
-
-# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
-COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
-COPY src/find-* /usr/local/bin/
+   TZ=Europe/Berlin
 
 # Custom installation packages
 ARG APT_PKGS=""
 
-RUN chmod 755 /*.sh /usr/local/bin/* \
-    && sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list \
+RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/bullseye-updates main/bullseye-updates main contrib non-free/g" /etc/apt/sources.list \
     && sed -i "s/bullseye\/updates main/bullseye\/updates main contrib non-free/g" /etc/apt/sources.list \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
@@ -56,10 +38,6 @@ RUN chmod 755 /*.sh /usr/local/bin/* \
     && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
     && echo "Europe/Berlin" > /etc/timezone \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
-    \
-#    && sed -i "s,http://deb.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-#    && sed -i "s,http://security.debian.org,https://cdn-aws.deb.debian.org,g" /etc/apt/sources.list \
-#    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
     && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
         android-libadb \
@@ -174,6 +152,8 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         snmp-mibs-downloader \
         sox \
         vorbis-tools \
+        gstreamer1.0-tools \
+        libsox-fmt-all \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
@@ -342,6 +322,7 @@ RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
         libtime-period-perl \
         libtypes-path-tiny-perl \
         liburi-escape-xs-perl \
+        libprotocol-websocket-perl \
         perl \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
@@ -385,6 +366,7 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
           App::cpanoutdated \
           CPAN::Plugin::Sysdeps \
           Perl::PrereqScanner::NotQuiteLite \
+          Readonly \
       && if [ "${CPAN_PKGS}" != "" ]; then \
           cpanm \
            ${CPAN_PKGS} \
@@ -393,13 +375,15 @@ RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_P
            if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
              cpanm --notest \
               Alien::Base::ModuleBuild \
-              Alien::Sodium \
+              Alien::Sodium@1.0.8.0 \
               Crypt::Argon2 \
               Crypt::OpenSSL::AES \
+              Crypt::NaCl::Sodium \
               Device::SMBus \
               Net::MQTT::Constants \
               Net::MQTT::Simple \
               Net::WebSocket::Server \
+              Device::Firmata \
              ; fi \
          ; fi \
       && rm -rf /root/.cpanm \
@@ -448,15 +432,15 @@ ARG IMAGE_LAYER_NODEJS_EXT="1"
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
-      LC_ALL=C curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://deb.nodesource.com/setup_14.x | LC_ALL=C bash - \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-          nodejs=14.* \
+      mkdir -p /tmp/keyrings \
+      && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg \
+      && echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list \
+      && apt-get update \
+      && apt-get install nodejs -y \
       && if [ ! -e /usr/bin/npm ]; then \
            LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-             npm=5.8.* \
+             npm \
       ; fi \
-      && npm install -g --unsafe-perm --production \
-          npm \
       && if [ "${NPM_PKGS}" != "" ]; then \
           npm install -g --unsafe-perm --production \
            ${NPM_PKGS} \
@@ -471,8 +455,15 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
             tradfri-fhem \
         ; fi \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list \
     ; fi
+
+
+FROM bullseye_base as bullseye_with-fhem
+
+# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
+COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
+COPY src/find-* /usr/local/bin/
 
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
@@ -480,6 +471,20 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
 
 COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
+
+# FHEM specific ENVs
+ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
+   TELNETPORT=7072 \
+   FHEM_UID=6061 \
+   FHEM_GID=6061 \
+   FHEM_PERM_DIR=0750 \
+   FHEM_PERM_FILE=0640 \
+   UMASK=0037 \
+   BLUETOOTH_GID=6001 \
+   GPIO_GID=6002 \
+   I2C_GID=6003 \
+   TIMEOUT=10 \
+   CONFIGTYPE=fhem.cfg
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
 # Arguments to instantiate as variables
@@ -492,11 +497,11 @@ ARG IMAGE_VERSION=""
 ARG BUILD_DATE=""
 
 # Re-usable variables during build
-ARG L_AUTHORS="Julian Pawlowski (Forum.fhem.de:@loredo, Twitter:@loredo)"
+ARG L_AUTHORS=""
 ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
-ARG L_VENDOR="Julian Pawlowski"
+ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${TARGETPLATFORM}"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye."
@@ -535,7 +540,8 @@ LABEL org.opencontainers.image.created=${BUILD_DATE} \
    org.opencontainers.image.title=${L_TITLE} \
    org.opencontainers.image.description=${L_DESCR}
 
-RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+RUN chmod 755 /*.sh /usr/local/bin/* \ 
+    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
 
 VOLUME [ "/opt/fhem" ]
 

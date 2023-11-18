@@ -13,8 +13,6 @@ Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhe
 Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
 ### From Docker Hub
-Currently outdated but still available
-- debian stretch
 
         docker pull fhem/fhem
 
@@ -25,21 +23,21 @@ Currently outdated but still available
 Updated versions based on 
 - debian bullseye 
 - Perl 5.32.1
-- NodeJS 14 LTS
+- NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem/fhem-docker:bullseye
+        docker pull ghcr.io/fhem/fhem-docker:3-bullseye
 
 - debian buster
 - Perl 5.28.1
-- NodeJS 14 LTS
+- NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+        docker pull ghcr.io/fhem/fhem-docker:3-buster
 
  are available.
 
@@ -49,28 +47,28 @@ Updated versions based on
 
 - debian bullseye 
 - Perl 5.32.1
-- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
-        docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:bullseye
+        docker pull ghcr.io/fhem/fhem-minimal-docker:3-bullseye
 
 - debian buster
 - Perl 5.28.1
-- Supported Plattforms: linux/amd64,linux/arm/v6, linux/arm/v7, linux/arm64, linux/i386, 
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
-        docker pull ghcr.io/fhem/fhem/fhem-minimal-docker:buster
+        docker pull ghcr.io/fhem/fhem-minimal-docker:3-buster
 
  are available.
 
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:3-bullseye
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem docker pull ghcr.io/fhem/fhem/fhem-docker:buster
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem/fhem-docker:3-buster
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
@@ -97,8 +95,9 @@ For that reason, the default value of the global attribute `logfile` is differen
 
 It is highly recommended to keep this setting. Please note that FileLog devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
-### Add custom packages
+### Add custom packages 
 
+Don't do this unless you really know what this does!
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
 
 * Debian APT packages:

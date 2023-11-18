@@ -13,7 +13,7 @@ TIMEOUT="${TIMEOUT:-10}"
 RESTART="${RESTART:-1}"
 TELNETPORT="${TELNETPORT:-7072}"
 CONFIGTYPE="${CONFIGTYPE:-"fhem.cfg"}"
-DNS=$( cat /etc/resolv.conf | grep -m1 nameserver | sed -e 's/^nameserver[ \t]*//' )
+DNS=$(grep -m1 nameserver /etc/resolv.conf | sed -e 's/^nameserver[ \t]*//' )
 export DOCKER_GW="${DOCKER_GW:-$(netstat -r -n | grep ^0.0.0.0 | awk '{print $2}')}"
 export DOCKER_HOST="${DOCKER_HOST:-${DOCKER_GW}}"
 FHEM_UID="${FHEM_UID:-6061}"
@@ -56,7 +56,7 @@ else
   echo 0 > /docker.hostnetwork
   export DOCKER_HOSTNETWORK=0
 fi
-cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
+grep "memory:" /proc/self/cgroup  | cut -d "/" -f 3 > /docker.container.id
 captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
 captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
 captest --text | grep -P "^Inheritable:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.i
@@ -325,7 +325,7 @@ if [[ -d /dev/serial/by-id ]]; then
   find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
   (( i++ ))
 fi
-if [[ "$(find /dev/ -name "gpio*")" -ne "" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
+if [[ "$(find /dev/ -name "gpio*"|wc -l)" -gt "0" || -d /sys/devices/virtual/gpio || -d /sys/devices/platform/gpio-sunxi/gpio || /sys/class/gpio ]]; then
   echo "$i. Found GPIO: Correcting group permissions in /dev and /sys to 'gpio' with GID ${GPIO_GID} ..."
   if [ -n "$(grep ^gpio: /etc/group)" ]; then
     sed -i "s/^gpio\:.*/gpio\:x\:${GPIO_GID}/" /etc/group
@@ -448,16 +448,23 @@ chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
 (( i++ ))
 
 # Function to print FHEM log in incremental steps to the docker log.
-[ -s "$( date +"${LOGFILE}" )" ] && OLDLINES=$( wc -l < "$( date +"${LOGFILE}" )" ) || OLDLINES=0
-NEWLINES=${OLDLINES}
+[ -s "$( date +"${LOGFILE}" )" ] && OLDLINES=$( wc -l < "$( date +"${LOGFILE}" )" ) || OLDLINES=-1
+
 FOUND=false
+MAXLINES=0
 function PrintNewLines {
-  if [ -s "$( date +"${LOGFILE}" )" ]; then
-  	NEWLINES=$(wc -l < "$(date +"${LOGFILE}")")
-  	(( OLDLINES <= NEWLINES )) && LINES=$(( NEWLINES - OLDLINES )) || LINES=${NEWLINES}
-  	tail -n "${LINES}" "$(date +"${LOGFILE}")"
-  	[ -n "$1" ] && grep -q "$1" <(tail -n "$LINES" "$(date +"${LOGFILE}")") && FOUND=true || FOUND=false
-  	OLDLINES=${NEWLINES}
+  LOGFILENAME=$( date +"${LOGFILE}" )
+  if [ -s "${LOGFILENAME}" ]; then
+    mapfile -t logArray < <(tail -n "+$((${OLDLINES} + 1))" "${LOGFILENAME}" )
+
+    if [ ${#logArray[@]} -eq 0 ]; then
+      MAXLINES=$( wc -l < "${LOGFILENAME}" )
+      [ ${OLDLINES} -gt ${MAXLINES} ] && OLDLINES=0  # logfile rotation
+    else
+      [ -n "$1" ] && printf '%s\n' "${logArray[@]}" | grep -q -e "$1" && FOUND=true || FOUND=false
+      printf '%s\n' "${logArray[@]}" 
+      OLDLINES=$((${OLDLINES} + ${#logArray[@]} ))
+    fi
   fi
 }
 
@@ -469,9 +476,10 @@ function StopFHEM {
 	echo -e 'Waiting for FHEM process to terminate before stopping container:\n'
 
   # Wait for FHEM to complete shutdown
+  FOUND=false;
 	until $FOUND; do
 		sleep $SLEEPINTERVAL
-      		PrintNewLines "Server shutdown"
+    PrintNewLines "Server shutdown$"
 	done
 
   # Wait for FHEM normal process exit
@@ -513,20 +521,20 @@ function StartFHEM {
     if [ -s ${FHEM_DIR}/${CONFIGTYPE} ]; then
 
       ## Find Telnet access details
-      if [ -z "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}")" ]; then
-        CUSTOMPORT="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P '^define .* telnet ' | head -1 | cut -d ' ' -f 4)"
-        if [ -z "${CUSTOMPORT}"]; then
+      if [ -z "$(grep -P "^define .* telnet ${TELNETPORT}" ${FHEM_DIR}/${CONFIGTYPE})" ]; then
+        CUSTOMPORT="$(grep -P '^define .* telnet ' ${FHEM_DIR}/${CONFIGTYPE} | head -1 | cut -d ' ' -f 4)"
+        if [ -z "${CUSTOMPORT}" ]; then
           echo "define telnetPort telnet ${TELNETPORT}" >> ${FHEM_DIR}/${CONFIGTYPE}
         else
           TELNETPORT=${CUSTOMPORT}
         fi
       fi
-      TELNETDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^define .* telnet ${TELNETPORT}" | head -1 | cut -d " " -f 2)"
+      TELNETDEV="$(grep -P "^define .* telnet ${TELNETPORT}" ${FHEM_DIR}/${CONFIGTYPE} | head -1 | cut -d " " -f 2)"
       TELNETALLOWEDDEV="$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr .* validFor .*${TELNETDEV}.*" | head -1 | cut -d " " -f 2)"
 
       ## Enforce local telnet access w/o password
-      if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} password.*")" ]; then
-        if [ -n "$(cat ${FHEM_DIR}/${CONFIGTYPE} | grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*")" ]; then
+      if [ -n "$(grep -P "^attr ${TELNETALLOWEDDEV} password.*" ${FHEM_DIR}/${CONFIGTYPE})"  ]; then
+        if [ -n "$(grep -P "^attr ${TELNETALLOWEDDEV} globalpassword.*" ${FHEM_DIR}/${CONFIGTYPE})"  ]; then
           echo "  - Removed local password from Telnet allowed device '${TELNETALLOWEDDEV}'"
           sed -i "/attr ${TELNETALLOWEDDEV} password/d" ${FHEM_DIR}/${CONFIGTYPE}
         else
@@ -592,9 +600,10 @@ function StartFHEM {
   fi
 
   # Wait for FHEM to start up
+  FOUND=false;
   until $FOUND; do
   	sleep $SLEEPINTERVAL
-    PrintNewLines "Server started"
+    PrintNewLines "Server started$"
   done
 
   if [ -s /post-start.sh ]; then

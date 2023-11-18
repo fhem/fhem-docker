@@ -15,7 +15,7 @@ runs:
     - name: Get latest svn revision from remote server
       shell: bash
       id: svnRemote
-      run: echo "::set-output name=LAST_SVN_REVISION::$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )"
+      run: echo "LAST_SVN_REVISION=$( svn info --show-item revision https://svn.fhem.de/fhem/trunk )" >> $GITHUB_OUTPUT
 
     - name: Cache fhem 
       id: cache-fhem
@@ -38,5 +38,5 @@ runs:
       run: |
         FHEM_REVISION_LATEST=$( svn info --show-item last-changed-revision)
         FHEM_VERSION=$( svn ls "^/tags" https://svn.fhem.de/fhem/ | grep "FHEM_" | sort | tail -n 1 | cut -d / -f 1 | cut -d " " -f 1 |cut -d _ -f 2- | sed s/_/./g )
-        echo "::set-output name=VARIANT_FHEM::$(echo "${FHEM_VERSION}-s${FHEM_REVISION_LATEST}")"
-        echo "::set-output name=FHEM_REVISION_LATEST::$(echo "$FHEM_REVISION_LATEST")"
+        echo "VARIANT_FHEM=$(echo "${FHEM_VERSION}-s${FHEM_REVISION_LATEST}")" >> $GITHUB_OUTPUT
+        echo "FHEM_REVISION_LATEST=$(echo "$FHEM_REVISION_LATEST")" >> $GITHUB_OUTPUT

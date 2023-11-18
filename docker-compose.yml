@@ -23,7 +23,7 @@ services:
 
   # Minimum example w/o any custom environment variables
   fhem:
-    image: fhem/fhem:latest
+    image: ghcr.io/fhem/fhem-docker:3-bullseye
     restart: always
     networks:
       - net
@@ -34,7 +34,7 @@ services:
 
   # Example w/ custom environment variables
   fhem:
-    image: fhem/fhem:latest
+    image: ghcr.io/fhem/fhem-docker:3-bullseye
     restart: always
     networks:
       - net
@@ -54,7 +54,7 @@ services:
   # Example to connect USB to the container w/o
   # privileged mode (preferred method)
   fhem:
-    image: fhem/fhem:latest
+    image: ghcr.io/fhem/fhem-docker:3-bullseye
     restart: always
     networks:
       - net
@@ -75,7 +75,7 @@ services:
   # Example to connect USB to the container w/
   # privileged mode (not recommended for security reasons)
   fhem:
-    image: fhem/fhem:latest
+    image: ghcr.io/fhem/fhem-docker:3-bullseye
     restart: always
     privileged: true
     networks:
@@ -96,7 +96,7 @@ services:
   # Example for privileged container w/
   # host network (not recommended for security reasons)
   fhem:
-    image: fhem/fhem:latest
+    image: ghcr.io/fhem/fhem-docker:3-bullseye
     restart: always
     privileged: true
     network_mode: "host"
