@@ -19,7 +19,7 @@ runs:
 
     - name: Cache fhem 
       id: cache-fhem
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ./src/fhem/trunk
         key: ${{ runner.os }}-fhemsvn-${{ steps.svnRemote.outputs.LAST_SVN_REVISION }}
