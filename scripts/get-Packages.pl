@@ -7,35 +7,39 @@ use List::MoreUtils qw(uniq);
 use Data::Dumper;
 
 
-my $directory = shift;  # Pfad als Argument übergeben
+my @directories = @ARGV;
 
-# Alle Perl-Moduldateien im Verzeichnisbaum finden
-my @files = File::Find::Rule->file()->name('*.pm')->in($directory);
 
 my %seen;  # Hash, um Duplikate zu verfolgen
 my @unique_package_names;
 
-foreach my $file (@files) {
-    my $document = PPI::Document->new($file);
-    
-    # Alle package-Anweisungen in der Datei finden
-    my $package_statements = $document->find('PPI::Statement::Package');
+# Alle Perl-Moduldateien im Verzeichnisbaum finden
+foreach my $directory (@directories) {
 
-    # Nur Dateien mit mindestens einer package-Anweisung verarbeiten
-    next unless $package_statements;
+    my @files = File::Find::Rule->file()->name('*.pm')->in($directory);
 
-    foreach my $package_statement (@$package_statements) {
-        my $package_name = $package_statement->namespace;
+    foreach my $file (@files) {
 
-        next if $seen{$package_name};
-        $seen{$package_name} = 1;
+        my $document = PPI::Document->new($file);
+        next unless $document;
+        # Alle package-Anweisungen in der Datei finden
+        my $package_statements = $document->find('PPI::Statement::Package');
 
-        push @unique_package_names, $package_name;
+        # Nur Dateien mit mindestens einer package-Anweisung verarbeiten
+        next unless $package_statements;
 
-        # print "Paketname: $package_name\n";
+        foreach my $package_statement (@$package_statements) {
+            my $package_name = $package_statement->namespace;
+
+            next if $seen{$package_name};
+            $seen{$package_name} = 1;
+
+            push @unique_package_names, $package_name;
+
+            # print "Paketname: $package_name\n";
+        }
     }
 }
-
 # Paketnamen mit | getrennt ausgeben
 my $package_string = join '|', @unique_package_names;
 print "Eindeutige Paketnamen: $package_string\n";

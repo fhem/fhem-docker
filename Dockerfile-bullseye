@@ -78,9 +78,9 @@ RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.l
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-  # Install all CPAN Modules, needed from FHEM and standard modules
+# Install all CPAN Modules, needed from FHEM and standard modules
 COPY cpanfile /root/cpanfile
-  # Fixup modules which do not work on all platforms and install afterwards
+# Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::SerialPort/d' ./cpanfile  > /root/cpanfile 
@@ -94,6 +94,20 @@ RUN <<EOF
   cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests .
   rm -rf /root/.cpanm 
 EOF
+
+# Install all CPAN Modules, needed from 3rd party module repositorys 
+COPY 3rdParty/cpanfile /root/cpanfile_3rdparty
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::SerialPort/d' ./cpanfile  > /root/cpanfile_3rdparty
+    sed -i '/Device::Firmata::Constants/d' ./cpanfile  > /root/cpanfile_3rdparty
+  fi
+
+  cpanm --notest --cpanfile /root/cpanfile_3rdparty --installdeps --with-suggests .
+  rm -rf /root/.cpanm 
+EOF
+
 
 # Add some more Additional CPAN Modules
 RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
