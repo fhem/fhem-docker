@@ -22,13 +22,13 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 Updated versions based on 
 - debian bullseye 
-- Perl 5.32.1
+- Perl 5.36.3
 - NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem-docker:3-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
 
 - debian buster
 - Perl 5.28.1
@@ -46,10 +46,10 @@ Updated versions based on
 #### Image with perl core services installed
 
 - debian bullseye 
-- Perl 5.32.1
+- Perl 5.36.3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
-        docker pull ghcr.io/fhem/fhem-minimal-docker:3-bullseye
+        docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
 
 - debian buster
 - Perl 5.28.1
@@ -415,6 +415,8 @@ Follow initial setup steps:
     cd /docker; sudo git clone git@github.com:user/repo.git
     cd /docker/home; sudo docker-compose up -d
     ```
+
+
 ## Testing the Image itself in a container
 
 Basic testing of the image is done in the pipeline. The pipeline will start a container and verify that the health check reports the container is alive.
@@ -427,3 +429,5 @@ To run the test, build the image with the specific target:
 
 Then this image, can be used to start a new container and running bats inside the container.
     docker run -it --rm -v "${PWD}/src/tests/bats:/code"  fhemdocker:test .
+
+

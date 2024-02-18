@@ -2,7 +2,7 @@
 
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="bullseye"
-FROM debian:bullseye-20240211-slim  as base
+FROM perl:5.36.3-bullseye as base
 
 ARG TARGETPLATFORM
 
@@ -69,67 +69,48 @@ RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.l
         unzip \
         usbutils \
         wget \
+        libarchive-dev \
+        libimlib2-dev \
+        python-dev \
+        #libusb-1.0-0-dev \
+        libusb-dev \
+        bash \
         ${APT_PKGS} \
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Add Perl basic app layer for pre-compiled packages
-RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libarchive-extract-perl \
-        libarchive-zip-perl \
-        libcgi-pm-perl \
-        libcpanel-json-xs-perl \
-        libdbd-mariadb-perl \
-        libdbd-mysql-perl \
-        libdbd-pg-perl \
-        libdbd-pgsql \
-        libdbd-sqlite3 \
-        libdbd-sqlite3-perl \
-        libdbi-perl \
-        libdevice-serialport-perl \
-        libdevice-usb-perl \
-        libgd-graph-perl \
-        libgd-text-perl \
-        libimage-imlib2-perl \
-        libimage-info-perl \
-        libimage-librsvg-perl \
-        libio-all-perl \
-        libio-file-withpath-perl \
-        libio-interface-perl \
-        libio-socket-inet6-perl \
-        libjson-perl \
-        libjson-pp-perl \
-        libjson-xs-perl \
-        liblist-moreutils-perl \
-        libmail-gnupg-perl \
-        libmail-imapclient-perl \
-        libmail-sendmail-perl \
-        libmime-base64-perl \
-        libmime-lite-perl \
-        libnet-server-perl \
-        libsocket6-perl \
-        libterm-readline-perl-perl \
-        libtext-csv-perl \
-        libtext-diff-perl \
-        libtext-iconv-perl \
-        libtimedate-perl \
-        libutf8-all-perl \
-        libwww-curl-perl \
-        libwww-perl \
-        libxml-libxml-perl \
-        libxml-parser-lite-perl \
-        libxml-parser-perl \
-        libxml-simple-perl \
-        libxml-stream-perl \
-        libxml-treebuilder-perl \
-        libxml-xpath-perl \
-        libxml-xpathengine-perl \
-        libyaml-libyaml-perl \
-        libyaml-perl \
-        perl-base \
-    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+# Install all CPAN Modules, needed from FHEM and standard modules
+  COPY cpanfile /root/cpanfile
+  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
+      cpanm --notest --cpanfile /root/cpanfile --installdeps  . \
+      && rm -rf /root/.cpanm 
+
+
+  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
+      cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests . \
+      && rm -rf /root/.cpanm 
+
+
+# Add some more Additional CPAN Modules
+  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
+      cpanm --notest \
+         Alien::Base::ModuleBuild \
+         Alien::Sodium@1.0.8.0 \
+         Crypt::Argon2 \
+         Crypt::OpenSSL::AES \
+         Crypt::NaCl::Sodium \
+         Device::SMBus \
+         Net::MQTT::Constants \
+         Net::MQTT::Simple \
+         Net::WebSocket::Server \
+         Device::Firmata \
+        && rm -rf /root/.cpanm 
+
+# FROM bullseye_base as bullseye_extendet
+
+####
+    # && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    # && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
 # Custom image layers options:
 ARG IMAGE_LAYER_SYS_EXT="1"
@@ -162,194 +143,143 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
 
 
 # Custom image layers options:
-ARG IMAGE_LAYER_PERL_EXT="1"
+# ARG IMAGE_LAYER_PERL_EXT="1"
 
-# Add Perl extended app layer for pre-compiled packages
-RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
-      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libalgorithm-merge-perl \
-        libauthen-bitcard-perl \
-        libauthen-captcha-perl \
-        libauthen-cas-client-perl \
-        libauthen-dechpwd-perl \
-        libauthen-htpasswd-perl \
-        libauthen-krb5-admin-perl \
-        libauthen-krb5-perl \
-        libauthen-krb5-simple-perl \
-        libauthen-libwrap-perl \
-        libauthen-ntlm-perl \
-        libauthen-oath-perl \
-        libauthen-pam-perl \
-        libauthen-passphrase-perl \
-        libauthen-radius-perl \
-        libauthen-sasl-cyrus-perl \
-        libauthen-sasl-perl \
-        libauthen-sasl-saslprep-perl \
-        libauthen-scram-perl \
-        libauthen-simple-cdbi-perl \
-        libauthen-simple-dbi-perl \
-        libauthen-simple-dbm-perl \
-        libauthen-simple-http-perl \
-        libauthen-simple-kerberos-perl \
-        libauthen-simple-ldap-perl \
-        libauthen-simple-net-perl \
-        libauthen-simple-pam-perl \
-        libauthen-simple-passwd-perl \
-        libauthen-simple-perl \
-        libauthen-simple-radius-perl \
-        libauthen-simple-smb-perl \
-        libauthen-smb-perl \
-        libauthen-tacacsplus-perl \
-        libauthen-u2f-perl \
-        libauthen-u2f-tester-perl \
-        libclass-dbi-mysql-perl \
-        libclass-isa-perl \
-        libclass-loader-perl \
-        libcommon-sense-perl \
-        libconvert-base32-perl \
-        libcpan-meta-yaml-perl \
-        libcrypt-blowfish-perl \
-        libcrypt-cast5-perl \
-        libcrypt-cbc-perl \
-        libcrypt-ciphersaber-perl \
-        libcrypt-cracklib-perl \
-        libcrypt-des-ede3-perl \
-        libcrypt-des-perl \
-        libcrypt-dh-gmp-perl \
-        libcrypt-dh-perl \
-        libcrypt-dsa-perl \
-        libcrypt-ecb-perl \
-        libcrypt-eksblowfish-perl \
-        libcrypt-format-perl \
-        libcrypt-gcrypt-perl \
-        libcrypt-generatepassword-perl \
-        libcrypt-hcesha-perl \
-        libcrypt-jwt-perl \
-        libcrypt-mysql-perl \
-        libcrypt-openssl-bignum-perl \
-        libcrypt-openssl-dsa-perl \
-        libcrypt-openssl-ec-perl \
-        libcrypt-openssl-pkcs10-perl \
-        libcrypt-openssl-pkcs12-perl \
-        libcrypt-openssl-random-perl \
-        libcrypt-openssl-rsa-perl \
-        libcrypt-openssl-x509-perl \
-        libcrypt-passwdmd5-perl \
-        libcrypt-pbkdf2-perl \
-        libcrypt-random-seed-perl \
-        libcrypt-random-source-perl \
-        libcrypt-rc4-perl \
-        libcrypt-rijndael-perl \
-        libcrypt-rsa-parse-perl \
-        libcrypt-saltedhash-perl \
-        libcrypt-simple-perl \
-        libcrypt-smbhash-perl \
-        libcrypt-smime-perl \
-        libcrypt-ssleay-perl \
-        libcrypt-twofish-perl \
-        libcrypt-u2f-server-perl \
-        libcrypt-unixcrypt-perl \
-        libcrypt-unixcrypt-xs-perl \
-        libcrypt-urandom-perl \
-        libcrypt-util-perl \
-        libcrypt-x509-perl \
-        libcryptx-perl \
-        libdata-dump-perl \
-        libdatetime-format-strptime-perl \
-        libdatetime-perl \
-        libdevel-size-perl \
-        libdigest-bcrypt-perl \
-        libdigest-bubblebabble-perl \
-        libdigest-crc-perl \
-        libdigest-elf-perl \
-        libdigest-hmac-perl \
-        libdigest-jhash-perl \
-        libdigest-md2-perl \
-        libdigest-md4-perl \
-        libdigest-md5-file-perl \
-        libdigest-perl-md5-perl \
-        libdigest-sha-perl \
-        libdigest-sha3-perl \
-        libdigest-ssdeep-perl \
-        libdigest-whirlpool-perl \
-        libdpkg-perl \
-        libencode-perl \
-        liberror-perl \
-        libev-perl \
-        libextutils-makemaker-cpanfile-perl \
-        libfile-copy-recursive-perl \
-        libfile-fcntllock-perl \
-        libfinance-quote-perl \
-        libgnupg-interface-perl \
-        libhtml-strip-perl \
-        libhtml-treebuilder-xpath-perl \
-        libio-socket-inet6-perl \
-        libio-socket-ip-perl \
-        libio-socket-multicast-perl \
-        libio-socket-portstate-perl \
-        libio-socket-socks-perl \
-        libio-socket-ssl-perl \
-        libio-socket-timeout-perl \
-        liblinux-inotify2-perl \
-        libmath-round-perl \
-        libmodule-pluggable-perl \
-        libmojolicious-perl \
-        libmoose-perl \
-        libmoox-late-perl \
-        libmp3-info-perl \
-        libmp3-tag-perl \
-        libnet-address-ip-local-perl \
-        libnet-bonjour-perl \
-        libnet-jabber-perl \
-        libnet-oauth-perl \
-        libnet-oauth2-perl \
-        libnet-sip-perl \
-        libnet-snmp-perl \
-        libnet-ssleay-perl \
-        libnet-telnet-perl \
-        libnet-xmpp-perl \
-        libnmap-parser-perl \
-        librivescript-perl \
-        librpc-xml-perl \
-        libsnmp-perl \
-        libsnmp-session-perl \
-        libsoap-lite-perl \
-        libsocket-perl \
-        libswitch-perl \
-        libsys-hostname-long-perl \
-        libsys-statistics-linux-perl \
-        libterm-readkey-perl \
-        libterm-readline-perl-perl \
-        libtime-period-perl \
-        libtypes-path-tiny-perl \
-        liburi-escape-xs-perl \
-        libprotocol-websocket-perl \
-        perl \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
+# # Add Perl extended app layer for pre-compiled packages
+# RUN if [ "${IMAGE_LAYER_PERL_EXT}" != "0" ]; then \
+#       LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+#       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+#         libalgorithm-merge-perl \
+#         libcrypt-eksblowfish-perl \
+#         libcrypt-format-perl \
+#         libcrypt-gcrypt-perl \
+#         libcrypt-generatepassword-perl \
+#         libcrypt-hcesha-perl \
+#         libcrypt-jwt-perl \
+#         libcrypt-mysql-perl \
+#         libcrypt-openssl-bignum-perl \
+#         libcrypt-openssl-dsa-perl \
+#         libcrypt-openssl-ec-perl \
+#         libcrypt-openssl-pkcs10-perl \
+#         libcrypt-openssl-pkcs12-perl \
+#         libcrypt-openssl-random-perl \
+#         libcrypt-openssl-rsa-perl \
+#         libcrypt-openssl-x509-perl \
+#         libcrypt-passwdmd5-perl \
+#         libcrypt-pbkdf2-perl \
+#         libcrypt-random-seed-perl \
+#         libcrypt-random-source-perl \
+#         libcrypt-rc4-perl \
+#         libcrypt-rijndael-perl \
+#         libcrypt-rsa-parse-perl \
+#         libcrypt-saltedhash-perl \
+#         libcrypt-simple-perl \
+#         libcrypt-smbhash-perl \
+#         libcrypt-smime-perl \
+#         libcrypt-ssleay-perl \
+#         libcrypt-twofish-perl \
+#         libcrypt-u2f-server-perl \
+#         libcrypt-unixcrypt-perl \
+#         libcrypt-unixcrypt-xs-perl \
+#         libcrypt-urandom-perl \
+#         libcrypt-util-perl \
+#         libcrypt-x509-perl \
+#         libcryptx-perl \
+#         libdata-dump-perl \
+#         libdatetime-format-strptime-perl \
+#         libdatetime-perl \
+#         libdevel-size-perl \
+#         libdigest-bcrypt-perl \
+#         libdigest-bubblebabble-perl \
+#         libdigest-crc-perl \
+#         libdigest-elf-perl \
+#         libdigest-hmac-perl \
+#         libdigest-jhash-perl \
+#         libdigest-md2-perl \
+#         libdigest-md4-perl \
+#         libdigest-md5-file-perl \
+#         libdigest-perl-md5-perl \
+#         libdigest-sha-perl \
+#         libdigest-sha3-perl \
+#         libdigest-ssdeep-perl \
+#         libdigest-whirlpool-perl \
+#         libdpkg-perl \
+#         libencode-perl \
+#         liberror-perl \
+#         libev-perl \
+#         libextutils-makemaker-cpanfile-perl \
+#         libfile-copy-recursive-perl \
+#         libfile-fcntllock-perl \
+#         libfinance-quote-perl \
+#         libgnupg-interface-perl \
+#         libhtml-strip-perl \
+#         libhtml-treebuilder-xpath-perl \
+#         libio-socket-inet6-perl \
+#         libio-socket-ip-perl \
+#         libio-socket-multicast-perl \
+#         libio-socket-portstate-perl \
+#         libio-socket-socks-perl \
+#         libio-socket-ssl-perl \
+#         libio-socket-timeout-perl \
+#         liblinux-inotify2-perl \
+#         libmath-round-perl \
+#         libmodule-pluggable-perl \
+#         libmojolicious-perl \
+#         libmoose-perl \
+#         libmoox-late-perl \
+#         libmp3-info-perl \
+#         libmp3-tag-perl \
+#         libnet-address-ip-local-perl \
+#         libnet-bonjour-perl \
+#         libnet-jabber-perl \
+#         libnet-oauth-perl \
+#         libnet-oauth2-perl \
+#         libnet-sip-perl \
+#         libnet-snmp-perl \
+#         libnet-ssleay-perl \
+#         libnet-telnet-perl \
+#         libnet-xmpp-perl \
+#         libnmap-parser-perl \
+#         librivescript-perl \
+#         librpc-xml-perl \
+#         libsnmp-perl \
+#         libsnmp-session-perl \
+#         libsoap-lite-perl \
+#         libsocket-perl \
+#         libswitch-perl \
+#         libsys-hostname-long-perl \
+#         libsys-statistics-linux-perl \
+#         libterm-readkey-perl \
+#         libterm-readline-perl-perl \
+#         libtime-period-perl \
+#         libtypes-path-tiny-perl \
+#         liburi-escape-xs-perl \
+#         libprotocol-websocket-perl \
+#         perl \
+#       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+#       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+#     ; fi
 
 # Custom image layers options:
-ARG IMAGE_LAYER_DEV="1"
+# ARG IMAGE_LAYER_DEV="1"
 
-# Add development/compilation layer
-RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
-      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        autoconf \
-        automake \
-        build-essential \
-        libavahi-compat-libdnssd-dev \
-        libdb-dev \
-        libsodium-dev \
-        libssl-dev \
-        libtool \
-        libusb-1.0-0-dev \
-        patch \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
+# # Add development/compilation layer
+# RUN if [ "${IMAGE_LAYER_DEV}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
+#       LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
+#       && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+#         autoconf \
+#         automake \
+#         build-essential \
+#         libavahi-compat-libdnssd-dev \
+#         libdb-dev \
+#         libsodium-dev \
+#         libssl-dev \
+#         libtool \
+#         libusb-1.0-0-dev \
+#         patch \
+#       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+#       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+#     ; fi
 
 
 # Custom image layers options:
@@ -362,36 +292,37 @@ ARG CPAN_PKGS=""
 # Add Perl app layer for self-compiled modules
 #  * exclude any ARM platforms due to long build time
 #  * manually pre-compiled ARM packages may be applied here
-RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://git.io/cpanm | perl - App::cpanminus \
-      && cpanm --notest \
-          App::cpanoutdated \
-          CPAN::Plugin::Sysdeps \
-          Perl::PrereqScanner::NotQuiteLite \
-          Readonly \
-      && if [ "${CPAN_PKGS}" != "" ]; then \
-          cpanm \
-           ${CPAN_PKGS} \
-         ; fi \
-      && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
-           if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
-             cpanm --notest \
-              Alien::Base::ModuleBuild \
-              Alien::Sodium@1.0.8.0 \
-              Crypt::Argon2 \
-              Crypt::OpenSSL::AES \
-              Crypt::NaCl::Sodium \
-              Device::SMBus \
-              Net::MQTT::Constants \
-              Net::MQTT::Simple \
-              Net::WebSocket::Server \
-              Device::Firmata \
-             ; fi \
-         ; fi \
-      && rm -rf /root/.cpanm \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
+# RUN if [ "${CPAN_PKGS}" != "" ] || [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PERL_CPAN}" != "0" ] || [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
+# #      curl --retry 3 --retry-connrefused --retry-delay 2 -fsSL https://git.io/cpanm | perl - App::cpanminus \
+# #      && \
+#       cpanm --notest \
+#           App::cpanoutdated \
+#           CPAN::Plugin::Sysdeps \
+#           Perl::PrereqScanner::NotQuiteLite \
+#           Readonly \
+#       && if [ "${CPAN_PKGS}" != "" ]; then \
+#           cpanm \
+#            ${CPAN_PKGS} \
+#          ; fi \
+#       && if [ "${IMAGE_LAYER_PERL_CPAN_EXT}" != "0" ]; then \
+#            if [ "${TARGETPLATFORM}" = "linux/amd64" ] || [ "${TARGETPLATFORM}" = "linux/i386" ]; then \
+#              cpanm --notest \
+#               Alien::Base::ModuleBuild \
+#               Alien::Sodium@1.0.8.0 \
+#               Crypt::Argon2 \
+#               Crypt::OpenSSL::AES \
+#               Crypt::NaCl::Sodium \
+#               Device::SMBus \
+#               Net::MQTT::Constants \
+#               Net::MQTT::Simple \
+#               Net::WebSocket::Server \
+#               Device::Firmata \
+#              ; fi \
+#          ; fi \
+#       && rm -rf /root/.cpanm \
+#       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
+#       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
+#     ; fi
 
 # Custom image layers options:
 ARG IMAGE_LAYER_PYTHON="1"
@@ -429,8 +360,8 @@ RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMA
 ARG NPM_PKGS=""
 
 # Custom image layers options:
-ARG IMAGE_LAYER_NODEJS="1"
-ARG IMAGE_LAYER_NODEJS_EXT="1"
+ARG IMAGE_LAYER_NODEJS="0"
+ARG IMAGE_LAYER_NODEJS_EXT="0"
 
 # Add nodejs app layer
 RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
@@ -471,8 +402,9 @@ COPY src/find-* /usr/local/bin/
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 
-#COPY src/fhem/trunk/fhem/ /fhem/
-COPY src/FHEM/ /fhem/FHEM
+COPY src/fhem/trunk/fhem/ /fhem/
+# COPY src/FHEM/trunk/fhem/* /fhem/
+COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM
 
 # FHEM specific ENVs
 ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
