@@ -51,6 +51,18 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+          install-modules-with: cpanm
+          install-modules-args: --notest
+          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils
+
+      - name: create cpanfile from FHEM dependencies
+        run: | 
+          FHEM_MODULES=$(perl scripts/get-Packages.pl ./src/fhem/trunk)
+          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(Win32::|YAF|OW|RTypes|RRDs|SetExtensions|HttpUtils|UPnP::ControlPoint|FritzBoxUtils|configDB|RESIDENTStk|SHC_datafields|TcpServerUtils|Blocking|uConv|ZWLib|UpNp:Common|HttpUtils|Unit|GD|DevIo|AttrTemplate|ProtoThreads|$FHEM_MODULES)" ./src/fhem/trunk
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker

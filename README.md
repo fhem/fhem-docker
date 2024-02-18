@@ -22,7 +22,7 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 Updated versions based on 
 - debian bullseye 
-- Perl 5.32.1
+- Perl 5.36.3
 - NodeJS 16 LTS
 - Python 3
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
