@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1
-
+#syntax=docker/dockerfile:1
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="bullseye"
 FROM perl:5.36.3-bullseye as base
@@ -79,20 +78,25 @@ RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.l
     && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 
-# Install all CPAN Modules, needed from FHEM and standard modules
-  COPY cpanfile /root/cpanfile
-  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
-      cpanm --notest --cpanfile /root/cpanfile --installdeps  . \
-      && rm -rf /root/.cpanm 
+  # Install all CPAN Modules, needed from FHEM and standard modules
+COPY cpanfile /root/cpanfile
+  # Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::SerialPort/d' ./cpanfile  > /root/cpanfile 
+    sed -i '/Device::Firmata::Constants/d' ./cpanfile  >/root/cpanfile
+  fi
+  cpanm --notest --cpanfile /root/cpanfile --installdeps  .
+  rm -rf /root/.cpanm 
+EOF
 
-
-  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
-      cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests . \
-      && rm -rf /root/.cpanm 
-
+RUN <<EOF
+  cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests .
+  rm -rf /root/.cpanm 
+EOF
 
 # Add some more Additional CPAN Modules
-  RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
+RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive  \
       cpanm --notest \
          Alien::Base::ModuleBuild \
          Alien::Sodium@1.0.8.0 \
@@ -103,7 +107,6 @@ RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.l
          Net::MQTT::Constants \
          Net::MQTT::Simple \
          Net::WebSocket::Server \
-         Device::Firmata \
         && rm -rf /root/.cpanm 
 
 # FROM bullseye_base as bullseye_extendet
@@ -403,7 +406,7 @@ COPY src/find-* /usr/local/bin/
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 
 COPY src/fhem/trunk/fhem/ /fhem/
-# COPY src/FHEM/trunk/fhem/* /fhem/
+#COPY src/FHEM/trunk/fhem/* /fhem/
 COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM
 
 # FHEM specific ENVs
