@@ -297,6 +297,7 @@ sub DockerImageInfo_GetImageInfo {
 {
   "version": "v1.0.0",
   "x_release_date": "2023-11-09",
+  "name": "99_DockerImageInfo.pm",
   "release_status": "stable",
   "license": [
     "MIT"
