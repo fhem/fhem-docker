@@ -1,6 +1,4 @@
 # syntax=docker/dockerfile:1
-ARG BASE_IMAGE="debian"
-ARG BASE_IMAGE_TAG="bullseye"
 FROM perl:5.36.3-bullseye as base
 
 ARG TARGETPLATFORM
@@ -134,6 +132,7 @@ RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
         vorbis-tools \
         gstreamer1.0-tools \
         libsox-fmt-all \
+        libsodium-dev \
       && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
     ; fi
@@ -225,10 +224,10 @@ COPY src/find-* /usr/local/bin/
 # Add FHEM app layer
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
-
-COPY src/fhem/trunk/fhem/ /fhem/
+#COPY src/fhem/trunk/fhem/ /fhem/
 #COPY src/FHEM/trunk/fhem/* /fhem/
-COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM
+
+COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM/
 
 # FHEM specific ENVs
 ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
