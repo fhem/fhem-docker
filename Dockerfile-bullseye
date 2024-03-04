@@ -269,7 +269,8 @@ RUN <<EOF
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
     echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
     apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install nodejs -y npm
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install nodejs -y 
+    npm install -g npm@latest
     if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then 
            npm install -g --unsafe-perm --production \
             alexa-cookie2 \
