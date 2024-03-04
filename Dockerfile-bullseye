@@ -114,8 +114,8 @@ COPY cpanfile /root/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' ./cpanfile  > /root/cpanfile 
-    sed -i '/Device::Firmata::Constants/d' ./cpanfile  >/root/cpanfile
+    sed -i '/Device::SerialPort/d' root/cpanfile  > /root/cpanfile 
+    sed -i '/Device::Firmata::Constants/d' root/cpanfile  >/root/cpanfile
   fi
   cpanm --notest --cpanfile /root/cpanfile --installdeps  .
   rm -rf /root/.cpanm 
@@ -131,8 +131,8 @@ COPY 3rdParty/cpanfile /root/cpanfile_3rdparty
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' ./cpanfile  > /root/cpanfile_3rdparty
-    sed -i '/Device::Firmata::Constants/d' ./cpanfile  > /root/cpanfile_3rdparty
+    sed -i '/Device::SerialPort/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
+    sed -i '/Device::Firmata::Constants/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
   fi
 
   cpanm --notest --cpanfile /root/cpanfile_3rdparty --installdeps --with-suggests .
