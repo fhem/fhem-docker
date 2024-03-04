@@ -23,8 +23,9 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 Updated versions based on 
 - debian bullseye 
 - Perl 5.36.3
-- NodeJS 16 LTS
-- Python 3
+- NodeJS 18 LTS
+- Python 3.9.2
+- Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
@@ -47,6 +48,8 @@ Updated versions based on
 
 - debian bullseye 
 - Perl 5.36.3
+- Python 3.9.2
+- Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye

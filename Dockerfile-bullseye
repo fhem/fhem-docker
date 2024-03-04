@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1
+# 
+# base layer with perl and some general preparations
+#
 FROM perl:5.36.3-bullseye as base
 
 ARG TARGETPLATFORM
@@ -17,27 +20,29 @@ ENV LANG=en_US.UTF-8 \
    TERM=xterm \
    TZ=Europe/Berlin
 
-# Custom installation packages
-ARG APT_PKGS=""
-
-RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/bullseye-updates main/bullseye-updates main contrib non-free/g" /etc/apt/sources.list \
-    && sed -i "s/bullseye\/updates main/bullseye\/updates main contrib non-free/g" /etc/apt/sources.list \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        apt-utils \
+RUN <<EOF
+    sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list 
+    sed -i "s/bullseye-updates main/bullseye-updates main contrib non-free/g" /etc/apt/sources.list 
+    sed -i "s/bullseye\/updates main/bullseye\/updates main contrib non-free/g" /etc/apt/sources.list 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         ca-certificates \
         gnupg \
-        locales \
-    && LC_ALL=C c_rehash \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales \
-    && echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen \
-    && LC_ALL=C locale-gen \
-    \
-    && ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime \
-    && echo "Europe/Berlin" > /etc/timezone \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata \
-    && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        locales
+    LC_ALL=C c_rehash 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
+    echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
+    LC_ALL=C locale-gen 
+    ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime 
+    echo "Europe/Berlin" > /etc/timezone 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
         android-libadb \
         avahi-daemon \
@@ -69,12 +74,11 @@ RUN sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.l
         libarchive-dev \
         libimlib2-dev \
         python-dev \
-        #libusb-1.0-0-dev \
         libusb-dev \
-        bash \
-        ${APT_PKGS} \
-    && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+        bash
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
 
 # Install all CPAN Modules, needed from FHEM and standard modules
 COPY cpanfile /root/cpanfile
@@ -107,114 +111,36 @@ RUN <<EOF
 EOF
 
 
-# Custom image layers options:
-ARG IMAGE_LAYER_SYS_EXT="1"
-
 # Add extended system layer
-RUN if [ "${IMAGE_LAYER_SYS_EXT}" != "0" ]; then \
-      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        alsa-utils \
-        dfu-programmer \
-        espeak \
-        ffmpeg \
-        lame \
-        libnmap-parser-perl \
-        libttspico-utils \
-        mp3wrap \
-        mpg123 \
-        mplayer \
-        nmap \
-        normalize-audio \
-        snmp \
-        snmp-mibs-downloader \
-        sox \
-        vorbis-tools \
-        gstreamer1.0-tools \
-        libsox-fmt-all \
-        libsodium-dev \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libnmap-parser-perl \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      nmap \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools \
+      libsox-fmt-all \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
 
-
-
-
-# Custom image layers options:
-ARG IMAGE_LAYER_PERL_CPAN="1"
-ARG IMAGE_LAYER_PERL_CPAN_EXT="1"
-
-# Custom installation packages
-ARG CPAN_PKGS=""
-
-# Custom image layers options:
-ARG IMAGE_LAYER_PYTHON="1"
-ARG IMAGE_LAYER_PYTHON_EXT="1"
-
-# Custom installation packages
-ARG PIP_PKGS=""
-
-# Add Python app layer
-RUN if [ "${PIP_PKGS}" != "" ] || [ "${IMAGE_LAYER_PYTHON}" != "0" ] || [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-      LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update \
-      && LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        python3 \
-        python3-dev \
-        python3-pip \
-        python3-setuptools \
-        python3-wheel \
-      && if [ "${PIP_PKGS}" != "" ]; then \
-           pip3 install \
-            ${PIP_PKGS} \
-         ; fi \
-      && if [ "${IMAGE_LAYER_PYTHON_EXT}" != "0" ]; then \
-           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-                python3-pychromecast \
-                speedtest-cli \
-                youtube-dl \
-             && ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli \
-        ; fi \
-      && rm -rf /root/.cpanm \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* \
-    ; fi
-
-# Custom installation packages
-ARG NPM_PKGS=""
-
-# Custom image layers options:
-ARG IMAGE_LAYER_NODEJS="0"
-ARG IMAGE_LAYER_NODEJS_EXT="0"
-
-# Add nodejs app layer
-RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ] ) ; then \
-      mkdir -p /tmp/keyrings \
-      && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg \
-      && echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_16.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list \
-      && apt-get update \
-      && apt-get install nodejs -y \
-      && if [ ! -e /usr/bin/npm ]; then \
-           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-             npm \
-      ; fi \
-      && if [ "${NPM_PKGS}" != "" ]; then \
-          npm install -g -p-unsafe-perm --production \
-           ${NPM_PKGS} \
-         ; fi \
-      && if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then \
-           npm install -g --unsafe-perm --production \
-            alexa-cookie2 \
-            alexa-fhem \
-            gassistant-fhem \
-            homebridge \
-            homebridge-fhem \
-            tradfri-fhem \
-        ; fi \
-      && LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean \
-      && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list \
-    ; fi
-
-
+#
+# Standard FHEM Layer
+#
 FROM base as with-fhem
 
 # Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
@@ -248,8 +174,6 @@ ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
 ARG PLATFORM="linux"
 ARG TAG=""
 ARG IMAGE_VCS_REF=""
-ARG VCS_REF=""
-ARG FHEM_VERSION=""
 ARG IMAGE_VERSION=""
 ARG BUILD_DATE=""
 
@@ -277,8 +201,6 @@ LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
    org.fhem.url=${L_URL_FHEM} \
    org.fhem.documentation=${L_USAGE_FHEM} \
    org.fhem.source=${L_VCS_URL_FHEM} \
-   org.fhem.version=${FHEM_VERSION} \
-   org.fhem.revision=${VCS_REF} \
    org.fhem.vendor=${L_VENDOR_FHEM} \
    org.fhem.licenses=${L_LICENSES_FHEM} \
    org.fhem.description=${L_DESCR_FHEM}
@@ -298,7 +220,7 @@ LABEL org.opencontainers.image.created=${BUILD_DATE} \
    org.opencontainers.image.description=${L_DESCR}
 
 RUN chmod 755 /*.sh /usr/local/bin/* \ 
-    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.revision=${VCS_REF}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
 
 VOLUME [ "/opt/fhem" ]
 
@@ -310,14 +232,67 @@ WORKDIR "/opt/fhem"
 ENTRYPOINT [ "/entry.sh" ]
 CMD [ "start" ]
 
+#
+# Add additional Python layer
+#
 
+FROM with-fhem as with-fhem-python
 
+RUN <<EOF 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends 
+      python3 \
+      python3-dev \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
+      python3-pychromecast \
+      speedtest-cli \
+      youtube-dl \
+    ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* 
+EOF
+
+#
+# Add nodejs app layer
+#
+FROM with-fhem-python as with-fhem-python-nodejs
+
+ARG IMAGE_LAYER_NODEJS_EXT="0"
+
+RUN <<EOF
+    mkdir -p /tmp/keyrings 
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
+    echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+    apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install nodejs -y npm
+    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then 
+           npm install -g --unsafe-perm --production \
+            alexa-cookie2 \
+            alexa-fhem \
+            gassistant-fhem \
+            homebridge \
+            homebridge-fhem \
+            tradfri-fhem \
+    ; fi 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
+EOF
+
+#
+#
+# Layer only for bash unit testing
+#
+#
 FROM with-fhem as with-fhem-bats
 
 ADD https://github.com/bats-core/bats-core.git /tmp/bats
-RUN /tmp/bats/install.sh /opt/bats \
-    && ln -s /opt/bats/bin/bats /usr/local/bin/bats \
-    && rm -r /tmp/bats
+RUN <<EOF
+    /tmp/bats/install.sh /opt/bats 
+    ln -s /opt/bats/bin/bats /usr/local/bin/bats 
+    rm -r /tmp/bats
+EOF
 
 ADD https://github.com/bats-core/bats-support.git#master /opt/bats/test_helper/bats-support
 ADD https://github.com/bats-core/bats-assert.git#master /opt/bats/test_helper/bats-assert
