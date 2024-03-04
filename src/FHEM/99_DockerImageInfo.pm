@@ -4,32 +4,28 @@ use strict;
 use warnings;
 use FHEM::Meta;
 
-sub DockerImageInfo_Initialize($) {
+sub DockerImageInfo_Initialize {
     my ($hash) = @_;
 
-    $hash->{DefFn}    = "DockerImageInfo_Define";
-    $hash->{UndefFn}  = "DockerImageInfo_Undefine";
-    $hash->{AttrList} = $readingFnAttributes;
-
-    # add userattr to FHEMWEB devices to control healthcheck
-    foreach ( devspec2array("TYPE=FHEMWEB:FILTER=TEMPORARY!=1") ) {
-        addToDevAttrList( $_, 'DockerHealthCheck:1,0' );
-    }
+    $hash->{NOTIFYDEV} = "global"; # limit calls to notify
+    $hash->{DefFn}     = \&DockerImageInfo_Define;
+    $hash->{NotifyFn}  = \&DockerImageInfo_Notify;
+    $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
+    $hash->{AttrList}  = $readingFnAttributes;
 
     return FHEM::Meta::InitMod( __FILE__, $hash );
 }
 
 ###################################
-sub DockerImageInfo_Define($$) {
+sub DockerImageInfo_Define {
     my ( $hash, $def ) = @_;
     my @a    = split( "[ \t][ \t]*", $def );
     my $name = $hash->{NAME};
 
-    return "Wrong syntax: use define <name> DockerImageInfo"
+    return q[Wrong syntax: use define <name> DockerImageInfo]
       if ( int(@a) != 2 );
 
-    return "This module may only be defined once, existing device: "
-      . $modules{ $hash->{TYPE} }{defptr}{NAME}
+    return q[This module may only be defined once, existing device: ]. $modules{ $hash->{TYPE} }{defptr}{NAME}
       if ( defined( $modules{ $hash->{TYPE} }{defptr} )
         && $init_done
         && !defined( $hash->{OLDDEF} ) );
@@ -40,52 +36,111 @@ sub DockerImageInfo_Define($$) {
     # create global unique device definition
     $modules{ $hash->{TYPE} }{defptr} = $hash;
 
+    $hash->{INFO_DIR} = q[/tmp]; 
+    #$hash->{INFO_DIR} = "/fhem-docker/var"; # TODO: Clean up dumping all files in the container root
+    $hash->{URL_FILE} = qq[$hash->{INFO_DIR}/health-check.urls];
+    $hash->{RESULT_FILE} = qq[$hash->{INFO_DIR}/health-check.result];
+
     if ( $init_done && !defined( $hash->{OLDDEF} ) ) {
 
         # presets for FHEMWEB
         $attr{$name}{alias} = 'Docker Image Info';
-        $attr{$name}{devStateIcon} =
-'ok:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red';
+        $attr{$name}{devStateIcon} = q[^ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red];
         $attr{$name}{group} = 'Update';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
     }
 
     if ( -e '/.dockerenv' ) {
-        $defs{$name}{STATE} = "Initialized";
-        DockerImageInfo_GetImageInfo();
+        unlink( $hash->{URL_FILE});
+        $hash->{STATE} = "Initialized";
+        DockerImageInfo_GetImageInfo( $hash);
     }
     else {
-        $defs{$name}{STATE} = "ERROR: Host is not a container";
+        $hash->{STATE} = q[ERROR: Host is not a container];
     }
 
     return undef;
 }
 
-sub DockerImageInfo_Undefine($$) {
+
+sub DockerImageInfo_Notify
+{
+  my ($hash,$dev) = @_;
+
+  return if($dev->{NAME} ne "global");
+
+  if( grep(m/^INITIALIZED|REREADCFG$/, @{$dev->{CHANGED}}) ) {
+    
+    # Update available infos
+    DockerImageInfo_GetImageInfo( $hash);
+
+    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1]) ) {
+      # add userattr to FHEMWEB devices to control healthcheck
+      addToDevAttrList( $_, q[DockerHealthCheck:0,1] );
+    }  
+
+    my $urlFile = $hash->{URL_FILE};
+    my $urlFileHdl;
+    if(!open($urlFileHdl, ">$urlFile")) {
+      my $msg = q[WriteStatefile: Cannot open $urlFile: $!];
+      Log 1, $msg;
+      return $msg;
+    }
+    binmode($urlFileHdl, ':encoding(UTF-8)') if($unicodeEncoding);
+    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0]) ) {
+      # build url and write it to healthcheck file
+      my $webHash   = $defs{$_};
+      my $port      = $webHash->{PORT};
+      my $webname   = AttrVal( $_, 'webname', 'fhem');
+      my $https     = AttrVal( $_, 'HTTPS', '0');
+      my $proto     = ($https) ? 'https' : 'http';
+      print $urlFileHdl qq[$proto://localhost:$port/$webname/healthcheck\n];
+    }
+    close($urlFileHdl);
+
+    InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
+  }
+
+  return undef;
+}
+
+
+sub DockerImageInfo_Undefine {
     my ( $hash, $def ) = @_;
+    unlink( $hash->{URL_FILE});
     delete $modules{'DockerImageInfo'}{defptr};
 }
 
-sub DockerImageInfo_HealthCheck() {
-    return "undefined"
-      unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
-    my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
-    $defs{$n}{STATE} = 'ok';
-    return "";
+
+sub DockerImageInfo_GetStatus {
+  my ( $hash ) = @_;
+
+  InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
+
+  my $resultFile = $hash->{RESULT_FILE};
+  my $resultFileHdl;
+  if(!open($resultFileHdl, "<$resultFile")) {
+    my $msg = qq[Read result file: Cannot open $resultFile: $!];
+    Log 1, $msg;
+    $hash->{STATE} = $msg;
+    return undef;
+  }
+  $hash->{STATE} = do { local $/; <$resultFileHdl> };
+  close( $resultFileHdl);
+
+  return undef;
 }
 
-sub DockerImageInfo_GetImageInfo() {
-    return "undefined"
-      unless ( defined( $modules{'DockerImageInfo'}{defptr} ) );
-    my $n = $modules{'DockerImageInfo'}{defptr}{NAME};
 
-    readingsBeginUpdate( $defs{$n} );
+sub DockerImageInfo_GetImageInfo {
+    my ($hash) = @_;
+
+    readingsBeginUpdate( $hash );
 
     my $NAME;
     my $VAL;
-    my @LINES = split( "\n",
-        `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
+    my @LINES = split( "\n", `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
 
     foreach my $LINE (@LINES) {
         next unless ( $LINE =~ /^org\.opencontainers\..+=.+$/i );
@@ -94,7 +149,7 @@ sub DockerImageInfo_GetImageInfo() {
         $NAME =~ s/^org\.opencontainers\.//i;
         $VAL = join( "=", @NV );
         next if ( $NAME eq "image.authors" );
-        readingsBulkUpdateIfChanged( $defs{$n}, $NAME, $VAL );
+        readingsBulkUpdateIfChanged( $hash, $NAME, $VAL );
     }
 
     $VAL   = '[ ';
@@ -105,17 +160,15 @@ sub DockerImageInfo_GetImageInfo() {
         $VAL .= "\"$LINE\"";
     }
     $VAL .= ' ]';
-    readingsBulkUpdateIfChanged( $defs{$n}, 'sudoers', $VAL );
+    readingsBulkUpdateIfChanged( $hash, 'sudoers', $VAL );
 
     my $ID = `id`;
-    if ( $ID =~
-m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+\)))$/i
-      )
+    if ( $ID =~ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+\)))$/i  )
     {
-        readingsBulkUpdateIfChanged( $defs{$n}, 'id.uid',   $1 );
-        readingsBulkUpdateIfChanged( $defs{$n}, 'id.uname', $2 );
-        readingsBulkUpdateIfChanged( $defs{$n}, 'id.gid',   $3 );
-        readingsBulkUpdateIfChanged( $defs{$n}, 'id.gname', $4 );
+        readingsBulkUpdateIfChanged( $hash, 'id.uid',   $1 );
+        readingsBulkUpdateIfChanged( $hash, 'id.uname', $2 );
+        readingsBulkUpdateIfChanged( $hash, 'id.gid',   $3 );
+        readingsBulkUpdateIfChanged( $hash, 'id.gname', $4 );
 
         $VAL = '[ ';
         foreach my $group ( split( ',', $5 ) ) {
@@ -126,29 +179,20 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
         }
         $VAL .= ' ]';
 
-        readingsBulkUpdateIfChanged( $defs{$n}, 'id.groups', $VAL );
+        readingsBulkUpdateIfChanged( $hash, 'id.groups', $VAL );
     }
 
-    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_ed25519.pub",
-        `cat ./.ssh/id_ed25519.pub` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "ssh-id_rsa.pub",
-        `cat ./.ssh/id_rsa.pub` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.hostname",
-        `cat /etc/hostname` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.e",
-        `cat /docker.container.cap.e` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.p",
-        `cat /docker.container.cap.p` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.cap.i",
-        `cat /docker.container.cap.i` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.id",
-        `cat /docker.container.id` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.privileged",
-        `cat /docker.privileged` );
-    readingsBulkUpdateIfChanged( $defs{$n}, "container.hostnetwork",
-        `cat /docker.hostnetwork` );
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_ed25519.pub],    `cat ./.ssh/id_ed25519.pub` );
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_rsa.pub],        `cat ./.ssh/id_rsa.pub` );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostname],    `cat /etc/hostname` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.e],       `cat /docker.container.cap.e` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.p],       `cat /docker.container.cap.p` );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.i],       `cat /docker.container.cap.i` );
+    readingsBulkUpdateIfChanged( $hash, q[container.id],          `cat /docker.container.id` );
+    readingsBulkUpdateIfChanged( $hash, q[container.privileged],  `cat /docker.privileged` );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostnetwork], `cat /docker.hostnetwork` );
 
-    readingsEndUpdate( $defs{$n}, 1 );
+    readingsEndUpdate( $hash, 1 );
 }
 
 1;
@@ -156,14 +200,17 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 =pod
 =encoding utf8
 =item helper
+=item summary Kommunikationsmodul zwischen Docker Umgebung und FHEM
+=item summary_DE Commumnication between docker environment and FHEM
+
 =begin html
 
 <a name="DockerImageInfo"></a>
 <h3>DockerImageInfo</h3>
 <ul>
 
-  Show infos about the Docker image FHEM is running in.
-  Only works together with the fhem-docker image from https://hub.docker.com/r/fhem/fhem/ .
+  Show infos about the Docker image FHEM is running in and allows the configuration of the WEB definitions used for healthcheck.
+  Only works together with the fhem-docker image from  https://github.com/fhem/fhem-docker/ .
   <br><br>
 
   <a name="DockerImageInfodefine"></a>
@@ -178,6 +225,24 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
     </ul>
   </ul>
   <br>
+
+  <a name="DockerImageInfoattr"></a>
+  <b>attr</b>
+  <ul>
+      <code>attr &lt;name&gt; &lt;attribute&gt; &lt;value&gt;</code>
+      <br><br>
+      See <a href="http://fhem.de/commandref.html#attr">commandref#attr</a> for more info about 
+      the attr command.
+      <br><br>
+      Attributes:
+      <ul>
+          <li><i>DockerHealthCheck</i> 0|1<br>
+              Attribute is available in all definitions of type WEB.
+              Default is, every definition is used for the healthcheck. 
+              The behaviuor can be diabled with this attribute.
+          </li>
+      </ul>
+  </ul>
 
 </ul>
 
@@ -189,8 +254,8 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 <h3>DockerImageInfo</h3>
 <ul>
 
-  Zeigt Informationen &uuml;ber das Docker Image, in dem FHEM gerade l&auml;ft.
-  Funktioniert nur mit dem fhem-docker image von https://hub.docker.com/r/fhem/fhem/ .
+  Zeigt Informationen &uuml;ber das Docker Image, in dem FHEM gerade l&auml;ft und ermöglicht die Konfiguration der WEB Definitionen für den Healthcheck
+  Funktioniert mit dem fhem-docker image von https://github.com/fhem/fhem-docker .
   <br><br>
 
   <a name="DockerImageInfodefine"></a>
@@ -204,6 +269,24 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
       <code>define DockerImageInfo DockerImageInfo</code>
     </ul>
   </ul>
+
+  <a name="DockerImageInfoattr"></a>
+  <b>attr</b>
+  <ul>
+      <code>attr &lt;name&gt; &lt;attribute&gt; &lt;value&gt;</code>
+      <br><br>
+      See <a href="http://fhem.de/commandref.html#attr">commandref#attr</a> für mehr Information zum attr Kommando.
+      <br><br>
+      Attributes:
+      <ul>
+          <li><i>DockerHealthCheck</i> 0|1<br>
+              Das Attribute wird in allen Definition des Typs WEB bereitgestellt.
+              Der Standardwert ist, dass jede WEB Definition für den Healthcheck verwendet wird.
+              Mit diesem Attribut, kann der Healthcheck auf eine Webdefinition deaktiviert werden.
+          </li>
+      </ul>
+  </ul>
+
   <br>
 
 </ul>
@@ -212,8 +295,9 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
 
 =for :application/json;q=META.json 99_DockerImageInfo.pm
 {
-  "version": "v0.6.0",
-  "x_release_date": "2019-07-28",
+  "version": "v1.0.0",
+  "x_release_date": "2023-11-09",
+  "name": "99_DockerImageInfo.pm",
   "release_status": "stable",
   "license": [
     "MIT"
@@ -233,7 +317,7 @@ m/^uid=(\d+)\((\w+)\)\s+gid=(\d+)\((\w+)\)\s+groups=((?:\d+\(\w+\),)*(?:\d+\(\w+
     "loredo"
   ],
   "x_fhem_maintainer_github": [
-    "jpawlowski"
+    "sidey79"
   ],
   "prereqs": {
     "runtime": {

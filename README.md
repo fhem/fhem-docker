@@ -415,3 +415,15 @@ Follow initial setup steps:
     cd /docker; sudo git clone git@github.com:user/repo.git
     cd /docker/home; sudo docker-compose up -d
     ```
+## Testing the Image itself in a container
+
+Basic testing of the image is done in the pipeline. The pipeline will start a container and verify that the health check reports the container is alive.
+
+The bash scripts inside the container, are tested via bats:
+
+To run the test, build the image with the specific target:
+ 
+    docker build --rm --load -f "Dockerfile-bullseye" -t fhemdocker:test --target with-fhem-bats "."
+
+Then this image, can be used to start a new container and running bats inside the container.
+    docker run -it --rm -v "${PWD}/src/tests/bats:/code"  fhemdocker:test .

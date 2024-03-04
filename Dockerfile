@@ -1,7 +1,8 @@
+# syntax=docker/dockerfile:1
+
 ARG BASE_IMAGE="debian"
 ARG BASE_IMAGE_TAG="buster"
-
-FROM debian:buster-20240211-slim as buster_base
+FROM debian:buster-20240211-slim as base
 
 ARG TARGETPLATFORM
 
@@ -459,7 +460,7 @@ RUN if ( [ "${NPM_PKGS}" != "" ] || [ "${IMAGE_LAYER_NODEJS}" != "0" ] || [ "${I
       && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list \
     ; fi
 
-FROM buster_base as buster_with-fhem
+FROM base as with-fhem
 
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
 COPY src/find-* /usr/local/bin/
@@ -468,7 +469,7 @@ COPY src/find-* /usr/local/bin/
 # Note: Manual checkout is required if build is not run by Github Actions workflow:
 #   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
 # Install base environment
-COPY src/fhem/trunk/fhem/ /fhem/
+# COPY src/fhem/trunk/fhem/ /fhem/
 COPY src/FHEM/ /fhem/FHEM
 
 # FHEM specific ENVs
@@ -552,3 +553,20 @@ HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /hea
 WORKDIR "/opt/fhem"
 ENTRYPOINT [ "/entry.sh" ]
 CMD [ "start" ]
+
+FROM with-fhem as with-fhem-bats
+
+ADD https://github.com/bats-core/bats-core.git /tmp/bats
+RUN /tmp/bats/install.sh /opt/bats \
+    && ln -s /opt/bats/bin/bats /usr/local/bin/bats \
+    && rm -r /tmp/bats
+ 
+ADD https://github.com/bats-core/bats-support.git#master /opt/bats/test_helper/bats-support
+ADD https://github.com/bats-core/bats-assert.git#master /opt/bats/test_helper/bats-assert
+ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
+ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
+
+
+WORKDIR /code/
+
+ENTRYPOINT [ "/usr/local/bin/bats" ]
