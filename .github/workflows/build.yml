@@ -70,10 +70,44 @@ jobs:
           name: cpanfile-FHEM
           path: cpanfile
           overwrite: true
-  
+        
+  base_build:
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile-bullseye]
+        platform: [arm/v7, amd64, arm64, 386]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+        with:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Build for bats with fhem base layer ${{ matrix.platform }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: base
+          cache-from: | 
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          tags: baseonly
+
   test_build:
     # The type of runner that the job will run on
-    needs: get_dependencies
+    needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -143,7 +177,8 @@ jobs:
           push: false
           target: with-fhem-bats
           cache-from: | 
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}            
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: bats-withfhem
           labels: ${{ steps.meta.outputs.labels }}
@@ -170,6 +205,7 @@ jobs:
           push: false
           target: with-fhem-python-nodejs
           cache-from: | 
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}  
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -268,6 +304,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem-python-nodejs
           cache-from: | 
+            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
@@ -309,6 +348,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem
           cache-from: | 
+            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
             type=gha,scope=base_linux/cross-${{ matrix.dockerfile }}

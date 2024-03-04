@@ -80,6 +80,35 @@ RUN <<EOF
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
+# Add extended system layer
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libnmap-parser-perl \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      nmap \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools \
+      libsox-fmt-all \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+
+FROM base as base-cpan
 # Install all CPAN Modules, needed from FHEM and standard modules
 COPY cpanfile /root/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
@@ -111,37 +140,11 @@ RUN <<EOF
 EOF
 
 
-# Add extended system layer
-RUN <<EOF
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-      alsa-utils \
-      dfu-programmer \
-      espeak \
-      ffmpeg \
-      lame \
-      libnmap-parser-perl \
-      libttspico-utils \
-      mp3wrap \
-      mpg123 \
-      mplayer \
-      nmap \
-      normalize-audio \
-      snmp \
-      snmp-mibs-downloader \
-      sox \
-      vorbis-tools \
-      gstreamer1.0-tools \
-      libsox-fmt-all \
-      libsodium-dev 
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
-EOF
 
 #
 # Standard FHEM Layer
 #
-FROM base as with-fhem
+FROM base-cpan as with-fhem
 
 # Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
