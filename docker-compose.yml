@@ -9,7 +9,7 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.27.0.0/24
+        - subnet: 172.27.0.0/28
           gateway: 172.27.0.1
         # - subnet: fd00:0:0:0:27::/80
         #   gateway: fd00:0:0:0:27::1
@@ -23,7 +23,7 @@ services:
 
   # Minimum example w/o any custom environment variables
   fhem:
-    image: ghcr.io/fhem/fhem-docker:3-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     networks:
       - net
@@ -34,7 +34,7 @@ services:
 
   # Example w/ custom environment variables
   fhem:
-    image: ghcr.io/fhem/fhem-docker:3-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     networks:
       - net
@@ -54,7 +54,7 @@ services:
   # Example to connect USB to the container w/o
   # privileged mode (preferred method)
   fhem:
-    image: ghcr.io/fhem/fhem-docker:3-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     networks:
       - net
@@ -75,7 +75,7 @@ services:
   # Example to connect USB to the container w/
   # privileged mode (not recommended for security reasons)
   fhem:
-    image: ghcr.io/fhem/fhem-docker:3-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     privileged: true
     networks:
@@ -96,7 +96,7 @@ services:
   # Example for privileged container w/
   # host network (not recommended for security reasons)
   fhem:
-    image: ghcr.io/fhem/fhem-docker:3-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     privileged: true
     network_mode: "host"
@@ -111,3 +111,59 @@ services:
       RESTART: 1
       TELNETPORT: 7072
       TZ: Europe/Berlin
+
+
+  # example with extending debian packages to the image
+  fhem:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
+          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+        EOF
+    restart: always
+    networks:
+      - net
+    ports:
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+
+  # example with extending npm packages to the image
+  fhem:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
+          npm cache clean --force
+        EOF
+    restart: always
+    networks:
+      - net
+    ports:
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+
+
+  # example with extending python packages to the image
+  fhem:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          pip install --no-cache-dir <PIP PACKAGENAME>
+        EOF
+    restart: always
+    networks:
+      - net
+    ports:
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
