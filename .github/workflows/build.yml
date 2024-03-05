@@ -40,6 +40,7 @@ jobs:
           install-modules-args: --notest
           install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils
 
+
       - name: clone 3rdparty repositories at github
         run: | 
           mapfile -t REPO_URLS < <( scripts/get-FHEMRepositorys.sh | awk '{print $4}' && printf '\0' )
@@ -47,10 +48,13 @@ jobs:
           cd ./3rdparty
           printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone "{}" "$(basename $(dirname {}))/$(basename {})"; '
 
-      - name: create cpanfile from loccal cloned 3rdparty repositories
+      - name: "create private modules filter regex"    
+        run: |
+          echo "FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk)"  >> $GITHUB_ENV
+
+      - name: create cpanfile from local cloned 3rdparty repositories
         run: | 
-          FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty)
-          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF|OW|RTypes|RRDs|SetExtensions|HttpUtils|UPnP::ControlPoint|FritzBoxUtils|configDB|RESIDENTStk|SHC_datafields|TcpServerUtils|Blocking|uConv|ZWLib|UpNp:Common|HttpUtils|Unit|GD|DevIo|AttrTemplate|ProtoThreads|$FHEM_MODULES)" ./3rdparty
+          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./3rdparty
       
       - uses: actions/upload-artifact@v4
         with:
@@ -60,8 +64,7 @@ jobs:
 
       - name: create cpanfile from FHEM dependencies
         run: | 
-          FHEM_MODULES=$(perl scripts/get-Packages.pl ./src/fhem/trunk)
-          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF|OW|RTypes|RRDs|SetExtensions|HttpUtils|UPnP::ControlPoint|FritzBoxUtils|configDB|RESIDENTStk|SHC_datafields|TcpServerUtils|Blocking|uConv|ZWLib|UpNp:Common|HttpUtils|Unit|GD|DevIo|AttrTemplate|ProtoThreads|$FHEM_MODULES)" ./src/fhem/trunk
+          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./src/fhem/trunk
         
       - uses: actions/upload-artifact@v4
         with:

@@ -41,8 +41,8 @@ foreach my $directory (@directories) {
     }
 }
 # Paketnamen mit | getrennt ausgeben
-my $package_string = join '|', @unique_package_names;
-print "Eindeutige Paketnamen: $package_string\n";
+my $package_string = join '$|', @unique_package_names;
+print "$package_string\$";
 
 # Example:
 # FHEM_MODULES=$(./scripts/get-Packages.pl src/fhem/trunk/fhem)
