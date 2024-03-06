@@ -38,8 +38,8 @@ jobs:
           perl-version: "5.38"
           install-modules-with: cpanm
           install-modules-args: --notest
-          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils
-
+          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util
+          
 
       - name: clone 3rdparty repositories at github
         run: | 
@@ -55,17 +55,20 @@ jobs:
       - name: create cpanfile from local cloned 3rdparty repositories
         run: | 
           scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./3rdparty
-      
+          perl scripts/parse-METAJson.pl ./3rdparty
+          
       - uses: actions/upload-artifact@v4
         with:
           name: cpanfile-3rdParty
           path: cpanfile
           overwrite: true
 
-      - name: create cpanfile from FHEM dependencies
+      - name: create cpanfile from FHEM svn dependencies
         run: | 
+          rm cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./src/fhem/trunk
-        
+          perl scripts/parse-METAJson.pl ./src/fhem/trunk
+
       - uses: actions/upload-artifact@v4
         with:
           name: cpanfile-FHEM
@@ -226,7 +229,7 @@ jobs:
 
       - name: Run build in unittests
         run: |
-          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
+          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
           until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
           do sleep 1;

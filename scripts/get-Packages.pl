@@ -4,7 +4,7 @@ use warnings;
 use PPI;
 use File::Find::Rule;
 use List::MoreUtils qw(uniq);
-use Data::Dumper;
+# use Data::Dumper;
 
 
 my @directories = @ARGV;
