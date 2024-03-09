@@ -78,7 +78,7 @@ jobs:
   base_build:
     strategy:
       matrix:
-        dockerfile: [Dockerfile-bullseye]
+        dockerfile: [-bullseye, -threaded-bullseye]
         platform: [arm/v7, amd64, arm64, 386]
     runs-on: ubuntu-latest
     steps:
@@ -100,7 +100,7 @@ jobs:
         with:
           context: .
           load: true  
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.platform }}
           push: false
           target: base
@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [Dockerfile-bullseye]
+        dockerfile: [-bullseye, -threaded-bullseye]
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -165,10 +165,10 @@ jobs:
           flavor: |
               latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1 || endsWith(matrix.dockerfile, 'Dockerfile')] }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
 
       - name: Build for bats with fhem base layer
         uses: docker/build-push-action@v5
@@ -244,7 +244,7 @@ jobs:
     needs: test_build
     strategy:
       matrix:
-        dockerfile: [Dockerfile-bullseye]
+        dockerfile: [-bullseye, -threaded-bullseye]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -291,11 +291,11 @@ jobs:
           flavor: |
               latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled fhem, python and nodejs layer on supported platforms
         uses: docker/build-push-action@v5
@@ -303,7 +303,7 @@ jobs:
         with:
           context: .
           load: false  
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem-python-nodejs
@@ -323,7 +323,7 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
 
       - name: Docker meta
         id: meta_base
@@ -335,11 +335,11 @@ jobs:
           flavor: |
              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled base image on supported platforms
         uses: docker/build-push-action@v5
@@ -347,7 +347,7 @@ jobs:
         with:
           context: .
           load: false  
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem
@@ -368,4 +368,4 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.

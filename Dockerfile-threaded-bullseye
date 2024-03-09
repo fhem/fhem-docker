@@ -1,0 +1,308 @@
+# syntax=docker/dockerfile:1
+# 
+# base layer with perl and some general preparations
+#
+FROM perl:5.36.3-threaded-bullseye as base
+
+ARG TARGETPLATFORM
+
+ENV LANG=en_US.UTF-8 \
+   LANGUAGE=en_US:en \
+   LC_ADDRESS=de_DE.UTF-8 \
+   LC_MEASUREMENT=de_DE.UTF-8 \
+   LC_MESSAGES=en_DK.UTF-8 \
+   LC_MONETARY=de_DE.UTF-8 \
+   LC_NAME=de_DE.UTF-8 \
+   LC_NUMERIC=de_DE.UTF-8 \
+   LC_PAPER=de_DE.UTF-8 \
+   LC_TELEPHONE=de_DE.UTF-8 \
+   LC_TIME=de_DE.UTF-8 \
+   TERM=xterm \
+   TZ=Europe/Berlin
+
+RUN <<EOF
+    sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list 
+    sed -i "s/bullseye-updates main/bullseye-updates main contrib non-free/g" /etc/apt/sources.list 
+    sed -i "s/bullseye\/updates main/bullseye\/updates main contrib non-free/g" /etc/apt/sources.list 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        locales
+    LC_ALL=C c_rehash 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
+    echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
+    LC_ALL=C locale-gen 
+    ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime 
+    echo "Europe/Berlin" > /etc/timezone 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        adb \
+        android-libadb \
+        avahi-daemon \
+        avrdude \
+        bluez \
+        curl \
+        dnsutils \
+        etherwake \
+        fonts-liberation \
+        i2c-tools \
+        inetutils-ping \
+        jq \
+        libcap-ng-utils \
+        libcap2-bin \
+        lsb-release \
+        mariadb-client \
+        net-tools \
+        netcat \
+        openssh-client \
+        procps \
+        sendemail \
+        sqlite3 \
+        subversion \
+        sudo \
+        telnet \
+        unzip \
+        usbutils \
+        wget \
+        libarchive-dev \
+        libimlib2-dev \
+        python-dev \
+        libusb-dev \
+        bash
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+# Add extended system layer
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libnmap-parser-perl \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      nmap \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools \
+      libsox-fmt-all \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+
+FROM base as base-cpan
+# Install all CPAN Modules, needed from FHEM and standard modules
+COPY cpanfile /root/cpanfile
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::SerialPort/d' root/cpanfile  > /root/cpanfile 
+    sed -i '/Device::Firmata::Constants/d' root/cpanfile  >/root/cpanfile
+  fi
+  cpanm --notest --cpanfile /root/cpanfile --installdeps  .
+  rm -rf /root/.cpanm 
+EOF
+
+RUN <<EOF
+  cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests .
+  rm -rf /root/.cpanm 
+EOF
+
+# Install all CPAN Modules, needed from 3rd party module repositorys 
+COPY 3rdParty/cpanfile /root/cpanfile_3rdparty
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::SerialPort/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
+    sed -i '/Device::Firmata::Constants/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
+  fi
+
+  cpanm --notest --cpanfile /root/cpanfile_3rdparty --installdeps --with-suggests .
+  rm -rf /root/.cpanm 
+EOF
+
+
+
+#
+# Standard FHEM Layer
+#
+FROM base-cpan as with-fhem
+
+# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
+COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
+COPY src/find-* /usr/local/bin/
+
+# Add FHEM app layer
+# Note: Manual checkout is required if build is not run by Github Actions workflow:
+#   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
+#COPY src/fhem/trunk/fhem/ /fhem/
+#COPY src/FHEM/trunk/fhem/* /fhem/
+
+COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM/
+
+# FHEM specific ENVs
+ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
+   TELNETPORT=7072 \
+   FHEM_UID=6061 \
+   FHEM_GID=6061 \
+   FHEM_PERM_DIR=0750 \
+   FHEM_PERM_FILE=0640 \
+   UMASK=0037 \
+   BLUETOOTH_GID=6001 \
+   GPIO_GID=6002 \
+   I2C_GID=6003 \
+   TIMEOUT=10 \
+   CONFIGTYPE=fhem.cfg
+
+# Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
+# Arguments to instantiate as variables
+ARG PLATFORM="linux"
+ARG TAG=""
+ARG IMAGE_VCS_REF=""
+ARG IMAGE_VERSION=""
+ARG BUILD_DATE=""
+
+# Re-usable variables during build
+ARG L_AUTHORS=""
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
+ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
+ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
+ARG L_VENDOR="FHEM"
+ARG L_LICENSES="MIT"
+ARG L_TITLE="fhem-${TARGETPLATFORM}"
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye Perl image."
+
+ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
+ARG L_URL_FHEM="https://fhem.de/"
+ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
+ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
+ARG L_VENDOR_FHEM="FHEM e.V."
+ARG L_LICENSES_FHEM="GPL-2.0"
+ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
+
+
+# non-standard labels
+LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
+   org.fhem.url=${L_URL_FHEM} \
+   org.fhem.documentation=${L_USAGE_FHEM} \
+   org.fhem.source=${L_VCS_URL_FHEM} \
+   org.fhem.vendor=${L_VENDOR_FHEM} \
+   org.fhem.licenses=${L_LICENSES_FHEM} \
+   org.fhem.description=${L_DESCR_FHEM}
+
+# annotation labels according to
+# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
+LABEL org.opencontainers.image.created=${BUILD_DATE} \
+   org.opencontainers.image.authors=${L_AUTHORS} \
+   org.opencontainers.image.url=${L_URL} \
+   org.opencontainers.image.documentation=${L_USAGE} \
+   org.opencontainers.image.source=${L_VCS_URL} \
+   org.opencontainers.image.version=${IMAGE_VERSION} \
+   org.opencontainers.image.revision=${IMAGE_VCS_REF} \
+   org.opencontainers.image.vendor=${L_VENDOR} \
+   org.opencontainers.image.licenses=${L_LICENSES} \
+   org.opencontainers.image.title=${L_TITLE} \
+   org.opencontainers.image.description=${L_DESCR}
+
+RUN chmod 755 /*.sh /usr/local/bin/* \ 
+    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+
+VOLUME [ "/opt/fhem" ]
+
+EXPOSE 8083
+
+HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
+
+WORKDIR "/opt/fhem"
+ENTRYPOINT [ "/entry.sh" ]
+CMD [ "start" ]
+
+#
+# Add additional Python layer
+#
+
+FROM with-fhem as with-fhem-python
+
+RUN <<EOF 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends 
+      python3 \
+      python3-dev \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
+      python3-pychromecast \
+      speedtest-cli \
+      youtube-dl \
+    ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* 
+EOF
+
+#
+# Add nodejs app layer
+#
+FROM with-fhem-python as with-fhem-python-nodejs
+
+ARG IMAGE_LAYER_NODEJS_EXT="0"
+
+RUN <<EOF
+    mkdir -p /tmp/keyrings 
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
+    echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+    apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install nodejs -y 
+    npm install -g npm@latest
+    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then 
+           npm install -g --unsafe-perm --production \
+            alexa-cookie2 \
+            alexa-fhem \
+            gassistant-fhem \
+            homebridge \
+            homebridge-fhem \
+            tradfri-fhem \
+    ; fi 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
+EOF
+
+#
+#
+# Layer only for bash unit testing
+#
+#
+FROM with-fhem as with-fhem-bats
+
+ADD https://github.com/bats-core/bats-core.git /tmp/bats
+RUN <<EOF
+    /tmp/bats/install.sh /opt/bats 
+    ln -s /opt/bats/bin/bats /usr/local/bin/bats 
+    rm -r /tmp/bats
+EOF
+
+ADD https://github.com/bats-core/bats-support.git#master /opt/bats/test_helper/bats-support
+ADD https://github.com/bats-core/bats-assert.git#master /opt/bats/test_helper/bats-assert
+ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
+ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
+
+WORKDIR /code/
+
+ENTRYPOINT [ "/usr/local/bin/bats" ]
