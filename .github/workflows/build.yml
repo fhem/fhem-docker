@@ -23,13 +23,99 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
+  get_dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Prepare SVN repository checkout and variables
+        id: prepareSVN
+        uses: ./.github/workflows/prepare-svn
+
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+          install-modules-with: cpanm
+          install-modules-args: --notest
+          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util
+          
+
+      - name: clone 3rdparty repositories at github
+        run: | 
+          mapfile -t REPO_URLS < <( scripts/get-FHEMRepositorys.sh | awk '{print $4}' && printf '\0' )
+          mkdir ./3rdparty
+          cd ./3rdparty
+          printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone "{}" "$(basename $(dirname {}))/$(basename {})"; '
+
+      - name: "create private modules filter regex"    
+        run: |
+          echo "FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk)"  >> $GITHUB_ENV
+
+      - name: create cpanfile from local cloned 3rdparty repositories
+        run: | 
+          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./3rdparty
+          perl scripts/parse-METAJson.pl ./3rdparty
+          
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: cpanfile
+          overwrite: true
+
+      - name: create cpanfile from FHEM svn dependencies
+        run: | 
+          rm cpanfile
+          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "^(FHEM::|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)" ./src/fhem/trunk
+          perl scripts/parse-METAJson.pl ./src/fhem/trunk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpanfile-FHEM
+          path: cpanfile
+          overwrite: true
+        
+  base_build:
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile-bullseye]
+        platform: [arm/v7, amd64, arm64, 386]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+        with:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Build for bats with fhem base layer ${{ matrix.platform }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true  
+          file: ./${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: base
+          cache-from: | 
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          tags: baseonly
+
   test_build:
     # The type of runner that the job will run on
+    needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [Dockerfile, Dockerfile-bullseye]
+        dockerfile: [Dockerfile-bullseye]
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -44,9 +130,21 @@ jobs:
         shell: bash
         run: |
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
-
         id: gitVars
 
+      - name: Prepare SVN repository checkout and variables
+        id: prepareSVN
+        uses: ./.github/workflows/prepare-svn
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+          
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -72,7 +170,7 @@ jobs:
             type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
 
-      - name: Build for bats test full blown amd64 
+      - name: Build for bats with fhem base layer
         uses: docker/build-push-action@v5
         id: docker_build_bats
         with:
@@ -83,7 +181,8 @@ jobs:
           push: false
           target: with-fhem-bats
           cache-from: | 
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}            
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: bats-withfhem
           labels: ${{ steps.meta.outputs.labels }}
@@ -94,21 +193,12 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            IMAGE_LAYER_SYS_EXT=1
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=1
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=1
-            IMAGE_LAYER_PYTHON=1
-            IMAGE_LAYER_PYTHON_EXT=1
-            IMAGE_LAYER_NODEJS=1
-            IMAGE_LAYER_NODEJS_EXT=0
 
       - name: Run bats unittetss
         run: |
           docker run --rm -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -t . 
 
-      - name: Build for test full blown amd64 
+      - name: Build for test fhem, python and nodejs layer added for amd64 
         uses: docker/build-push-action@v5
         id: docker_build
         with:
@@ -117,8 +207,9 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          target: with-fhem
+          target: with-fhem-python-nodejs
           cache-from: | 
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}  
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -130,17 +221,6 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=1
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=1
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=1
-            IMAGE_LAYER_PYTHON=1
-            IMAGE_LAYER_PYTHON_EXT=1
-            IMAGE_LAYER_NODEJS=1
-            IMAGE_LAYER_NODEJS_EXT=0
 
       - name: Inspect and run integration tests
         run: |
@@ -149,7 +229,7 @@ jobs:
 
       - name: Run build in unittests
         run: |
-          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
+          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
           until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
           do sleep 1;
@@ -164,7 +244,7 @@ jobs:
     needs: test_build
     strategy:
       matrix:
-        dockerfile: [Dockerfile, Dockerfile-bullseye]
+        dockerfile: [Dockerfile-bullseye]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -182,10 +262,15 @@ jobs:
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
         id: gitVars
 
-      - name: Prepare SVN repository checkout and variables
-        id: prepareSVN
-        uses: ./.github/workflows/prepare-svn
-
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+    
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -212,7 +297,7 @@ jobs:
             type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
 
-      - name: Build and push cross compiled full blown image on supported platforms
+      - name: Build and push cross compiled fhem, python and nodejs layer on supported platforms
         uses: docker/build-push-action@v5
         id: docker_build
         with:
@@ -221,8 +306,11 @@ jobs:
           file: ./${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          target: with-fhem
+          target: with-fhem-python-nodejs
           cache-from: | 
+            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
@@ -235,17 +323,6 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=1
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=1
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=1
-            IMAGE_LAYER_PYTHON=1
-            IMAGE_LAYER_PYTHON_EXT=1
-            IMAGE_LAYER_NODEJS=1
-            IMAGE_LAYER_NODEJS_EXT=0
             L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
 
       - name: Docker meta
@@ -275,6 +352,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem
           cache-from: | 
+            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
             type=gha,scope=base_linux/cross-${{ matrix.dockerfile }}
@@ -288,15 +368,4 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=0
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=0
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=0
-            IMAGE_LAYER_PYTHON=0
-            IMAGE_LAYER_PYTHON_EXT=0
-            IMAGE_LAYER_NODEJS=0
-            IMAGE_LAYER_NODEJS_EXT=0
             L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.

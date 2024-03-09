@@ -14,7 +14,7 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 ### From Docker Hub
 
-        docker pull fhem/fhem
+    docker pull fhem/fhem:latest
 
 ### From Github container registry
 
@@ -22,13 +22,16 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 Updated versions based on 
 - debian bullseye 
-- Perl 5.32.1
-- NodeJS 16 LTS
-- Python 3
+- Perl 5.36.3
+- NodeJS 18 LTS
+- Python 3.9.2
+- Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem-docker:3-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
+
+##### Not updated anymore since Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -46,10 +49,14 @@ Updated versions based on
 #### Image with perl core services installed
 
 - debian bullseye 
-- Perl 5.32.1
+- Perl 5.36.3
+- Python 3.9.2
+- Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
-        docker pull ghcr.io/fhem/fhem-minimal-docker:3-bullseye
+        docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
+
+##### Not updated anymore since Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -62,16 +69,17 @@ Updated versions based on
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:3-bullseye
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:4-bullseye
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem/fhem-docker:3-buster
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem/fhem-docker:4-bullseye
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
+It is also possible to mount CIFS mounts directly 
 
 ### Access FHEM
 
@@ -85,7 +93,6 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
 
-
 ## Customize your container configuration
 
 ### Performance implications
@@ -96,6 +103,34 @@ For that reason, the default value of the global attribute `logfile` is differen
 It is highly recommended to keep this setting. Please note that FileLog devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
 ### Add custom packages 
+
+#### Since version 4
+
+To extand the image wirh a custom package for example, you have to use standard docker tools.
+
+If you are defining a docker-compose.yml file describing your configuration, then you can add a build definition instead of starting the image from the registry:
+
+With this, you will create a new image, and install any tool which you additional need:
+
+```
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
+          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+        EOF
+
+        RUN <<EOF
+          pip install --no-cache-dir <PIP PACKAGENAME>
+        EOF
+```
+
+See more examples in our docker-compose.yml file.
+
+#### till cersion 3 (deprecated)
 
 Don't do this unless you really know what this does!
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
@@ -161,17 +196,23 @@ If something needs to be done every time you (re)start your container, the `*-st
 
 ### Role of the telnet device in FHEM
 
+#### since version 4 
+
+There is no internal use of the telnet device anymore
+
+#### till version 3 (deprecated)
+
 The Docker container will need to communicate with FHEM to shutdown nicely instead of just killing the process. For this to work properly, a `telnet` device is of paramount importance. Unless you are using configDB, the container will try to automatically detect and adjust your telnet configuration for it to work. If for any reason that fails or you are using configDB, it is your own obligation to configure such `telnet` device (`define telnetPort telnet 7072`). It may listen on the standard port 7072 or can be any other port (see environment variable `TELNETPORT` to re-configure it).
 
 It is enough for the `telnet` device to only listen on the loopback device (aka localhost) but it _cannot_ have any password protection enabled for loopback connections. If you require your `telnet` instance to listen for external connections, it is usually best-practice to set a password for it. In that case, make sure that any `allowed` device you might have configured for this purpose only requires a password for non-loopback connections (e.g. using attribute `globalpassword` instead of `password` - also see [allowed commandref](https://fhem.de/commandref.html#allowed)). The same applies when using the deprecated attribute `password` for the `telnet` device itself (see [telnet commandref](https://fhem.de/commandref.html#telnet)).
 
 ### Docker health check control
 
-The image comes with a built-in script to check availability and HTTP response codes of every FHEMWEB instance. It will also require a functional `telnet` device in your FHEM configuration (see [Role of the telnet device in FHEM](#role-of-the-telnet-device-in-fhem)).
+The image comes with a built-in script to check availability, which communicates with the DockerImageInfo Definition.
 
 If for whatever reason you want to disable checking a specific FHEMWEB instance, you may set the user attribute `DockerHealthCheck` to 0 on that particular FHEMWEB device.
 
-Note that the health check itself cannot be entirely disabled as it will ensure to notify you about any false `telnet` device configuration, hindering proper shutdown of FHEM when triggered by Docker or OS shutdown procedure.
+Note that the health check itself cannot be entirely disabled as it will ensure to notify you in case of failures, hindering proper shutdown of FHEM when triggered by Docker or OS shutdown procedure.
 
 ### Map USB devices to your container
 
@@ -415,6 +456,8 @@ Follow initial setup steps:
     cd /docker; sudo git clone git@github.com:user/repo.git
     cd /docker/home; sudo docker-compose up -d
     ```
+
+
 ## Testing the Image itself in a container
 
 Basic testing of the image is done in the pipeline. The pipeline will start a container and verify that the health check reports the container is alive.
@@ -427,3 +470,5 @@ To run the test, build the image with the specific target:
 
 Then this image, can be used to start a new container and running bats inside the container.
     docker run -it --rm -v "${PWD}/src/tests/bats:/code"  fhemdocker:test .
+
+

@@ -5,3 +5,5 @@ fhem/backup/*
 fhem/cache/*
 fhem/log/*
 fhem/restoreDir/*
+.vscode/*
+src/FHEM/trunk/*
