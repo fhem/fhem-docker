@@ -38,8 +38,7 @@ jobs:
           perl-version: "5.38"
           install-modules-with: cpanm
           install-modules-args: --notest
-          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util
-          
+          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Path File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util
 
       - name: clone 3rdparty repositories at github
         run: | 
@@ -48,6 +47,15 @@ jobs:
           cd ./3rdparty
           printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone "{}" "$(basename $(dirname {}))/$(basename {})"; '
 
+      - name: Init PPI Cache 
+        uses: actions/cache@v4
+        with:
+          path: .cache/PPI
+          save-always: true
+          restore-keys: |
+            PPI-SVN-
+          key: PPI-SVN-${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
+    
       - name: "create private modules filter regex"    
         run: |
           echo "FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk)"  >> $GITHUB_ENV
