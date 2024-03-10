@@ -117,6 +117,8 @@ jobs:
       matrix:
         dockerfile: [-bullseye, -threaded-bullseye]
     # Steps represent a sequence of tasks that will be executed as part of the job
+    env:
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') && github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -163,7 +165,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/fhem-docker
             fhem/fhem
           flavor: |
-              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1 || endsWith(matrix.dockerfile, 'Dockerfile')] }}
+              latest= ${{ env.TAG_LATEST }}
           tags: |
             type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
             type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
@@ -245,7 +247,8 @@ jobs:
     strategy:
       matrix:
         dockerfile: [-bullseye, -threaded-bullseye]
-
+    env:
+        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') && github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -289,7 +292,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/fhem-docker
             fhem/fhem
           flavor: |
-              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+              latest= ${{ env.TAG_LATEST }}
           tags: |
             type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
             type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
@@ -333,7 +336,7 @@ jobs:
              ghcr.io/${{ github.repository_owner }}/fhem-minimal-docker
              fhem/fhem-minimal
           flavor: |
-             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+             latest= ${{ env.TAG_LATEST }}
           tags: |
             type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
             type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
