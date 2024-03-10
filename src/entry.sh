@@ -230,6 +230,7 @@ function getGlobalAttr() {
 }
 
 
+
 # Collect information about the docker environment
 #
 # Usage: collectDockerInfo
@@ -324,6 +325,29 @@ function setTelnet_DEFINITION()
     fi
   fi 
 }
+
+# Determine a Logfile definition create one if none exists or patch existing
+#
+# Usage: setLogfile_DEFINITION
+# Global vars: CONFIGTYPE
+#              FHEM_DIR
+#              LOGFILE  
+#
+function setLogfile_DEFINITION()
+{
+
+  [ "${CONFIGTYPE}" == "configDB" ] &&  {
+      echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !';
+      return;
+  }   # config is done inside DB => abort
+
+  ## Find Logfile definition
+  if [ -z "$(grep -P "^define Logfile FileLog" ${FHEM_DIR}/${CONFIGTYPE})" ]; then
+    echo "define Logfile FileLog ${LOGFILE} Logfile" >> ${FHEM_DIR}/${CONFIGTYPE}
+  fi
+  sed -i "s,define Logfile FileLog ./log/fhem-\S*\ Logfile$,define Logfile FileLog ${LOGFILE#${FHEM_DIR}/} Logfile," ${FHEM_DIR}/${CONFIGTYPE}
+}
+
 
 # Determine PID file
 #
@@ -464,6 +488,9 @@ function fhemCleanInstall() {
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "dnsServer"  >/dev/null || echo "attr global dnsServer ${myDns}" >> ${FHEM_DIR}/fhem.cfg
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "commandref" >/dev/null || echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "mseclog"    >/dev/null || echo "attr global mseclog 1"          >> ${FHEM_DIR}/fhem.cfg
+
+  printfInfo "  Patching fhem.cfg Logfile configuration\n"
+  setTelnet_DEFINITION  
 
   printfInfo  "  Adding pre-defined devices to fhem.cfg\n"
 
@@ -659,7 +686,6 @@ fhem ALL=(ALL) NOPASSWD: /usr/bin/nmap
 fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -q update
 fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -s -q -V upgrade
 fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V upgrade
-fhem ALL=(ALL) NOPASSWD: /usr/bin/apt-get -y -q -V dist-upgrade
 fhem ALL=(ALL) NOPASSWD:SETENV: /usr/bin/npm update *
 # Allow installation of new packages
 fhem ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/cpanm *

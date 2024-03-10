@@ -19,7 +19,6 @@ setup() {
 
 teardown() {
     rm -rf /opt/fhem/* 
-    
 }
 
 @test "printf info tests" { 
@@ -64,6 +63,7 @@ teardown() {
 
 }
 
+
 @test "check setGlobal_LOGFILE from default" {
     
     export -f setGlobal_LOGFILE
@@ -90,6 +90,24 @@ teardown() {
     run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE;'
     assert_output "${FHEM_DIR}/log/fhem-%Y-%m.log"
 }
+
+@test "check Logfile definition from fhem.cfg" {
+    export FHEM_DIR="/opt/fhem"
+    export CONFIGTYPE="fhem.cfg"
+    export -f setGlobal_LOGFILE
+    export -f prependFhemDirPath
+    export -f getGlobalAttr
+    export -f setLogfile_DEFINITION
+    export -f fhemCleanInstall
+    
+    run setGlobal_LOGFILE
+    run fhemCleanInstall
+    run setLogfile_DEFINITION
+
+    assert_file_exists /opt/fhem/fhem.cfg
+    assert_file_contains /opt/fhem/fhem.cfg "define Logfile FileLog ./log/fhem-%Y-%m-%d.log Logfile"
+}
+
 
 
 @test "check fhemUpdateInstall()" {
@@ -151,10 +169,8 @@ teardown() {
 
 
 @test "verify before clean install FHEM" {
-
     assert_file_exists /fhem/FHEM/99_DockerImageInfo.pm
     assert_not_exists /opt/fhem/fhem.pl
-
 }
 
 @test "Setup clean install FHEM" {
