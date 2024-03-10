@@ -110,32 +110,32 @@ EOF
 
 FROM base as base-cpan
 # Install all CPAN Modules, needed from FHEM and standard modules
-COPY cpanfile /root/cpanfile
+COPY cpanfile /root/svn/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' root/cpanfile  > /root/cpanfile 
-    sed -i '/Device::Firmata::Constants/d' root/cpanfile  >/root/cpanfile
+    sed -i '/Device::SerialPort/d' /root/svn/cpanfile  > /root/svn/cpanfile
+    sed -i '/Device::Firmata::Constants/d' /root/svn/cpanfile  > /root/svn/cpanfile
   fi
-  cpanm --notest --cpanfile /root/cpanfile --installdeps  .
+  cpanm --notest --cpanfile /root/svn/cpanfile --installdeps  .
   rm -rf /root/.cpanm 
 EOF
 
 RUN <<EOF
-  cpanm --notest --cpanfile /root/cpanfile --installdeps --with-suggests .
+  cpanm --notest --cpanfile /root/svn/cpanfile --installdeps --with-suggests .
   rm -rf /root/.cpanm 
 EOF
 
 # Install all CPAN Modules, needed from 3rd party module repositorys 
-COPY 3rdParty/cpanfile /root/cpanfile_3rdparty
+COPY 3rdParty/cpanfile /root/3rdparty/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
-    sed -i '/Device::Firmata::Constants/d' /root/cpanfile_3rdparty  > /root/cpanfile_3rdparty
+    sed -i '/Device::SerialPort/d' /root/3rdparty/cpanfile  > /root/3rdparty/cpanfile
+    sed -i '/Device::Firmata::Constants/d' /root/3rdparty/cpanfile  > /root/3rdparty/cpanfile
   fi
 
-  cpanm --notest --cpanfile /root/cpanfile_3rdparty --installdeps --with-suggests .
+  cpanm --notest --cpanfile /root/3rdparty/cpanfile --installdeps --with-suggests .
   rm -rf /root/.cpanm 
 EOF
 
