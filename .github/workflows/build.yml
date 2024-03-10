@@ -118,7 +118,7 @@ jobs:
         dockerfile: [-bullseye, -threaded-bullseye]
     # Steps represent a sequence of tasks that will be executed as part of the job
     env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') && github.event.release.prerelease == 1) && 'false' || 'auto' }}
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -248,7 +248,7 @@ jobs:
       matrix:
         dockerfile: [-bullseye, -threaded-bullseye]
     env:
-        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') && github.event.release.prerelease == 1) && 'false' || 'auto' }}
+        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
