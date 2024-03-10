@@ -204,7 +204,7 @@ jobs:
         with:
           context: .
           load: true  
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
           target: with-fhem-python-nodejs
