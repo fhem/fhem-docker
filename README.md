@@ -22,7 +22,7 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 Updated versions based on 
 - debian bullseye 
-- Perl 5.36.3
+- Perl 5.36.3 (optional threaded)
 - NodeJS 18 LTS
 - Python 3.9.2
 - Python 2.7.18
@@ -30,6 +30,7 @@ Updated versions based on
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
 
         docker pull ghcr.io/fhem/fhem-docker:4-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
 
 ##### Not updated anymore since Jan 2024
 
@@ -49,12 +50,13 @@ Updated versions based on
 #### Image with perl core services installed
 
 - debian bullseye 
-- Perl 5.36.3
+- Perl 5.36.3 (optional threaded)
 - Python 3.9.2
 - Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
 
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
+        docker pull ghcr.io/fhem/fhem-minimal-docker:4-threaded-bullseye
 
 ##### Not updated anymore since Jan 2024
 
@@ -69,17 +71,17 @@ Updated versions based on
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-docker:4-bullseye
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-docker:4-bullseye
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
-It is also possible to mount CIFS mounts directly 
+It is also possible to mount CIFS mounts directly.
 
 ### Access FHEM
 
@@ -100,7 +102,8 @@ Note that any existing FHEM installation you are mounting into the container wil
 The FHEM log file is mirrored to the Docker console output in order to give input for any Docker related tools. However, if the log file becomes too big, this will lead to some performance implications.
 For that reason, the default value of the global attribute `logfile` is different from the FHEM default configuration and set to a daily file (`attr global logfile ./log/fhem-%Y-%m-%d.log`).
 
-It is highly recommended to keep this setting. Please note that FileLog devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
+It is highly recommended to keep this setting. Please note that FileLog are only patched if fhem is fresh installed. 
+Devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
 ### Add custom packages 
 
