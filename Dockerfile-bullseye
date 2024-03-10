@@ -1,8 +1,8 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-bullseye as base
+FROM perl:5.36.3-bullseye@sha256:43843d9b89da2a5be0ebfd98f3c46a73ee596df3eaf6fc9f8e7b1c95386ed266 as base
 
 ARG TARGETPLATFORM
 
