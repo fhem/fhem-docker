@@ -117,6 +117,67 @@ jobs:
           cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           tags: baseonly
 
+  base_cpan_build:
+    needs: [get_dependencies, base_build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bullseye, -threaded-bullseye]
+        platform: [arm/v7, arm64, 386]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v4.4.1
+
+      - name: Get git vars
+        shell: bash
+        run: |
+          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
+        id: gitVars
+
+      - name: Prepare SVN repository checkout and variables
+        id: prepareSVN
+        uses: ./.github/workflows/prepare-svn
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+          
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+        with:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Build base cpan layer for ${{ matrix.platform }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: base-cpan
+          cache-from: | 
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          tags: basecpanonly
+    
+            
   test_build:
     # The type of runner that the job will run on
     needs: [get_dependencies, base_build]
@@ -251,7 +312,7 @@ jobs:
 
   published_build:
     runs-on: ubuntu-latest
-    needs: test_build
+    needs: [test_build, base_cpan_build]
     strategy:
       matrix:
         dockerfile: [-bullseye, -threaded-bullseye]
@@ -319,9 +380,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           target: with-fhem-python-nodejs
           cache-from: | 
-            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm/v7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
@@ -365,7 +425,7 @@ jobs:
           cache-from: | 
             type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
             type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/armv7-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/arm/v7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
             type=gha,scope=base_linux/cross-${{ matrix.dockerfile }}

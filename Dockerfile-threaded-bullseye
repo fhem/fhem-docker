@@ -110,33 +110,33 @@ EOF
 
 FROM base as base-cpan
 # Install all CPAN Modules, needed from FHEM and standard modules
-COPY cpanfile /root/svn/cpanfile
+COPY cpanfile /usr/src/app/core-cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /root/svn/cpanfile  
-    sed -i '/Device::Firmata::Constants/d' /root/svn/cpanfile  
+    sed -i '/Device::SerialPort/d' /usr/src/app/core-cpanfile
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
   fi
-  cpanm --notest --cpanfile /root/svn/cpanfile --installdeps  .
+  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
+
   rm -rf /root/.cpanm 
+  rm -rf /root/.perl-cpm/
 EOF
 
-RUN <<EOF
-  cpanm --notest --cpanfile /root/svn/cpanfile --installdeps --with-suggests .
-  rm -rf /root/.cpanm 
-EOF
 
 # Install all CPAN Modules, needed from 3rd party module repositorys 
-COPY 3rdParty/cpanfile /root/3rdparty/cpanfile
+COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /root/3rdparty/cpanfile  
-    sed -i '/Device::Firmata::Constants/d' /root/3rdparty/cpanfile  
+    sed -i '/Device::SerialPort/d' /usr/src/app/3rdparty-cpanfile
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
   fi
 
-  cpanm --notest --cpanfile /root/3rdparty/cpanfile --installdeps --with-suggests .
+  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global
   rm -rf /root/.cpanm 
+  rm -rf /root/.perl-cpm/
 EOF
 
 
