@@ -3,11 +3,12 @@ package main;
 use strict;
 use warnings;
 use FHEM::Meta;
+use List::Util qw( first );
 
 sub DockerImageInfo_Initialize {
     my ($hash) = @_;
 
-    $hash->{NOTIFYDEV} = "global"; # limit calls to notify
+    $hash->{NOTIFYDEV} = q[global]; # limit calls to notify
     $hash->{DefFn}     = \&DockerImageInfo_Define;
     $hash->{NotifyFn}  = \&DockerImageInfo_Notify;
     $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
@@ -68,12 +69,15 @@ sub DockerImageInfo_Notify
 {
   my ($hash,$dev) = @_;
 
-  return if($dev->{NAME} ne "global");
+  return if($dev->{NAME} ne q[global]);
 
-  if( grep(m/^INITIALIZED|REREADCFG$/, @{$dev->{CHANGED}}) ) {
+  my $events = deviceEvents($dev,1);
+  if( defined first { $events->[$_] =~ /^INITIALIZED|REREADCFG$/ || $events->[$_] =~ /^ATTR\s.*\s(?:HTTPS|webname|DockerHealthCheck)\s.+/ } 0..$#{$events} ) {
+    RemoveInternalTimer($hash);    # Stop Timer because we start one  again
     
     # Update available infos
     DockerImageInfo_GetImageInfo( $hash);
+
 
     foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1]) ) {
       # add userattr to FHEMWEB devices to control healthcheck
@@ -84,7 +88,7 @@ sub DockerImageInfo_Notify
     my $urlFileHdl;
     if(!open($urlFileHdl, ">$urlFile")) {
       my $msg = q[WriteStatefile: Cannot open $urlFile: $!];
-      Log 1, $msg;
+      Log3 $hash->{NAME}, 1, $msg;
       return $msg;
     }
     binmode($urlFileHdl, ':encoding(UTF-8)') if($unicodeEncoding);
@@ -122,7 +126,7 @@ sub DockerImageInfo_GetStatus {
   my $resultFileHdl;
   if(!open($resultFileHdl, "<$resultFile")) {
     my $msg = qq[Read result file: Cannot open $resultFile: $!];
-    Log 1, $msg;
+    Log3 $hash->{NAME}, 1, $msg;
     $hash->{STATE} = $msg;
     return undef;
   }
@@ -324,7 +328,8 @@ sub DockerImageInfo_GetImageInfo {
       "requires": {
         "strict": 0,
         "warnings": 0,
-        "FHEM::Meta": 0.001006
+        "FHEM::Meta": 0.001006,
+        "List::Util" : 1.18
       },
       "recommends": {
       },
