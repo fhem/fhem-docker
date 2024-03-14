@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use CPAN::Meta;
 use Module::CPANfile;
-# use Data::Dumper;
+use Data::Dumper;
 use CPAN::Meta::Merge;
 use Scalar::Util qw/blessed/;
 use File::Find::Rule;
@@ -18,7 +18,20 @@ my $jsonString;
 ## Load existing requirements from cpanfile
 my $cpanfile = Module::CPANfile->load('cpanfile');
 
-my $newCPANFile;
+sub merge_hashes {
+    my ($hash1, $hash2) = @_;
+    for my $key (keys %$hash2) {
+        if (ref $hash2->{$key} eq 'HASH' && ref $hash1->{$key} eq 'HASH') {
+            merge_hashes($hash1->{$key}, $hash2->{$key});
+        } else {
+            $hash1->{$key} = $hash2->{$key};
+        }
+    }
+    return $hash1;
+}
+
+
+#my $newCPANFile;
 # Alle Perl-Moduldateien im Verzeichnisbaum finden
 foreach my $directory (@directories) {
 
@@ -54,6 +67,7 @@ foreach my $directory (@directories) {
         }
 
         $jsonString = join '', @JSONlines;
+        
 
         ## Script breaks here, because we may have no version field which is requred to pass here
         
@@ -66,67 +80,29 @@ foreach my $directory (@directories) {
                 next;
         };
 
-        #print Dumper $MetaHash;
+        
 
         # fix missing version information
-        my @fixups = ();
 
-        if (!exists($MetaHash->{version}) )
-        {
-            push(@fixups, q[version] );
-
-            $MetaHash->{version} = "1";
-            
-        }
-        if (!exists($MetaHash->{name}) )
-        {
-            push(@fixups, q[name] );
-            $MetaHash->{name} = $filename;
-        }
-
-        if (!exists($MetaHash->{'meta-spec'}) || !exists($MetaHash->{'meta-spec'}{'version'})  )
-        {
-            push(@fixups, q[meta-spec] );
-            $MetaHash->{'meta-spec'}{'version'} = 2;
-        }
-
-        if (scalar @fixups > 0)
-        {
-            print q[ fixups: ];
-            print join ", ", @fixups;
-            print q[ ];
-        }
-
-
-        my $moduleMeta;
-        eval {
-            $moduleMeta = CPAN::Meta->load_json_string(to_json($MetaHash));
-            1;
-        } or do {
-                print q[[ failed ]]. $@;
-                next;
-        };
-        
-
-        # merge requirements
        
-        my $prereqs_hash = $cpanfile->prereqs->with_merged_prereqs($moduleMeta->effective_prereqs)->as_string_hash;
-        my $struct = { %{$moduleMeta->as_struct}, prereqs => $prereqs_hash };
+        my $cpanfile_requirements = $cpanfile->prereq_specs;            # requirements from our cpanfile
+        my $module_requirements = $MetaHash->{'prereqs'};               # requirements from the processed file
+        # print Dumper $cpanfile_requirements;                
+        # print Dumper $module_requirements;                
         
-        #print $moduleMeta->meta_spec->{version};
-
-        my $mergedMeta =  CPAN::Meta->new($struct);
-        $newCPANFile = Module::CPANfile->from_prereqs(  $mergedMeta->prereqs );
-      
-        $cpanfile = $newCPANFile;
+        # merge requirements together
+        my $struct = merge_hashes($cpanfile_requirements, $module_requirements);
+        # print Dumper $struct;              
+        
+        $cpanfile = Module::CPANfile->from_prereqs(  $struct );         # update cpanfile object
         print qq[$filename was processed successfull\n];
     }
 }
 
 # save our new cpanfile
-if (defined $newCPANFile)
+if (defined $cpanfile)
 {
-    $newCPANFile->save('cpanfile');
+    $cpanfile->save('cpanfile');
     print qq[\n\nResult: cpanfile was saved\n];
 }
 

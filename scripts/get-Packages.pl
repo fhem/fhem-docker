@@ -5,7 +5,17 @@ use PPI;
 use File::Find::Rule;
 use List::MoreUtils qw(uniq);
 # use Data::Dumper;
+use File::Path qw(make_path);
 
+my $PPICacheDir;
+BEGIN {
+    $PPICacheDir = '.cache/PPI';
+    unless(-d $PPICacheDir) {
+        make_path($PPICacheDir) or die qq[Directory $PPICacheDir coldn't be created: $!];
+    }
+};
+
+use PPI::Cache path => $PPICacheDir;
 
 my @directories = @ARGV;
 
@@ -20,7 +30,7 @@ foreach my $directory (@directories) {
 
     foreach my $file (@files) {
 
-        my $document = PPI::Document->new($file);
+        my $document = PPI::Document->new($file, readonly => 1);
         next unless $document;
         # Alle package-Anweisungen in der Datei finden
         my $package_statements = $document->find('PPI::Statement::Package');
