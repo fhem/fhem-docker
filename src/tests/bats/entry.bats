@@ -43,6 +43,10 @@ teardown() {
     assert_output "/opt/fhem/logs/fhem-1-2-3.log"
     run bash -c 'OUT=$(prependFhemDirPath "/opt/fhem/logs/fhem-1-2-3.log") ; echo $OUT'
     assert_output "/opt/fhem/logs/fhem-1-2-3.log"
+
+    run bash -c 'OUT=$(prependFhemDirPath "/run/lock/fhem.pid") ; echo $OUT'
+    assert_output "/opt/fhem/run/lock/fhem.pid"
+
 }
 
 @test "check getGlobalAttr()" {
@@ -203,4 +207,55 @@ teardown() {
     assert_output --partial "test message2"
 }   
   
- 
+
+@test "verify is_absolutePath" {
+    bats_require_minimum_version 1.5.0
+    
+    export -f is_absolutePath
+  
+    run -0 bash -c 'is_absolutePath /opt/fhem'
+    run -0 bash -c 'is_absolutePath /run/lock/file'
+    run -1 bash -c 'is_absolutePath ./log/'
+    run -1 bash -c 'is_absolutePath ../log/'
+    run -1 bash -c 'is_absolutePath .'
+    run -1 bash -c 'is_absolutePath '
+}
+
+@test "verify default pidfile" {
+    bats_require_minimum_version 1.5.0
+    export FHEM_DIR="/opt/fhem"
+    export -f setGlobal_PIDFILE 
+    export -f prependFhemDirPath
+    export -f is_absolutePath
+    #export PIDFILE
+    
+    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
+    assert_output "/opt/fhem/log/fhem.pid"
+}
+
+
+@test "verify absolut pidfile" {
+    #bats_require_minimum_version 1.5.0
+    
+    export FHEM_DIR="/opt/fhem"
+    export -f setGlobal_PIDFILE 
+    export -f prependFhemDirPath
+    export -f is_absolutePath
+    export PIDFILE="/run/lock/fhem.pid"
+    
+    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
+    assert_output "/run/lock/fhem.pid"
+}
+
+@test "verify relative pidfile" {
+    #bats_require_minimum_version 1.5.0
+    
+    export FHEM_DIR="/opt/fhem"
+    export -f setGlobal_PIDFILE 
+    export -f prependFhemDirPath
+    export -f is_absolutePath
+    export PIDFILE="./run/fhem.pid"
+    
+    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
+    assert_output "/opt/fhem/run/fhem.pid"
+}

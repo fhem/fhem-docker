@@ -199,6 +199,20 @@ function printfErr() {
   return $retval
 }
 
+# Verify if a given path is a absolult and valid path
+#
+# Usage: is_absolutePath  path
+# Parameters:  path         Path to verify
+# Global vars: 
+#
+# returns true if the path is absolulte otherwise false
+function is_absolutePath() {
+  case "$1" in
+    /*) true ;;
+    *) false ;;
+  esac
+}
+
 
 #====================================================================================================================-
 #--- FHEM utility functions ------------------------------------------------------------------------------------------
@@ -213,6 +227,8 @@ function printfErr() {
 function prependFhemDirPath() {
   realpath -ms "$(echo "$1" | sed -e 's!^'${FHEM_DIR}/'!!; s!^!'${FHEM_DIR}/'!')"
 }
+
+
 
 
 # Get the value of a global attribute from the FHEM config file.
@@ -358,7 +374,8 @@ function setLogfile_DEFINITION()
 function setGlobal_PIDFILE() {
   local -r defaultPidfile="./log/fhem.pid"
 
-  [ -n "${PIDFILE+x}" ] &&                            { PIDFILE=$(prependFhemDirPath "$PIDFILE"); return; }          # PIDFILE already set => use this
+  [ -n "${PIDFILE+x}" ] && { is_absolutePath "$PIDFILE" &&  return; }                                          # PIDFILE is already an absolute path, skip other modifications
+  [ -n "${PIDFILE+x}" ] && { PIDFILE=$(prependFhemDirPath "$PIDFILE"); return; }          # PIDFILE already set => use this
   [ "${CONFIGTYPE}" == "configDB" ] &&                { PIDFILE=$(prependFhemDirPath "$defaultPidfile"); return; }   # config is done inside DB => default
 
   local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
