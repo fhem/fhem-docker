@@ -3,6 +3,7 @@
 
 #--- Constants -------------------------------------------------------------------------------------------------------
 
+
 declare -r PID_FILE="/var/run/health-check.pid"
 declare -r URL_FILE="/tmp/health-check.urls"
 declare -r RESULT_FILE="/tmp/health-check.result"
@@ -46,7 +47,7 @@ function trapExitHandler() {
 
 #====================================================================================================================-
 #--- Main script -----------------------------------------------------------------------------------------------------
-
+set -x
 [ -e $PID_FILE ] && { echo "Instance already running, aborting another one" ; exit 1; } # run before installing traphandler!
 trap trapExitHandler SIGTERM EXIT
 
@@ -56,6 +57,8 @@ echo "$$" > $PID_FILE
 
 while IFS= read -r fhemUrl; do
   fhemwebState=$( curl \
+                    --connect-timeout 5 \
+                    --max-time 8 \
                     --silent \
                     --insecure \
                     --output /dev/null \
@@ -76,4 +79,3 @@ while IFS= read -r fhemUrl; do
 done < $URL_FILE
 
 exit $gRetVal
-
