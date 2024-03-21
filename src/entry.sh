@@ -381,6 +381,7 @@ function setGlobal_PIDFILE() {
   local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
   [ -r "$cfgFile" ] ||                                { PIDFILE=$(prependFhemDirPath "$defaultPidfile"); return; }   # configfile not readable => default
 
+  # Todo: Absolute pidfilename check!
   local cfgPidDef="$(getGlobalAttr "$cfgFile" "pidfilename" )"
   [ -n "$cfgPidDef" ] &&                               { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
 

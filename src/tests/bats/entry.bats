@@ -235,8 +235,7 @@ teardown() {
 
 
 @test "verify absolut pidfile" {
-    #bats_require_minimum_version 1.5.0
-    
+   
     export FHEM_DIR="/opt/fhem"
     export -f setGlobal_PIDFILE 
     export -f prependFhemDirPath
@@ -258,4 +257,31 @@ teardown() {
     
     run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
     assert_output "/opt/fhem/run/fhem.pid"
+}
+
+
+@test "absoulte pidfile set in fhem.cfg" {
+    export FHEM_DIR="/opt/fhem"
+
+    run fhemCleanInstall
+    assert_file_exists /opt/fhem/fhem.cfg
+    # Pidfile in config schreiben!
+    # Pidfile nicht gesetzt über ENV Variable
+    # Prüfen ob PIDFILE korrekt angelegt ist
+
+    echo "attr global pidfilename /run/lock/fhem.pid" >> ${FHEM_DIR}/fhem.cfg
+    run timeout 15 /entry.sh start > /dev/null 2> /dev/null &
+    sleep 10
+    cat ${FHEM_DIR}/fhem.cfg
+    assert_file_contains --partial /run/lock/fhem.pid
+    assert_file_exists /run/lock/fhem.pid
+
+    export -f setGlobal_PIDFILE 
+    export -f prependFhemDirPath
+    export -f is_absolutePath
+   
+    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
+    assert_output "/run/lock/fhem.pid"
+    pkill entry.sh
+    pkill perl
 }
