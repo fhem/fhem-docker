@@ -489,10 +489,10 @@ function fhemCleanInstall() {
   printfInfo "Installing FHEM to ${FHEM_DIR}\n"
 
   
-  shopt -s dotglob nullglob 2>&1>/dev/null
+  shopt -s nullglob 2>&1>/dev/null
 
-  svn co https://svn.fhem.de/fhem/trunk/fhem /usr/src/fhem -q
-  mv /usr/src/fhem/* ${FHEM_DIR} 2>&1>/dev/null
+  (LC_ALL=en_US.UTF-8 && svn export https://svn.fhem.de/fhem/trunk/fhem /usr/src/fhem -q)
+  mv /usr/src/fhem/* "${FHEM_DIR}" # 2>&1>/dev/null 
   cp -f /fhem/FHEM/99_DockerImageInfo.pm ${FHEM_DIR}/FHEM/
 
 
