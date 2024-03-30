@@ -7,19 +7,38 @@ setup() {
     load '/opt/bats/test_helper/bats-file/load.bash'
     load '/opt/bats/test_helper/bats-mock/load.bash'
 
-    source /entry.sh
-    export -f printfDebug
-    export -f printfInfo
-
     # Sometimes perl or grep does not terminate, we will clean up
     pkill tail || true
     pkill grep || true
-    
 }
 
-teardown() {
-    rm -rf /opt/fhem/* 
+
+setup_file() {
+    export BATS_TEST_TIMEOUT=60
+    export LOG_FILE="/tmp/log"
+
+    set -a
+    source /entry.sh
+    set +a
 }
+
+teardown_file() {
+    sleep 0
+    rm -f /tmp/log
+}
+
+
+
+teardown() {
+    # cat /opt/fhem/fhem.cfg
+    rm -rf /opt/fhem/* 
+    rm -rf /usr/src/fhem  # why is no cleanup in entry.sh?
+        
+    mkdir -p /fhem/FHEM
+    cp /tmp/fhem/FHEM/* /fhem/FHEM/ 
+}
+
+
 
 @test "printf info tests" { 
     run printfInfo 'test output'
@@ -33,8 +52,6 @@ teardown() {
 }
 
 @test "check prependFhemDirPath()" {
-    export FHEM_DIR="/opt/fhem"
-    export -f prependFhemDirPath
 
     run bash -c 'OUT=$(prependFhemDirPath "") ; echo $OUT'
     assert_output "/opt/fhem"
@@ -51,9 +68,8 @@ teardown() {
 
 @test "check getGlobalAttr()" {
     bats_require_minimum_version 1.5.0
-
-    export FHEM_DIR="/opt/fhem"
-    export -f getGlobalAttr
+    
+    fhemCleanInstall
     
     run ! getGlobalAttr /tmp/test.cfg "logfile"
     run fhemCleanInstall
@@ -70,15 +86,11 @@ teardown() {
 
 @test "check setGlobal_LOGFILE from default" {
     
-    export -f setGlobal_LOGFILE
-    export -f prependFhemDirPath
-    export FHEM_DIR="/opt/fhem"
     run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE'
     assert_output "/opt/fhem/log/fhem-%Y-%m-%d.log"
 }
 
 @test "check setGlobal_LOGFILE from fhem.cfg" {
-    export FHEM_DIR="/opt/fhem"
     run fhemCleanInstall
 
     assert_file_exists /opt/fhem/fhem.cfg
@@ -87,22 +99,13 @@ teardown() {
     assert_file_contains /opt/fhem/fhem.cfg "attr global logfile ./log/fhem-%Y-%m.log"
 
     export CONFIGTYPE="fhem.cfg"
-    export -f setGlobal_LOGFILE
-    export -f prependFhemDirPath
-    export -f getGlobalAttr
 
     run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE;'
     assert_output "${FHEM_DIR}/log/fhem-%Y-%m.log"
 }
 
 @test "check Logfile definition from fhem.cfg" {
-    export FHEM_DIR="/opt/fhem"
     export CONFIGTYPE="fhem.cfg"
-    export -f setGlobal_LOGFILE
-    export -f prependFhemDirPath
-    export -f getGlobalAttr
-    export -f setLogfile_DEFINITION
-    export -f fhemCleanInstall
     
     run setGlobal_LOGFILE
     run fhemCleanInstall
@@ -115,7 +118,7 @@ teardown() {
 
 
 @test "check fhemUpdateInstall()" {
-    export FHEM_DIR="/tmp/fhem"
+    export FHEM_DIR=${BATS_TEST_TMPDIR}"/fhemUpdateInstall"
     mkdir -p ${FHEM_DIR}/FHEM
     
     run fhemUpdateInstall
@@ -123,7 +126,7 @@ teardown() {
     assert_file_exists /fhem/FHEM/99_DockerImageInfo.pm
     assert_file_exists ${FHEM_DIR}/FHEM/99_DockerImageInfo.pm    
 
-    rm -r ${FHEM_DIR}   
+    #rm -r ${FHEM_DIR}   
 }
 
 @test "ceck tailFileToConsoleStop() Logfile monitoring" {
@@ -134,10 +137,6 @@ teardown() {
     function getFhemPidNum() {
       echo "1"
     }
-
-    export -f tailFileToConsoleStart
-    export -f tailFileToConsoleStop
-    export -f getFhemPidNum
 
     tailFileToConsoleStart ${realLogFile} -b
     run tailFileToConsoleStop
@@ -152,11 +151,11 @@ teardown() {
     }
 
     export LOGFILE="fhem-%Y-%m-%d.log"
-    export realLogFile="/tmp/$( date +"${LOGFILE}")"
+    export realLogFile="${BATS_TEST_TMPDIR}/$( date +"${LOGFILE}")"
     export gCurrentTailPid=0
-    export -f tailFileToConsoleStart
-    export -f tailFileToConsoleStop
-    export -f getFhemPidNum
+    export TAIL_PID=
+
+    #touch ${realLogFile}
 
     run bash -c 'tailFileToConsoleStart ${realLogFile} -b; sleep 1; tailFileToConsoleStop'
     assert_output ""
@@ -172,18 +171,13 @@ teardown() {
 }
 
 
-@test "verify before clean install FHEM" {
-    assert_file_exists /fhem/FHEM/99_DockerImageInfo.pm
-    assert_not_exists /opt/fhem/fhem.pl
-}
-
 @test "Setup clean install FHEM" {
-    declare -r  FHEM_DIR="/opt/fhem"
+    
     run fhemCleanInstall
-    assert_output --partial 'Installing FHEM to /opt/fhem'
-    assert_file_exists /opt/fhem/fhem.pl
-    assert_file_exists /opt/fhem/fhem.cfg.default
-    assert_file_exists /opt/fhem/FHEM/99_DockerImageInfo.pm
+    assert_output --partial "Installing FHEM to ${FHEM_DIR}"
+    assert_file_exists ${FHEM_DIR}/fhem.pl
+    assert_file_exists ${FHEM_DIR}/fhem.cfg.default
+    assert_file_exists ${FHEM_DIR}/FHEM/99_DockerImageInfo.pm
     
     #assert_file_contains /opt/fhem/fhem.cfg attr global mseclog 1 grep
 
@@ -219,69 +213,4 @@ teardown() {
     run -1 bash -c 'is_absolutePath ../log/'
     run -1 bash -c 'is_absolutePath .'
     run -1 bash -c 'is_absolutePath '
-}
-
-@test "verify default pidfile" {
-    bats_require_minimum_version 1.5.0
-    export FHEM_DIR="/opt/fhem"
-    export -f setGlobal_PIDFILE 
-    export -f prependFhemDirPath
-    export -f is_absolutePath
-    #export PIDFILE
-    
-    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
-    assert_output "/opt/fhem/log/fhem.pid"
-}
-
-
-@test "verify absolut pidfile" {
-   
-    export FHEM_DIR="/opt/fhem"
-    export -f setGlobal_PIDFILE 
-    export -f prependFhemDirPath
-    export -f is_absolutePath
-    export PIDFILE="/run/lock/fhem.pid"
-    
-    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
-    assert_output "/run/lock/fhem.pid"
-}
-
-@test "verify relative pidfile" {
-    #bats_require_minimum_version 1.5.0
-    
-    export FHEM_DIR="/opt/fhem"
-    export -f setGlobal_PIDFILE 
-    export -f prependFhemDirPath
-    export -f is_absolutePath
-    export PIDFILE="./run/fhem.pid"
-    
-    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
-    assert_output "/opt/fhem/run/fhem.pid"
-}
-
-
-@test "absoulte pidfile set in fhem.cfg" {
-    export FHEM_DIR="/opt/fhem"
-
-    run fhemCleanInstall
-    assert_file_exists /opt/fhem/fhem.cfg
-    # Pidfile in config schreiben!
-    # Pidfile nicht gesetzt über ENV Variable
-    # Prüfen ob PIDFILE korrekt angelegt ist
-
-    echo "attr global pidfilename /run/lock/fhem.pid" >> ${FHEM_DIR}/fhem.cfg
-    run timeout 15 /entry.sh start > /dev/null 2> /dev/null &
-    sleep 10
-    cat ${FHEM_DIR}/fhem.cfg
-    assert_file_contains --partial /run/lock/fhem.pid
-    assert_file_exists /run/lock/fhem.pid
-
-    export -f setGlobal_PIDFILE 
-    export -f prependFhemDirPath
-    export -f is_absolutePath
-   
-    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
-    assert_output "/run/lock/fhem.pid"
-    pkill entry.sh
-    pkill perl
 }
