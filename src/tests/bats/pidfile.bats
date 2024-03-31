@@ -52,12 +52,10 @@ teardown() {
 
 
 @test "verify setGlobal_PIDFILE default pidfile" {
-    export PIDFILE
     
-    run bash -c 'setGlobal_PIDFILE ; echo $PIDFILE'
+    run bash -c 'unset PIDFILE; setGlobal_PIDFILE ; echo $PIDFILE'
     assert_output "/opt/fhem/log/fhem.pid"
 }
-
 
 @test "verify setGlobal_PIDFILE absolut pidfile" {
     export PIDFILE="/run/lock/fhem.pid"
@@ -73,9 +71,10 @@ teardown() {
     assert_output "/opt/fhem/run/fhem.pid"
 }
 
+
 ### cd /opt/fhem && timeout 33 bats /code/pidfile.bats -f fhem.cfg; cat /tmp/log; ps aux ; 
-@test "absoulte pidfile set in fhem.cfg" {
-    # ContainerSetup
+@test "integration: absoulte pidfile set in fhem.cfg" {
+    # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'
     assert_file_exists ${FHEM_DIR}/fhem.cfg
     
@@ -97,8 +96,8 @@ teardown() {
     assert_file_contains ${LOG_FILE} 'From the FHEM_GLOBALATTR environment: attr global pidfilename /run/lock/fhem.pid' grep
 }
 
-@test "absoulte pidfile set in environment" {
-    # ContainerSetup
+@test "integration: absoulte pidfile set in environment" {
+    # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'
     assert_file_exists ${FHEM_CFG_FILE}
 
@@ -116,13 +115,13 @@ teardown() {
 
     # Execute save via http and check confgfile
     echo -e "save" | fhemcl.sh 
-    assert_file_contains ${FHEM_CFG_FILE}  '/var/run/lock/fhem.pid' grep  # No save is executed!
+    assert_file_contains ${FHEM_CFG_FILE}  '/var/run/lock/fhem.pid' grep  # save is executed!
 
     kill $ENTRY_PID # fail it the process already finished due to error!
 }
 
-@test "default pidfile " {
-    # ContainerSetup
+@test "integration: default pidfile" {
+    # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'
     assert_file_exists ${FHEM_CFG_FILE}
 

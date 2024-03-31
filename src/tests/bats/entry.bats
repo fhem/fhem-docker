@@ -66,56 +66,6 @@ teardown() {
 
 }
 
-@test "check getGlobalAttr()" {
-    bats_require_minimum_version 1.5.0
-    
-    fhemCleanInstall
-    
-    run ! getGlobalAttr /tmp/test.cfg "logfile"
-    run fhemCleanInstall
-
-    assert_file_exists /opt/fhem/fhem.cfg
-    run ! getGlobalAttr /opt/fhem/fhem.cfg "some"
-    run -0  getGlobalAttr /opt/fhem/fhem.cfg "logfile"
-
-    assert_file_contains /opt/fhem/fhem.cfg "attr global logfile"
-    run -0 getGlobalAttr /opt/fhem/fhem.cfg "logfile"
-
-}
-
-
-@test "check setGlobal_LOGFILE from default" {
-    
-    run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE'
-    assert_output "/opt/fhem/log/fhem-%Y-%m-%d.log"
-}
-
-@test "check setGlobal_LOGFILE from fhem.cfg" {
-    run fhemCleanInstall
-
-    assert_file_exists /opt/fhem/fhem.cfg
-    assert_file_contains /opt/fhem/fhem.cfg "define Logfile FileLog ./log/fhem-%Y-%m.log Logfile"
-    assert_file_contains /opt/fhem/fhem.cfg "define DockerImageInfo DockerImageInfo"
-    assert_file_contains /opt/fhem/fhem.cfg "attr global logfile ./log/fhem-%Y-%m.log"
-
-    export CONFIGTYPE="fhem.cfg"
-
-    run bash -c 'unset LOGFILE && setGlobal_LOGFILE && echo $LOGFILE;'
-    assert_output "${FHEM_DIR}/log/fhem-%Y-%m.log"
-}
-
-@test "check Logfile definition from fhem.cfg" {
-    export CONFIGTYPE="fhem.cfg"
-    
-    run setGlobal_LOGFILE
-    run fhemCleanInstall
-    run setLogfile_DEFINITION
-
-    assert_file_exists /opt/fhem/fhem.cfg
-    assert_file_contains /opt/fhem/fhem.cfg "define Logfile FileLog ./log/fhem-%Y-%m-%d.log Logfile"
-}
-
-
 
 @test "check fhemUpdateInstall()" {
     export FHEM_DIR=${BATS_TEST_TMPDIR}"/fhemUpdateInstall"

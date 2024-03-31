@@ -18,7 +18,7 @@ set -o pipefail   # Distribute an error exit status through the whole pipe
 
 #--- Constants -------------------------------------------------------------------------------------------------------
 
-declare -r  FHEM_DIR="/opt/fhem"
+declare -r FHEM_DIR="/opt/fhem"
 declare -i gEnableDebug=0
 
 
@@ -26,7 +26,6 @@ declare -i gEnableDebug=0
 #--- But see specific exports for FHEM later -------------------------------------------------------------------------
 
 export TZ="${TZ:-Europe/Berlin}"
-
 
 #--- Environment variables, configurable from outside ----------------------------------------------------------------
 
@@ -289,9 +288,9 @@ function collectDockerInfo() {
 #
 function setGlobal_LOGFILE() {
   local -r defaultLogfile="./log/fhem-%Y-%m-%d.log"
+  
 
-  
-  
+  [ -n "${LOGFILE+x}" ] &&                            { is_absolutePath "$LOGFILE" &&  return; }                     # PIDFILE is already an absolute path, skip other modifications
   [ -n "${LOGFILE+x}" ] &&                            { LOGFILE=$(prependFhemDirPath "$LOGFILE"); return; }          # LOGFILE already set => use this
   [ "${CONFIGTYPE}" == "configDB" ] &&                { LOGFILE=$(prependFhemDirPath "$defaultLogfile"); return; }   # config is done inside DB => default
 
@@ -299,7 +298,9 @@ function setGlobal_LOGFILE() {
   [ -r "$cfgFile" ] ||                                { LOGFILE=$(prependFhemDirPath "$defaultLogfile"); return; }   # configfile not readable => default
 
   local cfgLogDef="$(getGlobalAttr "$cfgFile" "logfile" )"
-  [ -n "$cfgLogDef" ] &&                               { LOGFILE=$(prependFhemDirPath "$cfgLogDef"); return; }        # found something in the configfile => use this
+  [ -n "$cfgLogDef" ] && is_absolutePath "$cfgLogDef" && { LOGFILE=$cfgLogDef; return; }                              # found absolute path in the configfile => use this
+  [ -n "$cfgLogDef" ] &&                              { LOGFILE=$(prependFhemDirPath "$cfgLogDef"); return; }        # found something in the configfile => use this
+
 
   LOGFILE=$(prependFhemDirPath "$defaultLogfile")
 }
@@ -351,17 +352,20 @@ function setTelnet_DEFINITION()
 #
 function setLogfile_DEFINITION()
 {
-
   [ "${CONFIGTYPE}" == "configDB" ] &&  {
       echo ' HINT: Make sure to have your FHEM configuration properly prepared for compatibility with this Docker Image _before_ using configDB !';
       return;
   }   # config is done inside DB => abort
+ 
+  local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
 
-  ## Find Logfile definition
-  if [ -z "$(grep -P "^define Logfile FileLog" ${FHEM_DIR}/${CONFIGTYPE})" ]; then
-    echo "define Logfile FileLog ${LOGFILE} Logfile" >> ${FHEM_DIR}/${CONFIGTYPE}
+  if [ -z "$(grep -P "^define Logfile FileLog" $cfgFile)" ]; then
+    echo "define Logfile FileLog ${LOGFILE} Logfile" >> $cfgFile
+  else
+    local logFile=${LOGFILE#${FHEM_DIR}/}
+    is_absolutePath "$logFile" || logFile="./$logFile"                            # add ./ if not an absolute path
+    sed -i "s,define Logfile FileLog ./log/fhem-\S*\ Logfile$,define Logfile FileLog $logFile Logfile," $cfgFile
   fi
-  sed -i "s,define Logfile FileLog ./log/fhem-\S*\ Logfile$,define Logfile FileLog ${LOGFILE#${FHEM_DIR}/} Logfile," ${FHEM_DIR}/${CONFIGTYPE}
 }
 
 
@@ -374,8 +378,8 @@ function setLogfile_DEFINITION()
 function setGlobal_PIDFILE() {
   local -r defaultPidfile="./log/fhem.pid"
 
-  [ -n "${PIDFILE+x}" ] && { is_absolutePath "$PIDFILE" &&  return; }                                          # PIDFILE is already an absolute path, skip other modifications
-  [ -n "${PIDFILE+x}" ] && { PIDFILE=$(prependFhemDirPath "$PIDFILE"); return; }          # PIDFILE already set => use this
+  [ -n "${PIDFILE+x}" ] &&                            { is_absolutePath "$PIDFILE" &&  return; }                     # PIDFILE is already an absolute path, skip other modifications
+  [ -n "${PIDFILE+x}" ] &&                            { PIDFILE=$(prependFhemDirPath "$PIDFILE"); return; }          # PIDFILE already set => use this
   [ "${CONFIGTYPE}" == "configDB" ] &&                { PIDFILE=$(prependFhemDirPath "$defaultPidfile"); return; }   # config is done inside DB => default
 
   local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
@@ -383,7 +387,7 @@ function setGlobal_PIDFILE() {
 
   # Todo: Absolute pidfilename check!
   local cfgPidDef="$(getGlobalAttr "$cfgFile" "pidfilename" )"
-  [ -n "$cfgPidDef" ] &&                               { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
+  [ -n "$cfgPidDef" ] &&                              { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
 
   PIDFILE=$(prependFhemDirPath "$defaultPidfile")
 }
@@ -507,9 +511,6 @@ function fhemCleanInstall() {
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "commandref" >/dev/null || echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "mseclog"    >/dev/null || echo "attr global mseclog 1"          >> ${FHEM_DIR}/fhem.cfg
 
-  printfInfo "  Patching fhem.cfg Logfile configuration\n"
-  setTelnet_DEFINITION  
-
   printfInfo  "  Adding pre-defined devices to fhem.cfg\n"
 
   cat >> $fhemCfgFile <<- END_OF_INLINE
@@ -575,7 +576,7 @@ function fhemUpdateInstall() {
 # Global vars: FHEM_DIR
 #
 function initialContainerSetup() {
-  [ -d "/fhem" ] || return   # /fhem signals that the container is brand new. It holds the default installation that is moved later.
+  [ -d "/fhem" ] || { setGlobal_LOGFILE; return; }   # /fhem signals that the container is brand new. It holds the default installation that is moved later.
   local -i isFhemCleanInstall
   [ -s "${FHEM_DIR}/fhem.pl" ] && isFhemCleanInstall=0 || isFhemCleanInstall=1
 
@@ -591,6 +592,10 @@ function initialContainerSetup() {
   else 
     fhemCleanInstall
   fi
+
+  printfInfo "  Patching fhem.cfg Logfile configuration\n"
+  setGlobal_LOGFILE
+  setLogfile_DEFINITION
 
   runScript "/post-init.sh"
   runScript "/docker/post-init.sh"
@@ -977,6 +982,7 @@ if [ "$#" -eq 1 ] && [ "$1" = "start" ]; then
 
   collectDockerInfo
 
+  
   initialContainerSetup
   if [ ! -s "${FHEM_DIR}/fhem.pl" ]; then
     printfErr "Fatal: Unable to find FHEM installation in ${FHEM_DIR}/fhem.pl\n"
@@ -986,7 +992,7 @@ if [ "$#" -eq 1 ] && [ "$1" = "start" ]; then
   # used by other maintenance scripts (can we get rid of that?)
   [ ! -f /image_info.EMPTY ] && touch /image_info.EMPTY
 
-  setGlobal_LOGFILE
+
   setGlobal_PIDFILE
 
   prepareFhemUser
