@@ -290,15 +290,15 @@ EOF
 #
 FROM with-fhem as with-fhem-bats
 
-ADD https://github.com/bats-core/bats-core.git /tmp/bats
+ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
 RUN <<EOF
     /tmp/bats/install.sh /opt/bats 
     ln -s /opt/bats/bin/bats /usr/local/bin/bats 
     rm -r /tmp/bats
 EOF
 
-ADD https://github.com/bats-core/bats-support.git#master /opt/bats/test_helper/bats-support
-ADD https://github.com/bats-core/bats-assert.git#master /opt/bats/test_helper/bats-assert
+ADD https://github.com/bats-core/bats-support.git#v0.3.0 /opt/bats/test_helper/bats-support
+ADD https://github.com/bats-core/bats-assert.git#v2.1.0 /opt/bats/test_helper/bats-assert
 ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
 ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
 
