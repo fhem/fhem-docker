@@ -19,7 +19,8 @@ setup() {
 
 setup_file() {
     export BATS_TEST_TIMEOUT=60
-    export LOG_FILE="/tmp/log"
+    export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
+    export CONFIGTYPE="fhem.cfg"
 
     set -a
     source /entry.sh

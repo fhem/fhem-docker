@@ -15,7 +15,7 @@ setup() {
 
 setup_file() {
     export BATS_TEST_TIMEOUT=60
-    export LOG_FILE="/tmp/log"
+    export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 
     set -a
     source /entry.sh
@@ -25,6 +25,7 @@ setup_file() {
 teardown_file() {
     sleep 0
     rm -f /tmp/log
+    rm -rf /opt/fhem/*
 }
 
 

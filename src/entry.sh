@@ -385,9 +385,11 @@ function setGlobal_PIDFILE() {
   local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
   [ -r "$cfgFile" ] ||                                { PIDFILE=$(prependFhemDirPath "$defaultPidfile"); return; }   # configfile not readable => default
 
+
   # Todo: Absolute pidfilename check!
   local cfgPidDef="$(getGlobalAttr "$cfgFile" "pidfilename" )"
-  [ -n "$cfgPidDef" ] &&                              { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }        # found something in the configfile => use this
+  [ -n "$cfgPidDef" ] && is_absolutePath "$cfgPidDef" && { PIDFILE=$cfgPidDef; return; }                              # found absolute path in the configfile => use this
+  [ -n "$cfgPidDef" ] &&                              { PIDFILE=$(prependFhemDirPath "$cfgPidDef"); return; }         # found something in the configfile => use this
 
   PIDFILE=$(prependFhemDirPath "$defaultPidfile")
 }
