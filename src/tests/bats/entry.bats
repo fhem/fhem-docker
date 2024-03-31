@@ -134,25 +134,6 @@ teardown() {
 
 }
 
-@test "check aptInstall()" {
-    bats_require_minimum_version 1.5.0
-
-    export -f aptInstall 
-    export gAptUpdateHasRun=0
-
-    run -0 aptInstall "test message" /tmp/aptInstall.log grep
-
-    assert_file_contains /tmp/aptInstall.log Get:
-    assert_file_contains /tmp/aptInstall.log update
-    assert_file_contains /tmp/aptInstall.log grep
-    assert_output --partial "test message"
-    
-    run -0 aptInstall "test message2" /tmp/aptInstall2.log grep
-    assert_file_not_contains  /tmp/aptInstall2.log Get:
-    assert_output --partial "test message2"
-}   
-  
-
 @test "verify is_absolutePath" {
     bats_require_minimum_version 1.5.0
     

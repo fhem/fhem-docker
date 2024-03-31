@@ -9,6 +9,6 @@ setup_suite() {
 
 teardown_suite() {
     sleep 0
-    rm -r /tmp/fhem/FHEM
+    rm -r /tmp/fhem
 }
 
