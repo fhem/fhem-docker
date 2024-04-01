@@ -51,13 +51,14 @@ teardown() {
 }
 
 
-
+# bats test_tags=unitTest
 @test "verify setGlobal_PIDFILE default pidfile" {
     
     run bash -c 'unset PIDFILE; setGlobal_PIDFILE ; echo $PIDFILE'
     assert_output "/opt/fhem/log/fhem.pid"
 }
 
+# bats test_tags=unitTest
 @test "verify setGlobal_PIDFILE absolut pidfile" {
     export PIDFILE="/run/lock/fhem.pid"
     
@@ -65,6 +66,7 @@ teardown() {
     assert_output "/run/lock/fhem.pid"
 }
 
+# bats test_tags=unitTest
 @test "verify setGlobal_PIDFILE relative pidfile" {
     export PIDFILE="./run/fhem.pid"
     
@@ -73,7 +75,7 @@ teardown() {
 }
 
 
-### cd /opt/fhem && timeout 33 bats /code/pidfile.bats -f fhem.cfg; cat /tmp/log; ps aux ; 
+# bats test_tags=integrationTest
 @test "integration: absoulte pidfile set in fhem.cfg" {
     # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'
@@ -97,6 +99,7 @@ teardown() {
     assert_file_contains ${LOG_FILE} 'From the FHEM_GLOBALATTR environment: attr global pidfilename /run/lock/fhem.pid' grep
 }
 
+# bats test_tags=integrationTest
 @test "integration: absoulte pidfile set in environment" {
     # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'
@@ -121,6 +124,7 @@ teardown() {
     kill $ENTRY_PID # fail it the process already finished due to error!
 }
 
+# bats test_tags=integrationTest
 @test "integration: default pidfile" {
     # Container setup
     run bash -c 'cd $FHEM_DIR && initialContainerSetup > ${LOG_FILE}'

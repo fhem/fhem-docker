@@ -40,18 +40,20 @@ teardown() {
 }
 
 
-
+# bats test_tags=unitTest
 @test "printf info tests" { 
     run printfInfo 'test output'
     assert_output 'INFO: test output'
 }
 
+# bats test_tags=unitTest
 @test "printf debug tests" { 
     declare -i gEnableDebug=1
     run printfDebug 'test output'
     assert_output 'DEBUG: bats_merge_stdout_and_stderr: test output'
 }
 
+# bats test_tags=unitTest
 @test "check prependFhemDirPath()" {
 
     run bash -c 'OUT=$(prependFhemDirPath "") ; echo $OUT'
@@ -67,7 +69,7 @@ teardown() {
 
 }
 
-
+# bats test_tags=unitTest
 @test "check fhemUpdateInstall()" {
     export FHEM_DIR=${BATS_TEST_TMPDIR}"/fhemUpdateInstall"
     mkdir -p ${FHEM_DIR}/FHEM
@@ -80,6 +82,7 @@ teardown() {
     #rm -r ${FHEM_DIR}   
 }
 
+# bats test_tags=unitTest
 @test "ceck tailFileToConsoleStop() Logfile monitoring" {
     # mock some functions
     LOGFILE="fhem-%Y-%m-%d.log"
@@ -95,6 +98,7 @@ teardown() {
     echo $gCurrentTailPid | assert_output ""
 }
 
+# bats test_tags=unitTest
 @test "ceck tailFileToConsoleStart() Logfile monitoring" {
     # mock some functions
     function getFhemPidNum() {
@@ -121,7 +125,7 @@ teardown() {
     refute_output "hello"
 }
 
-
+# bats test_tags=integrationTest
 @test "Setup clean install FHEM" {
     
     run fhemCleanInstall
@@ -134,6 +138,7 @@ teardown() {
 
 }
 
+# bats test_tags=unitTest
 @test "verify is_absolutePath" {
     bats_require_minimum_version 1.5.0
     

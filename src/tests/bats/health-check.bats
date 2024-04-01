@@ -26,7 +26,7 @@ teardown() {
     pkill perl || true
 }
 
-
+# bats test_tags=unitTest
 @test "healthcheck without url file" {
     bats_require_minimum_version 1.5.0
 
@@ -34,6 +34,7 @@ teardown() {
     assert_output --partial "Cannot read url file"
 }
 
+# bats test_tags=unitTest
 @test "healthcheck without running fhem" {
     bats_require_minimum_version 1.5.0
 
@@ -45,7 +46,7 @@ teardown() {
     rm -r /tmp/health-check.urls
 }
 
-# bats test_tags=unitTest
+# bats test_tags=integrationTest
 @test "healthcheck with running fhem" {
     bats_require_minimum_version 1.5.0
 

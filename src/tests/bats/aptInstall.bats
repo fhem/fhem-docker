@@ -28,7 +28,7 @@ teardown() {
     DEBIAN_FRONTEND=noninteractive apt-get remove dummydroid -y && apt-get autoremove -y     # cleanup
 }
 
-
+# bats test_tags=integrationTest
 @test "check aptInstall() new package" {
     bats_require_minimum_version 1.5.0
 
@@ -44,6 +44,7 @@ teardown() {
 
 }
 
+# bats test_tags=integrationTest
 @test "check aptInstall() already installed package" {
     bats_require_minimum_version 1.5.0
     
@@ -55,6 +56,7 @@ teardown() {
     assert_output --partial "test message2"
 }   
 
+# bats test_tags=integrationTest
 @test "check aptInstall() twice executed" {
     bats_require_minimum_version 1.5.0
     
