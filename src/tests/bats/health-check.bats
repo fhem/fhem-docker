@@ -8,16 +8,25 @@ setup() {
     load '/opt/bats/test_helper/bats-mock/load.bash'  
 }
 
-teardown() {
-    rm -rf /opt/fhem/* 
-
-    # Sometimes perl or grep does not terminate, we will clean up
-    pkill perl || true
-    pkill grep || true
+setup_file() {
+    export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 }
 
+teardown_file() {
+    mkdir -p /fhem/FHEM
+    cp /tmp/fhem/FHEM/* /fhem/FHEM/ 
+}
 
+teardown() {
+    rm -rf ${FHEM_DIR}/* 
+    rm -rf /usr/src/fhem  # why is no cleanup in entry.sh?
 
+    # Sometimes perl or grep does not terminate, we will clean up
+    pkill entry.sh || true
+    pkill perl || true
+}
+
+# bats test_tags=unitTest
 @test "healthcheck without url file" {
     bats_require_minimum_version 1.5.0
 
@@ -25,6 +34,7 @@ teardown() {
     assert_output --partial "Cannot read url file"
 }
 
+# bats test_tags=unitTest
 @test "healthcheck without running fhem" {
     bats_require_minimum_version 1.5.0
 
@@ -36,16 +46,19 @@ teardown() {
     rm -r /tmp/health-check.urls
 }
 
+# bats test_tags=integrationTest
 @test "healthcheck with running fhem" {
     bats_require_minimum_version 1.5.0
 
-    run /entry.sh start > /dev/null 2> /dev/null &
-    sleep 5
+    cd ${FHEM_DIR} && /entry.sh start &> ${LOG_FILE} &
+    export ENTRY_PID=$!
+    sleep 6
     
+   
     while ! nc -vz localhost 8083 > /dev/null 2>&1 ; do
         # echo sleeping
         sleep 0.5
-        ((c++)) && ((c==50)) && echo "#fhem did not start" && break
+        ((c++)) && ((c==50)) && echo "# fhem did not start" && break
     done
     sleep 5
     assert_file_contains /tmp/health-check.urls "http://localhost:8083"
@@ -54,5 +67,5 @@ teardown() {
     assert_output --partial "http://localhost:8083/fhem/"
     assert_output --partial "OK"
 
-    pkill entry.sh
+    kill $ENTRY_PID # fail it the process already finished due to error!
 }
