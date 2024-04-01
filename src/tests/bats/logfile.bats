@@ -119,8 +119,8 @@ teardown() {
 
     # Prüfen ob LOGFILE korrekt angelegt wird
     /entry.sh start &>> ${LOG_FILE} &
-    sleep 6
     export ENTRY_PID=$!
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
     local realLogFile="$( date +"$logfile_FMT")"
     
     #cat ${LOG_FILE}
@@ -144,8 +144,8 @@ teardown() {
     
     # Prüfen ob LOGFILE korrekt angelegt wird
     /entry.sh start &>> ${LOG_FILE} &
-    sleep 6
     export ENTRY_PID=$!
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
     local realLogFile="$( date +"$logfile_FMT")"
     
     assert_file_contains ${LOG_FILE} "From the FHEM_GLOBALATTR environment: attr global logfile $logfile_FMT" grep
@@ -175,7 +175,7 @@ teardown() {
     # Prüfen ob LOGFILE korrekt angelegt wird
     /entry.sh start &>> ${LOG_FILE} &
     export ENTRY_PID=$!
-    sleep 6
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
     local realLogFile="$( date +"$logfile_FMT")"
     
     assert_file_contains ${LOG_FILE} "From the FHEM_GLOBALATTR environment: attr global logfile $logfile_FMT" grep 

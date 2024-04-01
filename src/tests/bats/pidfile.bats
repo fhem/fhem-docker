@@ -84,7 +84,7 @@ teardown() {
     
     # Prüfen ob PIDFILE korrekt angelegt wird
     /entry.sh start &>> ${LOG_FILE} &
-    sleep 6
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
     export ENTRY_PID=$!
     assert_file_contains ${FHEM_CFG_FILE}   '/run/lock/fhem.pid' grep
     assert_file_exists /run/lock/fhem.pid
@@ -107,9 +107,9 @@ teardown() {
     
     # Prüfen ob PIDFILE korrekt angelegt wird
     /entry.sh start &>> ${LOG_FILE} &
-    sleep 6
     export ENTRY_PID=$!
-
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
+    
     assert_file_contains ${LOG_FILE} 'From the FHEM_GLOBALATTR environment: attr global pidfilename /var/run/lock/fhem.pid' grep
     assert_file_not_contains ${FHEM_CFG_FILE} 'attr global pidfilename /var/run/lock/fhem.pid' grep   # pidfile should not be set in configfile
     assert_file_exists /var/run/lock/fhem.pid
@@ -130,7 +130,7 @@ teardown() {
 
     # Prüfen ob PIDFILE korrekt angelegt ist
     /entry.sh start &>> ${LOG_FILE} &
-    sleep 6
+    waitForTextInFile ${LOG_FILE} "Server started" 15                   # wait max 15 seconds
     export ENTRY_PID=$!
 
     assert_file_contains ${LOG_FILE} 'From the FHEM_GLOBALATTR environment: attr global pidfilename log/fhem.pid'
