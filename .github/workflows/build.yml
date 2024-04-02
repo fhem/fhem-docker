@@ -267,7 +267,8 @@ jobs:
 
       - name: Run bats unittetss
         run: |
-          docker run --rm -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -t . 
+          docker run --rm -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
+          docker run --rm --net=host -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
 
       - name: Build for test fhem, python and nodejs layer added for amd64 
         uses: docker/build-push-action@v5
