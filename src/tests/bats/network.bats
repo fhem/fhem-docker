@@ -17,8 +17,8 @@ setup() {
 }
 
 
-setup_file() {
-    #export BATS_TEST_TIMEOUT=60
+setup_file() {    
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::Network Tests' >&3
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 
     set -a
@@ -30,6 +30,7 @@ setup_file() {
     export CAP_I_FILE='/docker.container.cap.i'
     export HOSTNETWORK_FILE='/docker.hostnetwork'
     export PRIVILEDGED_FILE='/docker.privileged'
+    
 }
 
 teardown_file() {
@@ -40,6 +41,7 @@ teardown_file() {
     unset DOCKER_HOST
     unset DOCKER_PRIVILEGED
     cp  "${BATS_SUITE_TMPDIR}/hosts" "${HOSTS_FILE}"
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3
 }
 
 

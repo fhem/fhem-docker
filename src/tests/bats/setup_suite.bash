@@ -7,11 +7,13 @@ setup_suite() {
     mkdir -p /tmp/fhem/FHEM
     cp -r /fhem/FHEM/*  /tmp/fhem/FHEM/
 
+    wget  https://raw.githubusercontent.com/heinz-otto/fhemcl/master/fhemcl.sh -O /usr/local/bin/fhemcl.sh
+    chmod +x /usr/local/bin/fhemcl.sh
 }
 
 
 teardown_suite() {
-    sleep 0
+    rm /usr/local/bin/fhemcl.sh
     rm -r /tmp/fhem
 }
 

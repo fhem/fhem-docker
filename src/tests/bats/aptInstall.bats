@@ -10,6 +10,8 @@ setup() {
 
 
 setup_file() {
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::aptInstall Tests' >&3
+
     export BATS_TEST_TIMEOUT=60
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 
@@ -20,6 +22,8 @@ setup_file() {
 
 teardown_file() {
     sleep 0
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3    
+
 }
 
 

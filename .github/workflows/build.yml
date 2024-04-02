@@ -265,10 +265,14 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
-      - name: Run bats unittetss
+      - name: Run bats unit and integration tests
         run: |
-          docker run --rm -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
-          docker run --rm --net=host -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
+          echo '::group::network = bridge mode'
+          docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
+          echo '::endgroup::'
+          echo '::group::netwwork = hostmode'
+          docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
+          echo '::endgroup::'
 
       - name: Build for test fhem, python and nodejs layer added for amd64 
         uses: docker/build-push-action@v5
