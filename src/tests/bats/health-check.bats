@@ -63,6 +63,8 @@ teardown() {
         ((c++)) && ((c==50)) && echo "# fhem did not start" && break
     done
     sleep 5
+    #cat $FHEM_CFG_FILE
+    cat ${LOG_FILE}
     assert_file_contains /tmp/health-check.urls "http://localhost:8083"
 
     run timeout 15 /health-check.sh
