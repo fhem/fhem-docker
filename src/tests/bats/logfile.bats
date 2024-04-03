@@ -8,6 +8,8 @@ setup() {
 }
 
 setup_file() {
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::Logfile Tests' >&3
+
     export BATS_TEST_TIMEOUT=60
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
     export CONFIGTYPE="fhem.cfg"
@@ -15,15 +17,12 @@ setup_file() {
     set -a
     source /entry.sh
     set +a
-
-    wget  https://raw.githubusercontent.com/heinz-otto/fhemcl/master/fhemcl.sh -O /usr/local/bin/fhemcl.sh
-    chmod +x /usr/local/bin/fhemcl.sh
-
 }
+
 teardown_file() {
     sleep 0
     rm -f /tmp/log
-    rm /usr/local/bin/fhemcl.sh
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3 
 }
 
 teardown() {

@@ -9,12 +9,14 @@ setup() {
 }
 
 setup_file() {
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::Healtcheck Tests' >&3
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 }
 
 teardown_file() {
     mkdir -p /fhem/FHEM
     cp /tmp/fhem/FHEM/* /fhem/FHEM/ 
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3    
 }
 
 teardown() {

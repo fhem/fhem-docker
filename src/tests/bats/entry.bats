@@ -14,6 +14,7 @@ setup() {
 
 
 setup_file() {
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::function tests' >&3
     export BATS_TEST_TIMEOUT=60
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 
@@ -26,6 +27,7 @@ teardown_file() {
     sleep 0
     rm -f /tmp/log
     rm -rf /opt/fhem/*
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3    
 }
 
 

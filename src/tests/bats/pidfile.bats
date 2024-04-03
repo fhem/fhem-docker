@@ -5,19 +5,17 @@ setup() {
     load '/opt/bats/test_helper/bats-assert/load.bash'
     load '/opt/bats/test_helper/bats-file/load.bash'
     load '/opt/bats/test_helper/bats-mock/load.bash'
-    
 
     #export -f printfDebug
     #export -f printfInfo
     
-    
     # Sometimes perl or grep does not terminate, we will clean up
     #pkill tail || true
-    #pkill grep || true
-    
+    #pkill grep || true   
 }
 
 setup_file() {
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::aptInstall Tests' >&3
     export BATS_TEST_TIMEOUT=60
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
     export CONFIGTYPE="fhem.cfg"
@@ -25,15 +23,12 @@ setup_file() {
     set -a
     source /entry.sh
     set +a
-
-    wget  https://raw.githubusercontent.com/heinz-otto/fhemcl/master/fhemcl.sh -O /usr/local/bin/fhemcl.sh
-    chmod +x /usr/local/bin/fhemcl.sh
-
 }
+
 teardown_file() {
     sleep 0
     rm -f /tmp/log
-    rm /usr/local/bin/fhemcl.sh
+    [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3    
 }
 
 teardown() {

@@ -273,7 +273,7 @@ function collectDockerInfo() {
   export DOCKER_HOSTNETWORK=0
   if ip -4 addr show docker0 >/dev/null 2>&1 ; then
     export DOCKER_HOSTNETWORK=1
-    unset DOCKER_HOST
+    export DOCKER_HOST=127.0.0.1
     unset DOCKER_GW
   fi
   echo $DOCKER_HOSTNETWORK > /docker.hostnetwork
@@ -751,17 +751,7 @@ MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,umac-128-etm@op
 END_OF_INLINE
   fi
 
-  # Adding to local hosts file
-  local -A hostAddr
-  hostAddr[gateway.docker.internal]="${DOCKER_GW}"
-  hostAddr[host.docker.internal]="${DOCKER_HOST:-127.0.127.2}"
-  for theHost in "${!hostAddr[@]}" ; do
-    [ -n "$(dig +short -t a ${theHost}.)" ] && continue
-    [ -z "${hostAddr[$theHost]}" ] && continue
-    grep -q -F "${hostAddr[$theHost]}" /etc/hosts && continue
-    printfInfo "Adding ${theHost} to /etc/hosts \n"
-    echo -e "${hostAddr[$theHost]}\t${theHost}" >> /etc/hosts
-  done
+  addDockerHosts 
 
   # Key pinning for Docker host
   printfInfo "Pre-authorizing SSH to Docker host for user 'fhem' \n"
@@ -815,6 +805,39 @@ function prepareFhemShellEnv() {
 
   # Export some variables someone might want to use
   for theVar in $(env | awk -F= '/^NODE|^PERL|^PYTHON/{print $1}'); do export $theVar ; done
+}
+
+# Function add hosts entry to hosts file
+#
+# Usage: addDockerHosts
+# Global vars: DOCKER_GW
+#              DOCKER_HOST
+#  
+function addDockerHosts()
+{
+
+  printfInfo "Patching /etc/hosts file with DOCKER_HOST and DOCKER_GW'\n"
+
+  # Adding to local hosts file
+  local -A hostAddr
+  hostAddr[gateway.docker.internal]="${DOCKER_GW}"
+  hostAddr[host.docker.internal]="${DOCKER_HOST:-127.0.127.2}"
+  declare -a hostLst
+
+  # get changes and modify hosts file later
+  for theHost in "${!hostAddr[@]}" ; do
+    [ -n "$(dig +short -t a ${theHost}.)" ] && continue
+    [ -z "${hostAddr[$theHost]}" ] && continue
+    [ $DOCKER_HOSTNETWORK == 0 ] && grep -q -F "${hostAddr[$theHost]}" /etc/hosts && continue 
+    local hostEntry="${hostAddr[$theHost]}\t${theHost}"
+    hostLst+=("$hostEntry")
+  done
+  
+  # Write to hostsfle
+  for hostEntry in "${hostLst[@]}"; do
+    printfInfo "Adding ${hostEntry} to /etc/hosts \n"
+    echo -e "${hostEntry}" | tee -a "/etc/hosts"
+  done
 }
 
 
