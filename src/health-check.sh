@@ -56,6 +56,8 @@ echo "$$" > $PID_FILE
 
 while IFS= read -r fhemUrl; do
   fhemwebState=$( curl \
+                    --connect-timeout 5 \
+                    --max-time 8 \
                     --silent \
                     --insecure \
                     --output /dev/null \
