@@ -115,7 +115,6 @@ COPY cpanfile /usr/src/app/core-cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /usr/src/app/core-cpanfile
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
   fi
   cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
@@ -131,7 +130,6 @@ COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /usr/src/app/3rdparty-cpanfile
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
   fi
 
