@@ -283,7 +283,7 @@ jobs:
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
-          target: with-fhem-python-nodejs
+          target: with-fhem-extended-python-nodejs
           cache-from: | 
             type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}  
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
@@ -383,7 +383,7 @@ jobs:
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          target: with-fhem-python-nodejs
+          target: with-fhem-extended-python-nodejs
           cache-from: | 
             type=gha,scope=base-cpan_linux/arm64-${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/arm/v7-${{ matrix.dockerfile }}
