@@ -40,6 +40,25 @@ RUN <<EOF
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
+
+
+FROM base as base-cpan
+# Install all CPAN Modules, needed from FHEM and standard modules
+COPY cpanfile /usr/src/app/core-cpanfile
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
+  fi
+  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
+
+  rm -rf /root/.cpanm
+  rm -rf /root/.perl-cpm
+EOF
+
+
+
 RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
@@ -73,73 +92,12 @@ RUN <<EOF
         wget \
         libarchive-dev \
         libimlib2-dev \
-        python-dev \
         libusb-dev \
         bash \
         iproute2 
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
-
-# Add extended system layer
-RUN <<EOF
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-      alsa-utils \
-      dfu-programmer \
-      espeak \
-      ffmpeg \
-      lame \
-      libnmap-parser-perl \
-      libttspico-utils \
-      mp3wrap \
-      mpg123 \
-      mplayer \
-      nmap \
-      normalize-audio \
-      snmp \
-      snmp-mibs-downloader \
-      sox \
-      vorbis-tools \
-      gstreamer1.0-tools \
-      libsox-fmt-all \
-      libsodium-dev 
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
-EOF
-
-
-FROM base as base-cpan
-# Install all CPAN Modules, needed from FHEM and standard modules
-COPY cpanfile /usr/src/app/core-cpanfile
-# Fixup modules which do not work on all platforms and install afterwards
-RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /usr/src/app/core-cpanfile
-    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
-  fi
-  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
-
-  rm -rf /root/.cpanm
-  rm -rf /root/.perl-cpm
-EOF
-
-# Install all CPAN Modules, needed from 3rd party module repositorys 
-COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
-# Fixup modules which do not work on all platforms and install afterwards
-RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::SerialPort/d' /usr/src/app/3rdparty-cpanfile
-    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
-  fi
-
-  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global
-  rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm
-EOF
-
-
 
 #
 # Standard FHEM Layer
@@ -235,11 +193,61 @@ WORKDIR "/opt/fhem"
 ENTRYPOINT [ "/entry.sh" ]
 CMD [ "start" ]
 
+
+
+#
+# Add additional Perl and System layers
+#
+
+FROM with-fhem as with-fhem-extended
+
+
+# Add extended system layer
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libnmap-parser-perl \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      nmap \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools \
+      libsox-fmt-all \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+# Install all CPAN Modules, needed from 3rd party module repositorys 
+COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
+  fi
+
+  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global
+  rm -rf /root/.cpanm 
+  rm -rf /root/.perl-cpm
+EOF
+
+
 #
 # Add additional Python layer
 #
 
-FROM with-fhem as with-fhem-python
+FROM with-fhem-extended as with-fhem-extended-python
 
 RUN <<EOF 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -260,7 +268,7 @@ EOF
 #
 # Add nodejs app layer
 #
-FROM with-fhem-python as with-fhem-python-nodejs
+FROM with-fhem-extended-python as with-fhem-extended-python-nodejs
 
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
