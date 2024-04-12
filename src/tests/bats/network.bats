@@ -17,7 +17,8 @@ setup() {
 }
 
 
-setup_file() {    
+setup_file() {   
+    export BATS_TEST_TIMEOUT=60
     [ -z ${GITHUB_RUN_ID+x} ] || echo '::group::Network Tests' >&3
     export LOG_FILE="${BATS_SUITE_TMPDIR}/log"
 

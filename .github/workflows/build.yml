@@ -266,6 +266,7 @@ jobs:
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
       - name: Run bats unit and integration tests
+        timeout-minutes: 25
         run: |
           echo '::group::network = bridge mode'
           docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
