@@ -32,7 +32,7 @@ Updated versions based on
         docker pull ghcr.io/fhem/fhem-docker:4-bullseye
         docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
 
-If you are using 3rd Party modules which are not available on the FHRM svn repository, you may need this image, because it has more perl modules preinstalled.
+If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
 
 ##### Not updated anymore since Jan 2024
 
@@ -60,7 +60,7 @@ If you are using 3rd Party modules which are not available on the FHRM svn repos
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-threaded-bullseye
 
-If you are using only Modules which are probided via FHEM svn repository, you mostly can use this smaller image.
+If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
 
 ##### Not updated anymore since Jan 2024
 
