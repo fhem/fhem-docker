@@ -16,8 +16,6 @@
       ]
     },
     {
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["perl"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     }
