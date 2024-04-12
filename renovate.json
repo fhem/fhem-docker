@@ -6,9 +6,14 @@
   ],
   "packageRules": [
     {
+      "groupName": "perlImages",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
-      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
+      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
+      "matchPackagePatterns": [
+        "perl"
+      ],
+      "automerge": true
     }
   ]
 }
