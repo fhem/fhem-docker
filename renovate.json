@@ -12,7 +12,10 @@
       "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
       "matchPackagePatterns": [
         "perl"
-      ],
+      ]
+    },
+    {
+      "matchUpdateTypes": ["patch", "pin", "digest"],
       "automerge": true
     }
   ]
