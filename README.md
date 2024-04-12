@@ -18,7 +18,7 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 ### From Github container registry
 
-#### Image with serval Services installed
+#### Image with serval services installed
 
 Updated versions based on 
 - debian bullseye 
@@ -31,6 +31,8 @@ Updated versions based on
 
         docker pull ghcr.io/fhem/fhem-docker:4-bullseye
         docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
+
+If you are using 3rd Party modules which are not available on the FHRM svn repository, you may need this image, because it has more perl modules preinstalled.
 
 ##### Not updated anymore since Jan 2024
 
@@ -57,6 +59,8 @@ Updated versions based on
 
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
         docker pull ghcr.io/fhem/fhem-minimal-docker:4-threaded-bullseye
+
+If you are using only Modules which are probided via FHEM svn repository, you mostly can use this smaller image.
 
 ##### Not updated anymore since Jan 2024
 
@@ -133,7 +137,9 @@ With this, you will create a new image, and install any tool which you additiona
 
 See more examples in our docker-compose.yml file.
 
-#### till cersion 3 (deprecated)
+Important: If you need additional Perl CPAN Modules, you must install them directly from CPAN and not via apt!
+
+#### till version 3 (deprecated)
 
 Don't do this unless you really know what this does!
 You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
@@ -240,7 +246,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     -e LOGFILE=./log/fhem-%Y-%m-%d.log
     ```
 
-* Change FHEM local Telnet port for health check and container restart handling:
+* Change FHEM local Telnet port for health check and container restart handling: (deprecated since v4)
     To set a different Telnet port for local connection during health check and container restart (default is 7072):
 
     ```shell
@@ -344,7 +350,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
     Note that some essential global configuration that is affecting FHEM during startup is being enforced using FHEM\_GLOBALATTR environment variable (nofork=0 and updateInBackground=1; logfile and pidfilename accordingly, based on environment variables LOGFILE and PIDFILE). These settings cannot be changed during runtime in FHEM and any setting that might be in your configDB configuration will be overwritten the next time you save your configuration. It might happen that FHEM will show you some warnings as part of the "message of the day" (motd attribute), stating that an attribute is read-only. That's okay, just clear that message and save your FHEM configuration at least once so the configuration is back in sync.
 
-    Last but not least you need to make sure the telnet device configuration [described above](#role-of-the-telnet-device-in-fhem) is correct.
+    Only for v3 and lower: Last but not least you need to make sure the telnet device configuration [described above](#role-of-the-telnet-device-in-fhem) is correct. 
 
 * Starting the demo:
     To start the demo environment:
