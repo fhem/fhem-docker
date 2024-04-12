@@ -13,7 +13,8 @@
       "matchPackagePatterns": [
         "perl"
       ],
-      "automerge": true
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch"]
     }
   ]
 }
