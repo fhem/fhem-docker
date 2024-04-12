@@ -4,6 +4,7 @@
     "config:recommended",
     "docker:pinDigests"
   ],
+  "stabilityDays": 1,
   "packageRules": [
     {
       "groupName": "perlImages",
@@ -13,7 +14,11 @@
       "matchPackagePatterns": [
         "perl"
       ],
-      "matchUpdateTypes": ["minor", "patch"],
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "automerge": true
     }
   ]
