@@ -4,7 +4,6 @@
     "config:recommended",
     "docker:pinDigests"
   ],
-  "stabilityDays": 1,
   "packageRules": [
     {
       "groupName": "perlImages",
@@ -13,10 +12,11 @@
       "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
       "matchPackagePatterns": [
         "perl"
-      ]
+      ],
+      "minimumReleaseAge": 1
     },
     {
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
       "automerge": true
     }
   ]
