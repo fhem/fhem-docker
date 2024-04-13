@@ -6,15 +6,15 @@
   ],
   "packageRules": [
     {
-      "groupName": "perlImages",
+      "groupName": "perlImagesMinor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
-      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
-      "matchPackagePatterns": [
-        "perl"
-      ]
+      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
     },
     {
+      "groupName": "perlImagesPatch",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
       "matchUpdateTypes": ["patch", "pin", "digest"],
       "automerge": true
     }
