@@ -50,8 +50,8 @@ RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
   fi
-  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global
+  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global --configure-timeout=180
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global --configure-timeout=180
 
   rm -rf /root/.cpanm
   rm -rf /root/.perl-cpm
@@ -237,7 +237,7 @@ RUN <<EOF
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
   fi
 
-  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global
+  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global --configure-timeout=180
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm
 EOF
