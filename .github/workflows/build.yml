@@ -45,7 +45,7 @@ jobs:
           mapfile -t REPO_URLS < <( scripts/get-FHEMRepositorys.sh | awk '{print $4}' && printf '\0' )
           mkdir ./3rdparty
           cd ./3rdparty
-          printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone "{}" "$(basename $(dirname {}))/$(basename {})"; '
+          printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone --depth 1 "{}" "$(basename $(dirname {}))/$(basename {})"; '
 
       - name: Init PPI Cache 
         uses: actions/cache@v4
