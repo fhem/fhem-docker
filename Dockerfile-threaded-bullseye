@@ -4,6 +4,7 @@
 #
 FROM perl:5.36.3-threaded-bullseye@sha256:e9b736d0e4c080f7e8defd8f350bb80af752f9517a2d65bd68d8426e9bbe2a6f as base
 
+
 ARG TARGETPLATFORM
 
 ENV LANG=en_US.UTF-8 \
@@ -28,7 +29,9 @@ RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         ca-certificates \
         gnupg \
-        locales
+        locales \
+        libusb-dev \
+        python3-dev  
     LC_ALL=C c_rehash 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
     echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
@@ -39,6 +42,7 @@ RUN <<EOF
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
+
 
 
 #
@@ -104,7 +108,6 @@ RUN <<EOF
   rm -rf /root/.perl-cpm/
   rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
-
 
 #
 # Standard FHEM Layer
@@ -200,12 +203,44 @@ WORKDIR "/opt/fhem"
 ENTRYPOINT [ "/entry.sh" ]
 CMD [ "start" ]
 
+
+
 #
 # Add additional Perl and System layers
 #
 
 FROM with-fhem as with-fhem-extended
 
+
+# Add extended system layer
+RUN <<EOF
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libnmap-parser-perl \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      nmap \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools \
+      libsox-fmt-all \
+      libbluetooth-dev \
+      libi2c-dev \
+      libgd-dev \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
 
 # Install all CPAN Modules, needed from 3rd party module repositorys 
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
@@ -220,55 +255,6 @@ RUN <<EOF
   rm -rf /root/.perl-cpm
 EOF
 
-
-#
-# Add additional Python layer
-#
-
-FROM with-fhem-extended as with-fhem-extended-python
-
-RUN <<EOF 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-      python3 \
-      python3-dev \
-      python3-pip \
-      python3-setuptools \
-      python3-wheel \
-      python3-pychromecast \
-      speedtest-cli \
-      youtube-dl \
-    ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli 
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* 
-EOF
-
-#
-# Add nodejs app layer
-#
-FROM with-fhem-extended-python as with-fhem-extended-python-nodejs
-
-ARG IMAGE_LAYER_NODEJS_EXT="0"
-
-RUN <<EOF
-    mkdir -p /tmp/keyrings 
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
-    echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-    apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install nodejs -y 
-    npm install -g npm@latest
-    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then 
-           npm install -g --unsafe-perm --production \
-            alexa-cookie2 \
-            alexa-fhem \
-            gassistant-fhem \
-            homebridge \
-            homebridge-fhem \
-            tradfri-fhem \
-    ; fi 
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
-EOF
 
 #
 # Add additional Python layer
