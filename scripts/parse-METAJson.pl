@@ -30,9 +30,33 @@ sub merge_hashes {
     return $hash1;
 }
 
+sub filter_nested_hashref {
+    my $hashref = shift;
+    my $filter_value = shift;
+
+    foreach my $key (keys %{$hashref}) {
+        #print "verify $key \n";
+
+        if (ref $hashref->{$key} eq 'HASH') {
+            #print "$key->";
+            $hashref->{$key} = filter_nested_hashref($hashref->{$key}, $filter_value);
+            
+            #print Dumper $hashref->{$key};
+        } elsif ($key =~ $filter_value ) {
+            #print "\n Deleting $key";
+            delete $hashref->{$key};
+            #print "... successfull " if ( !exists $hashref->{$key} )
+        }
+    }
+    return $hashref;
+}
 
 #my $newCPANFile;
 # Alle Perl-Moduldateien im Verzeichnisbaum finden
+#print Dumper \%ENV;
+my $FHEM_MODULES = $ENV{'FHEM_MODULES'};
+my $regex=qr/^(?:FHEM|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)/;
+print $regex;
 foreach my $directory (@directories) {
 
 
@@ -86,14 +110,22 @@ foreach my $directory (@directories) {
 
        
         my $cpanfile_requirements = $cpanfile->prereq_specs;            # requirements from our cpanfile
+        
+        
+        
         my $module_requirements = $MetaHash->{'prereqs'};               # requirements from the processed file
+        $module_requirements = filter_nested_hashref($module_requirements, $regex);
+        #print Dumper $module_requirements;
+
+        
+        
         # print Dumper $cpanfile_requirements;                
         # print Dumper $module_requirements;                
         
         # merge requirements together
         my $struct = merge_hashes($cpanfile_requirements, $module_requirements);
-        # print Dumper $struct;              
-        
+        #print Dumper $struct;        
+
         $cpanfile = Module::CPANfile->from_prereqs(  $struct );         # update cpanfile object
         print qq[$filename was processed successfull\n];
     }
