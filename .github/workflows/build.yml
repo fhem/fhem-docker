@@ -59,7 +59,8 @@ jobs:
       - name: "create private modules filter regex"    
         run: |
           echo "FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk)"  >> $GITHUB_ENV
-          echo "FHEM_MODULES="^(FHEM|Win32::|lib$|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|${FHEM_MODULES})"" >> $GITHUB_ENV
+          echo FHEM_MODULES="^(FHEM|Win32::|lib$|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|${FHEM_MODULES})" >> $GITHUB_ENV
+
 
       - name: create cpanfile from local cloned 3rdparty repositories
         run: | 
