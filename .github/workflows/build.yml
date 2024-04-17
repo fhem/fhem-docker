@@ -21,9 +21,11 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+    
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   get_dependencies:
+    # Min Version for the prereq scanner to ignore core modules
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
@@ -32,6 +34,10 @@ jobs:
       - name: Prepare SVN repository checkout and variables
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
+
+      - name: Remove contrib from dependency scan
+        run: |
+          rm -r ./src/fhem/trunk/fhem/contrib
 
       - uses: shogo82148/actions-setup-perl@v1
         with:
@@ -55,16 +61,17 @@ jobs:
           restore-keys: |
             PPI-SVN-
           key: PPI-SVN-${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
-    
+
+  
       - name: "create private modules filter regex"    
         run: |
-          echo "FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk)"  >> $GITHUB_ENV
-          echo FHEM_MODULES="^(FHEM|Win32::|lib$|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|${FHEM_MODULES})" >> $GITHUB_ENV
-
+          FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk/fhem)
+          FHEM_MODULES_LIST="^(FHEM|META$|Digest:CRC$|Win32::|lib$|YAF$|OW$|RTypes$|RRDs$|Slim::|HM485d::HM485_Protocol$|lib::HM485::|lib::OWNet$|longer$|myCtrlHAL$|fhconverter$|TradfriUtils$|carp$|encode$|fhwebsocket$|Device::LIFX|ABFALL_|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|${FHEM_MODULES})" 
+          echo "FHEM_MODULES=${FHEM_MODULES_LIST}" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories
         run: | 
-          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "$FHEM_MODULES" ./3rdparty
+          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
           
       - uses: actions/upload-artifact@v4
@@ -76,8 +83,8 @@ jobs:
       - name: create cpanfile from FHEM svn dependencies
         run: | 
           rm cpanfile
-          scan-perl-prereqs-nqlite -save_cpanfile -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk
-          perl scripts/parse-METAJson.pl ./src/fhem/trunk
+          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
+          perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
 
       - uses: actions/upload-artifact@v4
         with:

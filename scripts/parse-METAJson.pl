@@ -55,7 +55,7 @@ sub filter_nested_hashref {
 # Alle Perl-Moduldateien im Verzeichnisbaum finden
 #print Dumper \%ENV;
 my $FHEM_MODULES = $ENV{'FHEM_MODULES'};
-my $regex=qr/^(?:FHEM|Win32::|YAF$|OW$|RTypes$|RRDs$|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|$FHEM_MODULES)/;
+my $regex=qr/$FHEM_MODULES/;
 print $regex;
 foreach my $directory (@directories) {
 
