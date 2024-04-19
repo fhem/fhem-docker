@@ -8,7 +8,8 @@ use CPAN::Meta::Merge;
 use Scalar::Util qw/blessed/;
 use File::Find::Rule;
 use JSON;
-
+use Perl::PrereqScanner::NotQuiteLite::App;
+ 
 my @directories = @ARGV;
 
 #my $filename = @ARGV # path must be provided to our script
@@ -84,47 +85,53 @@ foreach my $directory (@directories) {
             }
         }
         close($fh);
+        
+        my $module_requirements;
+        
         if (!@JSONlines)
         {
             print "aborting, no META.json found\n";
             next;
-        }
 
-        $jsonString = join '', @JSONlines;
-        
-
-        ## Script breaks here, because we may have no version field which is requred to pass here
-        
-        my $MetaHash;
-        eval {
-            $MetaHash = from_json($jsonString) ;
-            1;
-        } or do {
-                print q[[ failed ]]. $@;
-                next;
-        };
-
+            # my $app = Perl::PrereqScanner::NotQuiteLite::App->new(
+            #     parsers => [qw/:installed/],
+            #     suggests => 1,
+            #     # recommends => 1,
+            #     # perl_minimum_version => 1,
+                  exclude_core => 1,
+            #     private_re => $regex,                
+            # );
+            # my $scannedprereqs = $app->run($filename);
+            # $module_requirements = $scannedprereqs->{'prereqs'};
+            
+        } else { 
+            $jsonString = join '', @JSONlines;
+            ## Script breaks here, because we may have no version field which is requred to pass here
+            
+            my $MetaHash;
+            eval {
+                $MetaHash = from_json($jsonString) ;
+                1;
+            } or do {
+                    print q[[ failed ]]. $@;
+                    next;
+            };
+            # requirements from the processed file
+            $module_requirements = filter_nested_hashref($MetaHash->{'prereqs'}, $regex);
+        }       
         
 
         # fix missing version information
 
-       
         my $cpanfile_requirements = $cpanfile->prereq_specs;            # requirements from our cpanfile
-        
-        
-        
-        my $module_requirements = $MetaHash->{'prereqs'};               # requirements from the processed file
-        $module_requirements = filter_nested_hashref($module_requirements, $regex);
-        #print Dumper $module_requirements;
 
-        
-        
-        # print Dumper $cpanfile_requirements;                
+        print Dumper $module_requirements;
+        print Dumper $cpanfile_requirements;                
         # print Dumper $module_requirements;                
         
         # merge requirements together
         my $struct = merge_hashes($cpanfile_requirements, $module_requirements);
-        #print Dumper $struct;        
+        print Dumper $struct;        
 
         $cpanfile = Module::CPANfile->from_prereqs(  $struct );         # update cpanfile object
         print qq[$filename was processed successfull\n];

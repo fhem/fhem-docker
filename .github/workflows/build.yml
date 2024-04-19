@@ -37,7 +37,7 @@ jobs:
 
       - name: Remove contrib from dependency scan
         run: |
-          rm -r ./src/fhem/trunk/fhem/contrib
+          rm -r ./src/fhem/trunk/fhem/contrib || true
 
       - uses: shogo82148/actions-setup-perl@v1
         with:
@@ -181,8 +181,8 @@ jobs:
           push: false
           target: base-cpan
           cache-from: | 
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}  
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           tags: basecpanonly
     
