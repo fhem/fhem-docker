@@ -9,6 +9,7 @@ FHEM
 # Meta isn't a package, it resided in main
 META$
 meta$
+Meta$
 # Wrog specified in a SIGNALduino Module. Update in SVN outstanding
 Digest:CRC$
 # We build only for linux, so we remove the WIN32, because they are not bound to a feature
