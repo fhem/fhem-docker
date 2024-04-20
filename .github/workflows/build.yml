@@ -65,7 +65,7 @@ jobs:
       - name: "create private modules filter regex, to not install them from CPAN"    
         run: |
           DYNAMIC_EXCLUDE=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk/fhem)
-          STATIC_EXCLUDE=$(grep -v '^#' scripts/excluded_packages.txt | tr '\n' '|' | sed 's/|\{2,\}/|/g' | sed 's/.$//')
+          STATIC_EXCLUDE=$(grep -v '^#' scripts/excluded_packages.txt | tr '\n' '|'  | sed 's/^|//' | sed 's/|\{2,\}/|/g' | sed 's/.$//')
           echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories

@@ -125,8 +125,8 @@ foreach my $directory (@directories) {
 
         my $cpanfile_requirements = $cpanfile->prereq_specs;            # requirements from our cpanfile
 
-        print Dumper $module_requirements;
-        print Dumper $cpanfile_requirements;                
+        # print Dumper $module_requirements;
+        # print Dumper $cpanfile_requirements;                
         # print Dumper $module_requirements;                
         
         # merge requirements together
