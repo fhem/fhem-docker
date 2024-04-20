@@ -9,7 +9,8 @@ use Scalar::Util qw/blessed/;
 use File::Find::Rule;
 use JSON;
 use Perl::PrereqScanner::NotQuiteLite::App;
- 
+use Module::CoreList;
+
 my @directories = @ARGV;
 
 #my $filename = @ARGV # path must be provided to our script
@@ -43,11 +44,12 @@ sub filter_nested_hashref {
             $hashref->{$key} = filter_nested_hashref($hashref->{$key}, $filter_value);
             
             #print Dumper $hashref->{$key};
-        } elsif ($key =~ $filter_value ) {
+        } elsif ( $key =~ $filter_value || Module::CoreList->is_core( $key,undef,5.36) )
+        {
             #print "\n Deleting $key";
             delete $hashref->{$key};
             #print "... successfull " if ( !exists $hashref->{$key} )
-        }
+        } 
     }
     return $hashref;
 }
@@ -55,7 +57,7 @@ sub filter_nested_hashref {
 #my $newCPANFile;
 # Alle Perl-Moduldateien im Verzeichnisbaum finden
 #print Dumper \%ENV;
-my $FHEM_MODULES = $ENV{'FHEM_MODULES'};
+my $FHEM_MODULES = $ENV{'FHEM_MODULES'} // "";
 my $regex=qr/$FHEM_MODULES/;
 print $regex;
 foreach my $directory (@directories) {
@@ -131,6 +133,7 @@ foreach my $directory (@directories) {
         
         # merge requirements together
         my $struct = merge_hashes($cpanfile_requirements, $module_requirements);
+        print "struct: ";
         print Dumper $struct;        
 
         $cpanfile = Module::CPANfile->from_prereqs(  $struct );         # update cpanfile object
@@ -141,6 +144,7 @@ foreach my $directory (@directories) {
 # save our new cpanfile
 if (defined $cpanfile)
 {
+    #print Dumper $cpanfile;        
     $cpanfile->save('cpanfile');
     print qq[\n\nResult: cpanfile was saved\n];
 }
