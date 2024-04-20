@@ -61,13 +61,12 @@ jobs:
           restore-keys: |
             PPI-SVN-
           key: PPI-SVN-${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
-
   
-      - name: "create private modules filter regex"    
+      - name: "create private modules filter regex, to not install them from CPAN"    
         run: |
-          FHEM_MODULES=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk/fhem)
-          FHEM_MODULES_LIST="^(FHEM|META$|Digest:CRC$|Win32::|lib$|YAF$|OW$|RTypes$|RRDs$|Slim::|HM485d::HM485_Protocol$|lib::HM485::|lib::OWNet$|longer$|myCtrlHAL$|fhconverter$|TradfriUtils$|carp$|encode$|fhwebsocket$|Device::LIFX|ABFALL_|SetExtensions$|HttpUtils$|UPnP::ControlPoint$|FritzBoxUtils$|configDB$|RESIDENTStk$|SHC_datafields$|TcpServerUtils$|Blocking$|uConv$|ZWLib$|UpNp:Common|HttpUtils$|Unit$|GD$|DevIo$|AttrTemplate$|ProtoThreads$|${FHEM_MODULES})" 
-          echo "FHEM_MODULES=${FHEM_MODULES_LIST}" >> "$GITHUB_ENV"
+          DYNAMIC_EXCLUDE=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk/fhem)
+          STATIC_EXCLUDE=$(grep -v '^#' scripts/excluded_packages.txt | tr '\n' '|' | sed 's/|\{2,\}/|/g' | sed 's/.$//')
+          echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories
         run: | 
@@ -181,7 +180,7 @@ jobs:
           push: false
           target: base-cpan
           cache-from: | 
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}  
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           tags: basecpanonly
