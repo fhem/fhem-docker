@@ -98,7 +98,7 @@ foreach my $directory (@directories) {
             #     suggests => 1,
             #     # recommends => 1,
             #     # perl_minimum_version => 1,
-                  exclude_core => 1,
+            #      exclude_core => 1,
             #     private_re => $regex,                
             # );
             # my $scannedprereqs = $app->run($filename);
