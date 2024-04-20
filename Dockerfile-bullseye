@@ -95,7 +95,13 @@ RUN <<EOF
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
+#
 # Fixup modules which do not work on all platforms and install afterwards
+# Install Modules from CPAN
+#
+
+# JSON::XS isn't marked as compatible with Persl 5.36, we prevent some output
+ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
@@ -113,16 +119,8 @@ EOF
 #
 FROM base-cpan as with-fhem
 
-# Install base environment, cache is invalidated here, because we set a BUILD_DATE Variable which changes every run.
+# Install base environment and FHEM Docker module
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
-COPY src/find-* /usr/local/bin/
-
-# Add FHEM app layer
-# Note: Manual checkout is required if build is not run by Github Actions workflow:
-#   svn co https://svn.fhem.de/fhem/trunk ./src/fhem/trunk
-#COPY src/fhem/trunk/fhem/ /fhem/
-#COPY src/FHEM/trunk/fhem/* /fhem/
-
 COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM/
 
 # FHEM specific ENVs
