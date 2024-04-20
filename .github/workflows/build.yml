@@ -72,6 +72,9 @@ jobs:
         run: | 
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
+          echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
+          cat cpanfile >> $GITHUB_STEP_SUMMARY
+
           
       - uses: actions/upload-artifact@v4
         with:
@@ -84,6 +87,8 @@ jobs:
           rm cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
+          echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
+          cat cpanfile >> $GITHUB_STEP_SUMMARY
 
       - uses: actions/upload-artifact@v4
         with:
