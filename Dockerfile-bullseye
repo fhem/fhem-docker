@@ -106,7 +106,6 @@ RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
   fi
-  cpm install --without-test --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global --configure-timeout=360 --workers=2
   cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global --configure-timeout=360 --workers=2
 
   rm -rf /root/.cpanm 
