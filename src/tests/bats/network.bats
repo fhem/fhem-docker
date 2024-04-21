@@ -141,13 +141,14 @@ teardown() {
 
 # bats test_tags=hostMode,unitTest
 @test "check DOCKER_GW in ${HOSTS_FILE} with hostMode" {
+    bats_require_minimum_version 1.5.0
+    
     collectDockerInfo
+    run -0 addDockerHosts
     
     assert_equal "${DOCKER_GW}" ""
-
-    run addDockerHosts
+    refute_output --partial "Adding gateway.docker.internal"
     
     cat "${HOSTS_FILE}" 
-    refute_output --partial "Adding gateway.docker.internal"
     assert_file_not_contains ${HOSTS_FILE} "${DOCKER_GW}.*gateway.docker.internal" grep
 }
