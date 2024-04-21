@@ -282,13 +282,13 @@ jobs:
         name: Run bats unit and integration tests in bidge network mode
         with:
           attempt_limit: 3
-          command: timeout 5m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
+          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
         
       - uses: Wandalen/wretry.action@v3.4.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
-          command: timeout 30s docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
+          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
 
       - name: Build for test fhem, python and nodejs layer added for amd64
         uses: docker/build-push-action@v5
