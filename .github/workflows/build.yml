@@ -326,7 +326,7 @@ jobs:
           echo -n "."; 
           done;
           echo -e "\n"
-          docker exec ${CONTAINER} /bin/bash -c 'prove --recurse /opt/fhem/t/FHEM' || true
+          docker exec ${CONTAINER} /bin/bash -c "prove --exec 'perl fhem.pl -t' -I FHEM --recurse /opt/fhem/t/FHEM/" || true
           docker container rm $CONTAINER --force --volumes
 
   published_build:
