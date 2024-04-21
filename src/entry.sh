@@ -15,7 +15,6 @@
 set -u            # Make use of unbound variables an error
 set -o pipefail   # Distribute an error exit status through the whole pipe
 
-
 #--- Constants -------------------------------------------------------------------------------------------------------
 
 declare -r FHEM_DIR="/opt/fhem"
@@ -820,8 +819,9 @@ function addDockerHosts()
 
   # Adding to local hosts file
   local -A hostAddr
-  hostAddr[gateway.docker.internal]="${DOCKER_GW}"
-  hostAddr[host.docker.internal]="${DOCKER_HOST:-127.0.127.2}"
+  [ -n "${DOCKER_GW-}" ] && hostAddr[gateway.docker.internal]="${DOCKER_GW}"
+  [ -n "${DOCKER_HOST-}" ] && hostAddr[host.docker.internal]="${DOCKER_HOST:-127.0.127.2}"
+  
   declare -a hostLst
 
   # get changes and modify hosts file later
