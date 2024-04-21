@@ -217,7 +217,6 @@ RUN <<EOF
       espeak \
       ffmpeg \
       lame \
-      libnmap-parser-perl \
       libttspico-utils \
       mp3wrap \
       mpg123 \
