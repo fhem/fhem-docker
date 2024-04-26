@@ -9,12 +9,14 @@
       "groupName": "perlImagesMinor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
+      "minimumReleaseAge": "14 days",
       "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
     },
     {
       "groupName": "perlImagesPatch",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
+      "minimumReleaseAge": "7 days",
       "matchUpdateTypes": ["patch", "pin", "digest"],
       "automerge": true
     }
