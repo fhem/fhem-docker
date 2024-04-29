@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-bullseye@sha256:e341d89b87dbf8caf8a3e33e8d606e1cb4f975d43553a083040fae3402d078c3 as base
+FROM perl:5.36.3-slim-bullseye as base
 
 ARG TARGETPLATFORM
 
@@ -28,9 +28,7 @@ RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         ca-certificates \
         gnupg \
-        locales \
-        libusb-dev \
-        python3-dev  
+        locales 
     LC_ALL=C c_rehash 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
     echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
@@ -48,9 +46,40 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM base as base-cpan 
+FROM perl:5.36.3-bullseye as build-cpan 
 
 COPY cpanfile /usr/src/app/core-cpanfile
+
+# Install Packages used for building cpan modules:
+RUN <<EOF
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      libusb-dev \
+      python3-dev  
+  LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+#
+# Fixup modules which do not work on all platforms and install afterwards
+# Install Modules from CPAN
+#
+
+# JSON::XS isn't marked as compatible with Perl 5.36, we prevent some output
+ENV PERL_CANARY_STABILITY_NOPROMPT=1 
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
+  fi
+  
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc)
+
+  rm -rf /root/.cpanm 
+  rm -rf /root/.perl-cpm/
+  rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+
+FROM base as base-cpan 
 
 RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -95,28 +124,14 @@ RUN <<EOF
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
-#
-# Fixup modules which do not work on all platforms and install afterwards
-# Install Modules from CPAN
-#
-
-# JSON::XS isn't marked as compatible with Persl 5.36, we prevent some output
-ENV PERL_CANARY_STABILITY_NOPROMPT=1 
-RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
-  fi
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --global --configure-timeout=360 --workers=2
-
-  rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm/
-  rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
-EOF
+COPY --from=build-cpan /usr/src/app/local/lib/perl5 /usr/src/app/local/lib/perl5
 
 #
 # Standard FHEM Layer
 #
 FROM base-cpan as with-fhem
+
+ENV PERL5LIB=/usr/src/app/local/lib/perl5
 
 # Install base environment and FHEM Docker module
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
@@ -246,7 +261,7 @@ RUN <<EOF
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
   fi
 
-  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --global --configure-timeout=360 --workers=2
+  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc)
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm
 EOF
