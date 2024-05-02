@@ -39,7 +39,6 @@ function trapExitHandler() {
   else
     echo -n "ERROR ($gSuccessCnt successful,  $gFailedCnt failed)" > $RESULT_FILE
   fi
-  rm -f $PID_FILE
   exit $exitVal
 }
 
@@ -47,35 +46,37 @@ function trapExitHandler() {
 #====================================================================================================================-
 #--- Main script -----------------------------------------------------------------------------------------------------
 
-[ -e $PID_FILE ] && { echo "Instance already running, aborting another one" ; exit 1; } # run before installing traphandler!
-trap trapExitHandler SIGTERM EXIT
 
-echo "$$" > $PID_FILE
+(
+  trap trapExitHandler SIGTERM EXIT
+  
+  # Wait 3 seconds for lock on $PID_FILE (fd 212), exit on failure
+  flock -x -w 3 212 || { echo "Instance already running, aborting another one" ; exit 1; } 
 
-[ -e $URL_FILE ] || { gRetMessage="Cannot read url file $URL_FILE" ; exit 1; }
+  [ -e $URL_FILE ] || { gRetMessage="Cannot read url file $URL_FILE" ; exit 1; }
+  while IFS= read -r fhemUrl; do
+    fhemwebState=$( curl \
+                      --connect-timeout 5 \
+                      --max-time 8 \
+                      --silent \
+                      --insecure \
+                      --output /dev/null \
+                      --write-out "%{http_code}" \
+                      --user-agent 'FHEM-Docker/1.0 Health Check' \
+                      "${fhemUrl}" )
+    if [ $? -ne 0 ] ||
+      [ -z "${fhemwebState}" ] ||
+      [ "${fhemwebState}" == "000" ] ||
+      [ "${fhemwebState:0:1}" == "5" ]; then
+      gRetMessage="$gRetMessage $fhemUrl: FAILED ($fhemwebState);"
+      gRetVal=1
+      ((gFailedCnt++))
+    else
+      gRetMessage="$gRetMessage $fhemUrl: OK;"
+      ((gSuccessCnt++))
+    fi
+  done < $URL_FILE
 
-while IFS= read -r fhemUrl; do
-  fhemwebState=$( curl \
-                    --connect-timeout 5 \
-                    --max-time 8 \
-                    --silent \
-                    --insecure \
-                    --output /dev/null \
-                    --write-out "%{http_code}" \
-                    --user-agent 'FHEM-Docker/1.0 Health Check' \
-                    "${fhemUrl}" )
-  if [ $? -ne 0 ] ||
-     [ -z "${fhemwebState}" ] ||
-     [ "${fhemwebState}" == "000" ] ||
-     [ "${fhemwebState:0:1}" == "5" ]; then
-    gRetMessage="$gRetMessage $fhemUrl: FAILED ($fhemwebState);"
-    gRetVal=1
-    ((gFailedCnt++))
-  else
-    gRetMessage="$gRetMessage $fhemUrl: OK;"
-    ((gSuccessCnt++))
-  fi
-done < $URL_FILE
-
-exit $gRetVal
+  exit $gRetVal
+) 212>${PID_FILE}
 
