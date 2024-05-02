@@ -52,6 +52,7 @@ COPY cpanfile /usr/src/app/core-cpanfile
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libusb-dev \
       python3-dev  

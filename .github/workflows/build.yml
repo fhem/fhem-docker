@@ -131,7 +131,7 @@ jobs:
           tags: baseonly
 
   cpan_build:
-    needs: [get_dependencies]
+    needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -185,7 +185,7 @@ jobs:
           push: false
           target: base-cpan
           cache-from: | 
-            type=gha,scope=build_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
           tags: buildcpanonly
