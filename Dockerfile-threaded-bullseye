@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-threaded-buster as base
+FROM perl:5.36.3-slim-threaded-bullseye as base
 
 ARG TARGETPLATFORM
 
@@ -46,9 +46,9 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-threaded-buster as build-cpan 
+FROM perl:5.36.3-threaded-bullseye as build-cpan 
 
-COPY cpanfile /usr/src/app/core-cpanfile
+COPY cpanfile /usr/src/app/core/cpanfile
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
@@ -69,14 +69,43 @@ EOF
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core-cpanfile  
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
   
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core-cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc)
-
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm/
   rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+
+# Install Packages used for building 3rdparty cpan modules:
+RUN <<EOF
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      libsox-fmt-all \
+      libbluetooth-dev \
+      libi2c-dev \
+      libgd-dev \
+      libdbus-1-dev \
+      libimlib2-dev \
+      libsodium-dev 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+EOF
+
+
+# Install all CPAN Modules, needed from 3rd party module repositorys 
+COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
+# Fixup modules which do not work on all platforms and install afterwards
+RUN <<EOF
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
+  fi
+  
+  cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ 
+  rm -rf /root/.cpanm 
+  rm -rf /root/.perl-cpm
 EOF
 
 
@@ -114,25 +143,20 @@ RUN <<EOF
         usbutils \
         wget \
         libarchive-dev \
-        libimlib2-dev \
         bash \
         iproute2 
-    # Install Packages used for building cpan modules:
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-        libusb-dev \
-        python3-dev  
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
-COPY --from=build-cpan /usr/src/app/local/lib/perl5 /usr/src/app/local/lib/perl5
+COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
 
 #
 # Standard FHEM Layer
 #
 FROM base-cpan as with-fhem
 
-ENV PERL5LIB=/usr/src/app/local/lib/perl5
+ENV PERL5LIB=/usr/src/app/core/lib/perl5
 
 # Install base environment and FHEM Docker module
 COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
@@ -223,6 +247,7 @@ CMD [ "start" ]
 
 FROM with-fhem as with-fhem-extended
 
+ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
 # Add extended system layer
 RUN <<EOF
@@ -237,36 +262,17 @@ RUN <<EOF
       mp3wrap \
       mpg123 \
       mplayer \
-      nmap \
       normalize-audio \
       snmp \
       snmp-mibs-downloader \
       sox \
       vorbis-tools \
-      gstreamer1.0-tools \
-      libsox-fmt-all \
-      libbluetooth-dev \
-      libi2c-dev \
-      libgd-dev \
-      libdbus-1-dev
-      libsodium-dev 
+      gstreamer1.0-tools
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
 
-# Install all CPAN Modules, needed from 3rd party module repositorys 
-COPY 3rdParty/cpanfile /usr/src/app/3rdparty-cpanfile
-# Fixup modules which do not work on all platforms and install afterwards
-RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
-    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty-cpanfile
-  fi
-
-  cpm install --cpanfile /usr/src/app/3rdparty-cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc)
-  rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm
-EOF
-
+COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib/perl5
 
 #
 # Add additional Python layer
