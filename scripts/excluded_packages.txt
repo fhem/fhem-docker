@@ -54,3 +54,5 @@ AttrTemplate$
 ProtoThreads$
 # CARP is core, here is something wrong:
 carp$
+# Pcakage does not exists (anymore?) on metacpan
+JSON::backportPP$  
