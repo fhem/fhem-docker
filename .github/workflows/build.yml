@@ -304,13 +304,13 @@ jobs:
         name: Run bats unit and integration tests in bidge network mode
         with:
           attempt_limit: 3
-          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode'
+          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
         
       - uses: Wandalen/wretry.action@v3.4.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
-          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode'
+          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
 
       - name: Build for test fhem, python and nodejs layer added for amd64
         uses: docker/build-push-action@v5
@@ -352,6 +352,35 @@ jobs:
           echo -e "\n"
           docker exec ${CONTAINER} /bin/bash -c "prove --exec 'perl fhem.pl -t' -I FHEM --recurse /opt/fhem/t/FHEM/" || true
           docker container rm $CONTAINER --force --volumes
+
+      - name: Build for bats with fhem extended layer
+        uses: docker/build-push-action@v5
+        id: docker_build_bats_extended
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-bats-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
+          tags: bats-withfhem-extended
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+  
+      - uses: Wandalen/wretry.action@v3.4.0
+        name: Run bats unit and integration tests in host network mode
+        with:
+          attempt_limit: 3
+          command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
 
   published_build:
     runs-on: ubuntu-latest
