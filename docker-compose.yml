@@ -113,7 +113,24 @@ services:
       TZ: Europe/Berlin
 
 
-  # example with extending debian packages to the image
+  # example with adding a cpan packages to your image
+  fhem:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ <<CPAN PACKAGE NAME>>
+        EOF
+    restart: always
+    networks:
+      - net
+    ports:
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+
+  # example with extending debian packages to your image
   fhem:
     build:
       context: .
@@ -132,7 +149,7 @@ services:
     volumes:
       - "./fhem/:/opt/fhem/"
 
-  # example with extending npm packages to the image
+  # example with extending npm packages to your image
   fhem:
     build:
       context: .
@@ -151,7 +168,7 @@ services:
       - "./fhem/:/opt/fhem/"
 
 
-  # example with extending python packages to the image
+  # example with extending python packages to your image
   fhem:
     build:
       context: .
