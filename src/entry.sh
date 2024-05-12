@@ -423,6 +423,10 @@ function runScript() {
 function aptInstall() {
   local inMessage="$1" ; shift 1
   local inLogFile="$1" ; shift 1
+  printfInfo "********************************************************************"
+  printfInfo " Installing Packages via apt in the running container is deprecated "
+  printfInfo "********************************************************************"
+
   [ -n "$*" ] || return
   printfInfo "${inMessage}\n"
   if [ "${gAptUpdateHasRun:-0}" == 0 ]; then
@@ -446,39 +450,39 @@ function aptInstall() {
 #              NPM_PKGS
 #
 function initialPackageSetup() {
-  aptInstall "Adding custom APT packages to container" "/pkgs.apt" ${APT_PKGS}
+  
+  if [ -n "${APT_PKGS}" ]; then
+    aptInstall "Adding custom APT packages to container" "/pkgs.apt" ${APT_PKGS}
+  fi 
 
   if [ -n "${CPAN_PKGS}" ]; then
-    if [ ! -e /usr/bin/cpanm ] && [ ! -e /usr/local/bin/cpanm ]; then
-      aptInstall "Installing cpanminus" "/pkgs.cpanm" cpanminus
-    fi
-    printfInfo "Adding custom Perl modules to container\n"
-    cpanm --notest ${CPAN_PKGS} >>/pkgs.cpanm 2>&1
+    printfInfo "**********************************************************************\n"
+    printfInfo " Installing Packages from CPAN in the running container is deprecated\n "
+    printfInfo "**********************************************************************\n"
+
+    cpm install --without-test --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ ${CPAN_PKGS} >>/pkgs.cpanm 2>&1
   fi
 
   if [ -n "${PIP_PKGS}" ]; then
-    if [ ! -e /usr/bin/pip3 ]; then
-      aptInstall "Installing pip3" "/pkgs.pip" python3 python3-pip
+    printfInfo "********************************************************************\n"
+    printfInfo " Installing Packages via pip in the running container is deprecated \n"
+    printfInfo "********************************************************************\n"
+    if [  -e /usr/bin/pip3 ]; then
+      printfInfo "Adding custom Python modules to container\n"
+      pip3 install ${PIP_PKGS} >>/pkgs.pip 2>&1
     fi
-    printInfo "Adding custom Python modules to container\n"
-    pip3 install ${PIP_PKGS} >>/pkgs.pip 2>&1
   fi
 
   if [ "${NPM_PKGS}" != '' ]; then
-    if [ ! -e /usr/bin/npm ]; then
-      local mType="$(uname -m)"
-      [ "${mType}" == 'arm32v5' ] && { printfErr "Missing Node.js for ${mType} platform cannot be installed automatically\n"; exit 1; }
-      printfInfo "Adding APT sources for Node.js\n"
-      if [ "${mType}" == "i386" ]; then
-        curl -fsSL https://deb.nodesource.com/setup_8.x | bash - >>/pkgs.npm 2>&1
-      else
-        curl -fsSL https://deb.nodesource.com/setup_14.x | bash - >>/pkgs.npm 2>&1
-      fi
-      gAptUpdateHasRun=0  # After calling npm install scripts enfore running apt update
-      aptInstall "Installing Node.js" "/pkgs.npm" nodejs 
+    printfInfo "********************************************************************\n"
+    printfInfo " Installing Packages via NPM in the running container is deprecated \n"
+    printfInfo "********************************************************************\n"
+
+    if [ -e /usr/bin/npm ]; then
+      printfInfo "Adding custom Node.js packages to container\n"
+      npm install -g --unsafe-perm --production ${NPM_PKGS} >>/pkgs.npm 2>&1
     fi
-    printfInfo "Adding custom Node.js packages to container\n"
-    npm install -g --unsafe-perm --production ${NPM_PKGS} >>/pkgs.npm 2>&1
+
   fi
 }
 
@@ -522,37 +526,7 @@ attr DockerImageInfo devStateIcon ok.*:security@green Initialized:system_fhem_re
 attr DockerImageInfo group System
 attr DockerImageInfo icon docker
 attr DockerImageInfo room System
-define fhemServerApt AptToDate localhost
-attr fhemServerApt alias System Update Status
-attr fhemServerApt devStateIcon system.updates.available:security@red system.is.up.to.date:security@green:repoSync .*in.progress:system_fhem_reboot@orange errors:message_attention@red
-attr fhemServerApt group Update
-attr fhemServerApt icon debian
-attr fhemServerApt room System
 END_OF_INLINE
-
-  if [ -e /usr/bin/npm ]; then
-    cat >> $fhemCfgFile <<- END_OF_INLINE
-
-define fhemServerNpm npmjs localhost
-attr fhemServerNpm alias Node.js Package Update Status
-attr fhemServerNpm devStateIcon npm.updates.available:security@red:outdated npm.is.up.to.date:security@green:outdated .*npm.outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red
-attr fhemServerNpm group Update
-attr fhemServerNpm icon npm-old
-attr fhemServerNpm room System
-END_OF_INLINE
-  fi
-
-  if [ -e /usr/bin/cpanm ] || [ -e /usr/local/bin/cpanm ]; then
-    cat >> $fhemCfgFile <<- END_OF_INLINE
-
-define fhemInstaller Installer
-attr fhemInstaller alias FHEM Installer Status
-attr fhemInstaller devStateIcon .*updates.available:security@red:outdated up.to.date:security@green:outdated .*outdated.*in.progress:system_fhem_reboot@orange .*in.progress:system_fhem_update@orange warning.*:message_attention@orange error.*:message_attention@red
-attr fhemInstaller group Update
-attr fhemInstaller icon system_fhem
-attr fhemInstaller room System
-END_OF_INLINE
-  fi
 
   printfInfo "Installing FHEM done\n"
 }

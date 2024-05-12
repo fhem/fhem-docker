@@ -113,7 +113,25 @@ services:
       TZ: Europe/Berlin
 
 
-  # example with extending debian packages to the image
+  # example with adding a cpan packages to your image
+  fhem:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        RUN <<EOF
+          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/  << YOUR PAACKAGE NAME >>
+        EOF
+      pull_policy: build
+    restart: always
+    networks:
+      - net
+    ports:
+      - "8083:8083"
+    volumes:
+      - "./fhem/:/opt/fhem/"
+
+  # example with extending debian packages to your image
   fhem:
     build:
       context: .
@@ -124,6 +142,7 @@ services:
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
           LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
@@ -132,7 +151,7 @@ services:
     volumes:
       - "./fhem/:/opt/fhem/"
 
-  # example with extending npm packages to the image
+  # example with extending npm packages to your image
   fhem:
     build:
       context: .
@@ -142,6 +161,7 @@ services:
           npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
           npm cache clean --force
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
@@ -151,15 +171,16 @@ services:
       - "./fhem/:/opt/fhem/"
 
 
-  # example with extending python packages to the image
+  # example with extending python packages to your image
   fhem:
     build:
       context: .
       dockerfile_inline: |
         FROM ghcr.io/fhem/fhem-docker:4-bullseye 
         RUN <<EOF
-          pip install --no-cache-dir <PIP PACKAGENAME>
+          pip3 install --no-cache-dir <PIP PACKAGENAME>
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
