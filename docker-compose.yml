@@ -120,8 +120,9 @@ services:
       dockerfile_inline: |
         FROM ghcr.io/fhem/fhem-docker:4-bullseye 
         RUN <<EOF
-          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ <<CPAN PACKAGE NAME>>
+          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/  << YOUR PAACKAGE NAME >>
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
@@ -141,6 +142,7 @@ services:
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
           LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
@@ -159,6 +161,7 @@ services:
           npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
           npm cache clean --force
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net
@@ -175,8 +178,9 @@ services:
       dockerfile_inline: |
         FROM ghcr.io/fhem/fhem-docker:4-bullseye 
         RUN <<EOF
-          pip install --no-cache-dir <PIP PACKAGENAME>
+          pip3 install --no-cache-dir <PIP PACKAGENAME>
         EOF
+      pull_policy: build
     restart: always
     networks:
       - net

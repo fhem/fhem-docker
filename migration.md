@@ -41,7 +41,7 @@ And add these lines to build a new image which your custom extension in your com
              RUN <<EOF
              # Here you can add your custom build commands, installing every software you want
              EOF
-        pull_policy: build
+         pull_policy: build
 
 
 
