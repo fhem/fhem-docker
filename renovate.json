@@ -6,20 +6,19 @@
   ],
   "packageRules": [
     {
+      "groupName": "Docker Digest",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMinor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}"
+    },
+    {
       "groupName": "perlImagesMinor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "14 days",
-      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
-    },
-    {
-      "groupName": "Docker Digest",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["perl"],
-      "minimumReleaseAge": "2 days",
-      "matchUpdateTypes": ["patch", "pin", "digest"],
-      "automerge": true,
-      "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMajor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}"
+      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
     }
   ]
 }
