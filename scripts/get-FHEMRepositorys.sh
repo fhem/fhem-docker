@@ -8,7 +8,7 @@ TAG="FHEM"
 PER_PAGE=2000
 
 # API-Anfrage an GitHub
-response=$(curl -s "$BASE_URL?q=$TAG+language:Perl+archived:false&sort=stars&order=desc&per_page=$PER_PAGE")
+response=$(curl -s "$BASE_URL?q=topic:$TAG+language:Perl+archived:false&sort=stars&order=desc&per_page=$PER_PAGE")
 
 # Verarbeite die Antwort
 if [[ $response == *"items"* ]]; then
