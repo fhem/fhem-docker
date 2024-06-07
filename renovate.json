@@ -13,6 +13,7 @@
       "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
     },
     {
+      "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)$/"
       "groupName": "Docker Digest",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
