@@ -83,7 +83,6 @@ EOF
 RUN <<EOF
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-      libsox-fmt-all \
       libbluetooth-dev \
       libi2c-dev \
       libgd-dev \
@@ -204,27 +203,27 @@ ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is u
 
 
 # non-standard labels
-LABEL org.fhem.authors=${L_AUTHORS_FHEM} \
-   org.fhem.url=${L_URL_FHEM} \
-   org.fhem.documentation=${L_USAGE_FHEM} \
-   org.fhem.source=${L_VCS_URL_FHEM} \
-   org.fhem.vendor=${L_VENDOR_FHEM} \
-   org.fhem.licenses=${L_LICENSES_FHEM} \
-   org.fhem.description=${L_DESCR_FHEM}
+LABEL org.fhem.authors ${L_AUTHORS_FHEM} \
+   org.fhem.url ${L_URL_FHEM} \
+   org.fhem.documentation ${L_USAGE_FHEM} \
+   org.fhem.source ${L_VCS_URL_FHEM} \
+   org.fhem.vendor ${L_VENDOR_FHEM} \
+   org.fhem.licenses ${L_LICENSES_FHEM} \
+   org.fhem.description ${L_DESCR_FHEM}
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created=${BUILD_DATE} \
-   org.opencontainers.image.authors=${L_AUTHORS} \
-   org.opencontainers.image.url=${L_URL} \
-   org.opencontainers.image.documentation=${L_USAGE} \
-   org.opencontainers.image.source=${L_VCS_URL} \
-   org.opencontainers.image.version=${IMAGE_VERSION} \
-   org.opencontainers.image.revision=${IMAGE_VCS_REF} \
-   org.opencontainers.image.vendor=${L_VENDOR} \
-   org.opencontainers.image.licenses=${L_LICENSES} \
-   org.opencontainers.image.title=${L_TITLE} 
-LABEL org.opencontainers.image.description=${L_DESCR}
+LABEL org.opencontainers.image.created ${BUILD_DATE} \
+   org.opencontainers.image.authors ${L_AUTHORS} \
+   org.opencontainers.image.url ${L_URL} \
+   org.opencontainers.image.documentation ${L_USAGE} \
+   org.opencontainers.image.source ${L_VCS_URL} \
+   org.opencontainers.image.version ${IMAGE_VERSION} \
+   org.opencontainers.image.revision ${IMAGE_VCS_REF} \
+   org.opencontainers.image.vendor ${L_VENDOR} \
+   org.opencontainers.image.licenses ${L_LICENSES} \
+   org.opencontainers.image.title ${L_TITLE} 
+LABEL org.opencontainers.image.description ${L_DESCR}
 
 RUN chmod 755 /*.sh /usr/local/bin/* \ 
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
@@ -253,6 +252,7 @@ ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      libsox-fmt-all \
       alsa-utils \
       dfu-programmer \
       espeak \
