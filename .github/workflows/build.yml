@@ -117,7 +117,7 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Build for bats with fhem base layer ${{ matrix.platform }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           load: true  
@@ -176,7 +176,7 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Build cpan packages for ${{ matrix.platform }}
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           load: true  
@@ -255,7 +255,7 @@ jobs:
             type=ref,event=pr,suffix=${{ matrix.dockerfile }}
 
       - name: Build and cache fhem base layer
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build_fhem
         with:
           context: .
@@ -279,7 +279,7 @@ jobs:
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
       - name: Build for bats with fhem base layer
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build_bats
         with:
           context: .
@@ -313,7 +313,7 @@ jobs:
           command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
 
       - name: Build for test fhem, python and nodejs layer added for amd64
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build
         with:
           context: .
@@ -354,7 +354,7 @@ jobs:
           docker container rm $CONTAINER --force --volumes
 
       - name: Build for bats with fhem extended layer
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build_bats_extended
         with:
           context: .
@@ -442,7 +442,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled fhem, python and nodejs layer on supported platforms
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build
         with:
           context: .
@@ -486,7 +486,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled base image on supported platforms
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build_base
         with:
           context: .
