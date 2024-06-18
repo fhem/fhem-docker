@@ -242,6 +242,8 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem-docker
@@ -428,6 +430,8 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem-docker
@@ -473,6 +477,8 @@ jobs:
       - name: Docker meta
         id: meta_base
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
              ghcr.io/${{ github.repository_owner }}/fhem-minimal-docker
