@@ -377,6 +377,21 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
     If this variable is not present, the gateway will automatically be detected.
 
+
+* Set FHEM startup timeout:
+    Set a Timeout, how long the docker container waits until the FHEM process will finished starting.
+    If the timeout is over, and FHEM is not started, the container is stopped.
+    You will see an error like this in the container log, if starting wasn't finished early enough:
+    `ERROR: Fatal: No message from FHEM since 60 seconds that server has started.`
+        
+    If you have a slow system and a module which blocks FHEM to be ready adjust this to a higher value.
+
+    ```shell
+    -e TIMEOUT_STARTING=60
+    ```
+
+    If this variable is not present, the timeout will be 60 seconds. 
+
 * Manipulating software in the container using their own environment variables:
     For security reasons, only allowed environment variables are passed to the FHEM user environment. To control certain behaviours of Perl, Node.js and Python, those language interpreters come with their own environment variables. Any variable that was set for the container and with a prefix of either PERL, NODE or PYTHON is exported to the FHEM user environment so it is available there during runtime of the fhem.pl main process and subsequently all its child processes.
 
