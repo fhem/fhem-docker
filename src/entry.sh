@@ -880,7 +880,7 @@ function startFhemProcess() {
   fi
 
   if ! waitForTextInFile "$gCurrentTailFile" "Server started" $TIMEOUT_STARTING ; then   # Wait for startup message in the logfile
-    printfErr "Fatal: No message from FHEM that server has started.\n"
+    printfErr "Fatal: No message from FHEM since $TIMEOUT_STARTING seconds that server has started.\n"
     exit 1
   fi
   
