@@ -356,7 +356,7 @@ jobs:
           docker container rm $CONTAINER --force --volumes
 
       - name: Build for bats with fhem extended layer
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v2
         id: docker_build_bats_extended
         with:
           context: .
