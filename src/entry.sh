@@ -568,6 +568,10 @@ function initialContainerSetup() {
     fhemCleanInstall
   fi
 
+  local -i revision
+  revision=$(getFHEMRevision)
+  [[ revision -lt 25680 ]]  && printfErr "Your fhem revision ${revision} is to old, please update to at least revision 25680\n" && printfInfo " Your container will soon be terminated, please update your FHEM installation\n"
+
   printfInfo "  Patching fhem.cfg Logfile configuration\n"
   setGlobal_LOGFILE
   setLogfile_DEFINITION
@@ -844,6 +848,22 @@ function checkFhemProcessExists() {
   local -i pidNum  # DO NOT make the following assignment in the same line! The return value gets lost!
   pidNum=$(getFhemPidNum) || return
   kill -0 $pidNum 2>&1 >/dev/null;
+}
+
+
+# Extract the svn revision number from fhem.pl file
+#
+# Usage: getFHEMRevision
+# Returns:     0      if the id is not found
+#              else:  The revision number which is found in the file
+#
+
+function getFHEMRevision()
+{
+  local revision
+  revision=$(grep '# $Id: fhem.pl ' "${FHEM_DIR}/fhem.pl"  | cut -d " " -f 4)
+  [[ $revision =~ ^-?[0-9]+$ ]] && echo "$revision" || echo "0" ; return 0
+  
 }
 
 
