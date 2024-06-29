@@ -34,6 +34,8 @@ Updated versions based on
 
 If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
 
+To let this image work correctly, you need as least a FHEM revision 25680 or newer.
+
 ##### Not updated anymore since Jan 2024
 
 - debian buster

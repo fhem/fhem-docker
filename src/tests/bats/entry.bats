@@ -153,3 +153,44 @@ teardown() {
     run -1 bash -c 'is_absolutePath .'
     run -1 bash -c 'is_absolutePath '
 }
+
+
+# bats test_tags=unitTest
+@test "verify getFHEMRevision" {
+    bats_require_minimum_version 1.5.0
+    
+    #export -f getFHEMRevision
+    
+    run fhemCleanInstall
+    assert_file_exists ${FHEM_DIR}/fhem.pl
+
+    assert [ "$(getFHEMRevision)" -gt 0 ]
+
+    # Patch fixed revision id
+    sed -i 's/[0-9]\+/20000/1' ${FHEM_DIR}/fhem.pl
+    assert [ "$(getFHEMRevision)" -eq 20000 ]
+
+    # Patch wrong revision id 
+    sed -i 's/[0-9]\+/ddd/1' ${FHEM_DIR}/fhem.pl
+    assert [ "$(getFHEMRevision)" -eq 0 ]
+}
+
+
+# bats test_tags=unitTest
+@test "verify initialContainerSetup without error" {
+    run initialContainerSetup
+    assert_output --partial "Preparing initial container setup"
+    assert_output --partial "Initial container setup done"
+    refute_output --partial 'ERROR'
+}
+
+# bats test_tags=unitTest
+@test "verify initialContainerSetup with to old fhem installation" {
+    fhemCleanInstall
+    sed -i 's/[0-9]\+/20000/1' ${FHEM_DIR}/fhem.pl
+    run initialContainerSetup
+ 
+    assert_output --partial "is to old"
+    assert_output --partial "Your container will soon be terminated"
+    assert_output --partial 'ERROR'
+}
