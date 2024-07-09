@@ -2,13 +2,16 @@
 
 # GitHub API-URL für die Suche nach FHEM-Repositorys
 BASE_URL="https://api.github.com/search/repositories"
-TAG="FHEM"
+TOPIC="topic:FHEM"
+README='"update+all+https%3A%2F%2Fraw.githubusercontent.com"+OR++in%3Areadme+"update+add+https%3A%2F%2Fraw.githubusercontent.com"'
 
 # Anzahl der Ergebnisse, die du anzeigen möchtest
 PER_PAGE=2000
 
+in%3Areadme+"update+all+https%3A%2F%2Fraw.githubusercontent.com"+OR++in%3Areadme+"update+add+https%3A%2F%2Fraw.githubusercontent.com"
 # API-Anfrage an GitHub
-response=$(curl -s "$BASE_URL?q=topic:$TAG+language:Perl+archived:false&sort=stars&order=desc&per_page=$PER_PAGE")
+response=$(curl -s "$BASE_URL?q=${TOPIC}+archived:false+${README}&sort=stars&order=desc&per_page=$PER_PAGE")
+
 
 # Verarbeite die Antwort
 if [[ $response == *"items"* ]]; then
