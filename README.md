@@ -497,4 +497,16 @@ To run the test, build the image with the specific target:
 Then this image, can be used to start a new container and running bats inside the container.
     docker run -it --rm -v "${PWD}/src/tests/bats:/code"  fhemdocker:test .
 
+## A needed perl module is missing
+
+If you are running a 3rd party module, advice the maintainer to this description: 
+    
+    During docker build, repositorys are searched by topics and content in the readme.md file.
+    If the build finds your repository, it will check automatically, what perl modules are needed.
+    Modules wich are found will be installed via cpan in the resulting docker image.
+    This allows users of the docker image to use your module. 
+
+    Add the topic 'fhem' and 'perl' and provide an instruction in your readme.md with 
+    instruction how to use update add / update all to install your module.
+
 
