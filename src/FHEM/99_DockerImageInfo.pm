@@ -199,6 +199,35 @@ sub DockerImageInfo_GetImageInfo {
     readingsEndUpdate( $hash, 1 );
 }
 
+
+sub DockerImageInfo_sendMail
+{
+	use Email::Stuffer;
+	
+	my $rcpt = shift;
+  my $subject = shift; 
+	my $text = shift; 
+	my $attach = shift; 
+	my $ret = q[];
+	my $error;
+	my $konto = getKeyValue("myEmailKonto"); 
+	my $passwrd = getKeyValue("myEmailPasswrd"); 
+	my $from = $konto; 
+	my $provider = getKeyValue("myEmailProvider");     # smtp.domain.tld:port see provider documentation
+	Log 1, qq[DockerImageInfo_sendMail RCP: $rcpt];
+	Log 1, qq[DockerImageInfo_sendMail Subject: $subject];
+	Log 1, qq[DockerImageInfo_sendMail Text: $text];
+	Log 1, qq[DockerImageInfo_sendMail Anhang: $attach];
+	if (not defined($attach)){$attach=''}
+	
+	Email::Stuffer->from     ($from)
+              ->to       ($rcpt)
+              ->text_body($text                     )
+              ->send;
+
+}
+
+
 1;
 
 =pod
@@ -329,7 +358,8 @@ sub DockerImageInfo_GetImageInfo {
         "strict": 0,
         "warnings": 0,
         "FHEM::Meta": 0.001006,
-        "List::Util" : 1.18
+        "List::Util" : 1.18,
+        "Email::Stuffer": 0
       },
       "recommends": {
       },
