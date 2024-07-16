@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-bullseye as base
+FROM perl:5.36.3-slim-bullseye AS base
 
 ARG TARGETPLATFORM
 
@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-bullseye as build-cpan 
+FROM perl:5.36.3-bullseye AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 
@@ -56,6 +56,7 @@ RUN <<EOF
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libusb-dev \
       graphviz \
+      libgd-dev \
       python3-dev  
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
@@ -66,14 +67,16 @@ EOF
 # Install Modules from CPAN
 #
 
-# JSON::XS isn't marked as compatible with Perl 5.36, we prevent some output
+# JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
   
+  cpm install --without-test --with-suggests --with-recommends --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/ Email::Stuffer 
   cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/
+  
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm/
   rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
@@ -109,7 +112,7 @@ RUN <<EOF
 EOF
 
 
-FROM base as base-cpan 
+FROM base AS base-cpan 
 
 RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -154,7 +157,7 @@ COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
 #
 # Standard FHEM Layer
 #
-FROM base-cpan as with-fhem
+FROM base-cpan AS with-fhem
 
 ENV PERL5LIB=/usr/src/app/core/lib/perl5
 
@@ -177,7 +180,7 @@ ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
    CONFIGTYPE=fhem.cfg
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
-# Arguments to instantiate as variables
+# Arguments to instantiate AS variables
 ARG PLATFORM="linux"
 ARG TAG=""
 ARG IMAGE_VCS_REF=""
@@ -202,29 +205,28 @@ ARG L_VENDOR_FHEM="FHEM e.V."
 ARG L_LICENSES_FHEM="GPL-2.0"
 ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
 
-
 # non-standard labels
-LABEL org.fhem.authors ${L_AUTHORS_FHEM} \
-   org.fhem.url ${L_URL_FHEM} \
-   org.fhem.documentation ${L_USAGE_FHEM} \
-   org.fhem.source ${L_VCS_URL_FHEM} \
-   org.fhem.vendor ${L_VENDOR_FHEM} \
-   org.fhem.licenses ${L_LICENSES_FHEM} \
-   org.fhem.description ${L_DESCR_FHEM}
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created ${BUILD_DATE} \
-   org.opencontainers.image.authors ${L_AUTHORS} \
-   org.opencontainers.image.url ${L_URL} \
-   org.opencontainers.image.documentation ${L_USAGE} \
-   org.opencontainers.image.source ${L_VCS_URL} \
-   org.opencontainers.image.version ${IMAGE_VERSION} \
-   org.opencontainers.image.revision ${IMAGE_VCS_REF} \
-   org.opencontainers.image.vendor ${L_VENDOR} \
-   org.opencontainers.image.licenses ${L_LICENSES} \
-   org.opencontainers.image.title ${L_TITLE} 
-LABEL org.opencontainers.image.description ${L_DESCR}
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.authors=${L_AUTHORS}
+LABEL org.opencontainers.image.url=${L_URL}
+LABEL org.opencontainers.image.documentation=${L_USAGE}
+LABEL org.opencontainers.image.source=${L_VCS_URL}
+LABEL org.opencontainers.image.version=${IMAGE_VERSION}
+LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
+LABEL org.opencontainers.image.vendor=${L_VENDOR}
+LABEL org.opencontainers.image.licenses=${L_LICENSES}
+LABEL org.opencontainers.image.title=${L_TITLE} 
+LABEL org.opencontainers.image.description=${L_DESCR}
 
 RUN chmod 755 /*.sh /usr/local/bin/* \ 
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
@@ -245,7 +247,7 @@ CMD [ "start" ]
 # Add additional Perl and System layers
 #
 
-FROM with-fhem as with-fhem-extended
+FROM with-fhem AS with-fhem-extended
 
 ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
@@ -279,7 +281,7 @@ COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib
 # Add additional Python layer
 #
 
-FROM with-fhem-extended as with-fhem-extended-python
+FROM with-fhem-extended AS with-fhem-extended-python
 
 RUN <<EOF 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -300,7 +302,7 @@ EOF
 #
 # Add nodejs app layer
 #
-FROM with-fhem-extended-python as with-fhem-extended-python-nodejs
+FROM with-fhem-extended-python AS with-fhem-extended-python-nodejs
 
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
@@ -329,7 +331,7 @@ EOF
 # Layer only for bash unit testing
 #
 #
-FROM with-fhem as with-fhem-bats
+FROM with-fhem AS with-fhem-bats
 
 ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
 RUN <<EOF
@@ -353,7 +355,7 @@ ENTRYPOINT [ "/usr/local/bin/bats" ]
 # Layer for bash integration testing
 #
 #
-FROM with-fhem-extended-python-nodejs as with-fhem-bats-extended-python-nodejs
+FROM with-fhem-extended-python-nodejs AS with-fhem-bats-extended-python-nodejs
 
 COPY --from=with-fhem-bats /opt/bats /opt/bats/
 RUN ln -s /opt/bats/bin/bats /usr/local/bin/bats 
