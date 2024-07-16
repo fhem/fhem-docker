@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-threaded-bullseye as base
+FROM perl:5.36.3-slim-threaded-bullseye AS base
 
 ARG TARGETPLATFORM
 
@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-threaded-bullseye as build-cpan 
+FROM perl:5.36.3-threaded-bullseye AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 
@@ -55,6 +55,8 @@ RUN <<EOF
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libusb-dev \
+      graphviz \
+      libgd-dev \
       python3-dev  
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
@@ -71,8 +73,8 @@ RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
-  
   cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/
+  
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm/
   rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
@@ -108,7 +110,7 @@ RUN <<EOF
 EOF
 
 
-FROM base as base-cpan 
+FROM base AS base-cpan 
 
 RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -153,7 +155,7 @@ COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
 #
 # Standard FHEM Layer
 #
-FROM base-cpan as with-fhem
+FROM base-cpan AS with-fhem
 
 ENV PERL5LIB=/usr/src/app/core/lib/perl5
 
@@ -203,13 +205,13 @@ ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is u
 
 
 # non-standard labels
-LABEL org.fhem.authors ${L_AUTHORS_FHEM} \
-   org.fhem.url ${L_URL_FHEM} \
-   org.fhem.documentation ${L_USAGE_FHEM} \
-   org.fhem.source ${L_VCS_URL_FHEM} \
-   org.fhem.vendor ${L_VENDOR_FHEM} \
-   org.fhem.licenses ${L_LICENSES_FHEM} \
-   org.fhem.description ${L_DESCR_FHEM}
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
@@ -299,7 +301,7 @@ EOF
 #
 # Add nodejs app layer
 #
-FROM with-fhem-extended-python as with-fhem-extended-python-nodejs
+FROM with-fhem-extended-python AS with-fhem-extended-python-nodejs
 
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
@@ -328,7 +330,7 @@ EOF
 # Layer only for bash unit testing
 #
 #
-FROM with-fhem as with-fhem-bats
+FROM with-fhem AS with-fhem-bats
 
 ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
 RUN <<EOF
@@ -352,7 +354,7 @@ ENTRYPOINT [ "/usr/local/bin/bats" ]
 # Layer for bash integration testing
 #
 #
-FROM with-fhem-extended-python-nodejs as with-fhem-bats-extended-python-nodejs
+FROM with-fhem-extended-python-nodejs AS with-fhem-bats-extended-python-nodejs
 
 COPY --from=with-fhem-bats /opt/bats /opt/bats/
 RUN ln -s /opt/bats/bin/bats /usr/local/bin/bats 

@@ -453,7 +453,7 @@ jobs:
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/386
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem-extended-python-nodejs
           cache-from: | 
             type=gha,scope=base-cpan_linux/386-${{ matrix.dockerfile }}
@@ -500,7 +500,7 @@ jobs:
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64,386
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem
           cache-from: | 
             type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
