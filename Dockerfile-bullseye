@@ -147,6 +147,7 @@ RUN <<EOF
         libarchive-dev \
         bash \
         libgd3 \
+        librsvg2-2 \
         iproute2 
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
