@@ -1,0 +1,24 @@
+name: Delete old container images
+
+on:
+  workflow_dispatch:
+ # schedule:
+ #   - cron: "0 0 * * *"  # every day at midnight
+  pull_request:
+    branches: [ dev ]
+
+jobs:
+  delete-package-versions:
+    name: Delete package versions older than 4 weeks, but keep the latest 5 in case of rollbacks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: snok/container-retention-policy@v3.0.0
+        with:
+          account: ${{ github.repository_owner }} 
+          token: ${{ secrets.GITHUB_TOKEN }}
+          image-names: "fhem-docker fhem-minimal-docker"  # select three packages
+          image-tags: "dev !latest pr*"  # any image tag
+          tag-selection: both  # select both tagged and untagged package versions
+          cut-off: 6w  # package versions should be older than 4 weeks
+          keep-n-most-recent: 5  # keep up to `n` tagged package versions for each of the packages
+          dry-run: true
