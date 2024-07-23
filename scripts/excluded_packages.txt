@@ -48,7 +48,6 @@ ZWLib$
 UpNp:Common
 HttpUtils$
 Unit$
-GD$
 DevIo$
 AttrTemplate$
 ProtoThreads$
