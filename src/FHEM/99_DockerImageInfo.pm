@@ -124,12 +124,13 @@ sub DockerImageInfo_GetStatus {
 
   my $resultFile = $hash->{RESULT_FILE};
   my $resultFileHdl;
-  if(!open($resultFileHdl, "<$resultFile")) {
+  if(!open($resultFileHdl, '<', "$resultFile")) {
     my $msg = qq[Read result file: Cannot open $resultFile: $!];
     Log3 $hash->{NAME}, 1, $msg;
     $hash->{STATE} = $msg;
     return undef;
   }
+
   $hash->{STATE} = do { local $/; <$resultFileHdl> };
   close( $resultFileHdl);
 
@@ -198,6 +199,39 @@ sub DockerImageInfo_GetImageInfo {
 
     readingsEndUpdate( $hash, 1 );
 }
+
+
+sub DockerImageInfo_sendMail
+{
+	use Email::Stuffer;
+	
+	my $rcpt = shift;
+  my $subject = shift; 
+	my $text = shift; 
+	my $attach = shift; 
+  my $ssl = shift // 'starttls';
+	my $ret = q[];
+	my $error;
+	my $konto = getKeyValue("myEmailKonto"); 
+	my $passwrd = getKeyValue("myEmailPasswrd"); 
+	my $from = $konto; 
+	my $provider = getKeyValue("myEmailProvider");     # smtp.domain.tld:port see provider documentation
+	Log 1, qq[DockerImageInfo_sendMail RCP: $rcpt];
+	Log 1, qq[DockerImageInfo_sendMail Subject: $subject];
+	Log 1, qq[DockerImageInfo_sendMail Text: $text];
+	Log 1, qq[DockerImageInfo_sendMail Anhang: $attach];
+	if (not defined($attach)){$attach=''}
+	my ($host,$port) = split(/:/, $provider);
+
+	Log 1, "DockerImageInfo_sendMail from $from via $host:$port to $rcpt";
+	my $result = Email::Stuffer->from($from)
+              ->to($rcpt)
+      			  ->subject($subject)
+              ->text_body($text)
+	            ->transport('SMTP', { host => $host, port => $port, sasl_username => qq[$konto] , sasl_password => qq[$passwrd], ssl => qq[$ssl] } )
+			        ->send_or_die;
+}
+
 
 1;
 
@@ -329,7 +363,8 @@ sub DockerImageInfo_GetImageInfo {
         "strict": 0,
         "warnings": 0,
         "FHEM::Meta": 0.001006,
-        "List::Util" : 1.18
+        "List::Util" : 1.18,
+        "Email::Stuffer": 0
       },
       "recommends": {
       },

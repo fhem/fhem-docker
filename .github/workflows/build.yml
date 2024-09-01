@@ -85,8 +85,8 @@ jobs:
       - name: create cpanfile from FHEM svn dependencies
         run: | 
           rm cpanfile
-          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
-          perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
+          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem ./src/FHEM
+          perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem ./src/FHEM
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
