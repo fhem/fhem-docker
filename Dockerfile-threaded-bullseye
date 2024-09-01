@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-threaded-bullseye AS base
+FROM perl:5.36.3-slim-threaded-bullseye@sha256:51d5c5c317a508676d6e0790a1a8b9fc2d17c1def80e67b297b3ae91bd19ba89 AS base
 
 ARG TARGETPLATFORM
 
@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-threaded-bullseye AS build-cpan 
+FROM perl:5.36.3-threaded-bullseye@sha256:b975af4332429b522c3b848bcf2a1c99b2b1b7355a796359810313956b3a7e5d AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 
@@ -147,7 +147,8 @@ RUN <<EOF
         bash \
         libgd3 \
         librsvg2-2 \
-        iproute2 
+        iproute2 \
+        libpq5
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
