@@ -122,7 +122,7 @@ services:
         RUN <<EOF
           cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/  << YOUR PAACKAGE NAME >>
         EOF
-      pull_policy: build
+    pull_policy: build
     restart: always
     networks:
       - net
@@ -142,7 +142,7 @@ services:
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
           LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
         EOF
-      pull_policy: build
+    pull_policy: build
     restart: always
     networks:
       - net
@@ -161,7 +161,7 @@ services:
           npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
           npm cache clean --force
         EOF
-      pull_policy: build
+    pull_policy: build
     restart: always
     networks:
       - net
@@ -180,7 +180,7 @@ services:
         RUN <<EOF
           pip3 install --no-cache-dir <PIP PACKAGENAME>
         EOF
-      pull_policy: build
+    pull_policy: build
     restart: always
     networks:
       - net
