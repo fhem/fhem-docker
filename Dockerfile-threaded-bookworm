@@ -24,7 +24,7 @@ ENV LANG=en_US.UTF-8 \
 
 
 RUN <<EOF
-    set -eux;
+    set -x;
     sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/debian.sources
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
@@ -58,7 +58,7 @@ COPY cpanfile /usr/src/app/core/cpanfile
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
-  set -eux;
+  set -x;
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
     libusb-dev \
@@ -79,7 +79,7 @@ EOF
 # JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
-  set -eux;
+  set -x;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
@@ -93,7 +93,7 @@ EOF
   
 # Install Packages used for building 3rdparty cpan modules:
 RUN <<EOF
-  set -eux;
+  set -x;
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libbluetooth-dev \
@@ -113,7 +113,7 @@ COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
 
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
-  set -eux;
+  set -x;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
   fi
@@ -128,7 +128,7 @@ FROM base AS base-cpan
 
 RUN <<EOF
     # android-libadb \
-    set -eux;
+    set -x;
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
@@ -269,7 +269,7 @@ ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
 # Add extended system layer
 RUN <<EOF
-    set -eux;
+    set -x;
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libsox-fmt-all \

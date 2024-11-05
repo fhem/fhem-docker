@@ -126,8 +126,8 @@ jobs:
           push: false
           target: base
           cache-from: | 
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: baseonly
 
   cpan_build:
@@ -185,9 +185,9 @@ jobs:
           push: false
           target: base-cpan
           cache-from: | 
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: buildcpanonly
     
             
@@ -267,9 +267,9 @@ jobs:
           push: false
           target: with-fhem-bats
           cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}            
-          cache-to: type=gha,mode=max,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}            
+          cache-to: type=gha,mode=max,scope=fhem_linux/amd64${{ matrix.dockerfile }}
           tags: with-fhem
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -291,7 +291,7 @@ jobs:
           push: false
           target: with-fhem-bats
           cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
           tags: bats-withfhem
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -325,9 +325,9 @@ jobs:
           push: false
           target: with-fhem-extended-python-nodejs
           cache-from: | 
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}  
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}  
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -366,8 +366,8 @@ jobs:
           push: false
           target: with-fhem-bats-extended-python-nodejs
           cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
           tags: bats-withfhem-extended
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -456,12 +456,13 @@ jobs:
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem-extended-python-nodejs
           cache-from: | 
-            type=gha,scope=base-cpan_linux/386-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/arm64-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/arm/v7-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm/v7${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+          #cache-to: type=gha,mode=max,scope=full_linux/cross${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
@@ -474,6 +475,54 @@ jobs:
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
 
+      - name: Cache ARM v7
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: false  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/arm/v7
+          push: false
+          target: with-fhem-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/arm64${{ matrix.dockerfile }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+
+      - name: Cache ARM 64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: false  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/arm/v7
+          push: false
+          target: with-fhem-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+    
       - name: Docker meta
         id: meta_base
         uses: docker/metadata-action@v5
@@ -503,12 +552,13 @@ jobs:
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem
           cache-from: | 
-            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/arm/v7-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/386-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/arm/v7${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
           tags: ${{ steps.meta_base.outputs.tags }}
           annotations: ${{ steps.meta_base.outputs.annotations }}
           labels: ${{ steps.meta_base.outputs.labels }}
