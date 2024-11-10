@@ -402,7 +402,7 @@ jobs:
     needs: [test_build, cpan_build]
     strategy:
       matrix:
-        dockerfile: [-bullseye, -threaded-bullseye, -bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm]
     env:
         TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
