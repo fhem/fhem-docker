@@ -10,7 +10,7 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 
 ## Installation
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
-Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
+Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
 ### From Docker Hub
 
@@ -20,23 +20,36 @@ Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
 #### Image with serval services installed
 
-Updated versions based on 
+##### Version 5 (beta)
+
+- debian bookworm
+- Perl 5.36.3 (optional threaded)
+- NodeJS 18.19 LTS
+- Python 3.11.2
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
+
+        docker pull ghcr.io/fhem/fhem-docker:5-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:5-threaded-bullseye
+
+##### Version 4 - EOL Jan 2025
+
 - debian bullseye 
 - Perl 5.36.3 (optional threaded)
 - NodeJS 18 LTS
 - Python 3.9.2
 - Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
-        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:4-bookworm
+        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bookworm
 
 If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
 
 To let this image work correctly, you need as least a FHEM revision 25680 or newer.
 
-##### Not updated anymore since Jan 2024
+##### Version 3 - EOL Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -53,7 +66,23 @@ To let this image work correctly, you need as least a FHEM revision 25680 or new
 
 #### Image with perl core services installed
 
-- debian bullseye 
+
+##### Version 5 (beta)
+
+- debian bookworm
+- Perl 5.36.3 (optional threaded)
+- Python 3.11.2
+- Python 2.7.18
+- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
+
+        docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+        docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
+
+If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
+
+##### Version 4 - EOL Jan 2025
+
+- debian bullseye
 - Perl 5.36.3 (optional threaded)
 - Python 3.9.2
 - Python 2.7.18
@@ -64,7 +93,7 @@ To let this image work correctly, you need as least a FHEM revision 25680 or new
 
 If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
 
-##### Not updated anymore since Jan 2024
+##### Version 3 - EOL Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -77,13 +106,13 @@ If you are using only modules which are provided via FHEM svn repository, you mo
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-docker:5-bookworm
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-docker:5-bookworm
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
@@ -125,7 +154,7 @@ With this, you will create a new image, and install any tool which you additiona
     build:
       context: .
       dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
+        FROM ghcr.io/fhem/fhem-docker:5-bookworm
         RUN <<EOF
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
