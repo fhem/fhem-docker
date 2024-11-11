@@ -33,7 +33,7 @@ services:
       - "./fhem/:/opt/fhem/"
 
   # Example w/ custom environment variables
-  fhem:
+  fhem_c1:
     image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     networks:
@@ -53,7 +53,7 @@ services:
 
   # Example to connect USB to the container w/o
   # privileged mode (preferred method)
-  fhem:
+  fhem_c2:
     image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     networks:
@@ -74,7 +74,7 @@ services:
 
   # Example to connect USB to the container w/
   # privileged mode (not recommended for security reasons)
-  fhem:
+  fhem_c3:
     image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     privileged: true
@@ -95,7 +95,7 @@ services:
 
   # Example for privileged container w/
   # host network (not recommended for security reasons)
-  fhem:
+  fhem_c4:
     image: ghcr.io/fhem/fhem-docker:4-bullseye
     restart: always
     privileged: true
@@ -114,7 +114,7 @@ services:
 
 
   # example with adding a cpan packages to your image
-  fhem:
+  fhem_c5:
     build:
       context: .
       dockerfile_inline: |
@@ -132,7 +132,7 @@ services:
       - "./fhem/:/opt/fhem/"
 
   # example with extending debian packages to your image
-  fhem:
+  fhem_c6:
     build:
       context: .
       dockerfile_inline: |
@@ -152,7 +152,7 @@ services:
       - "./fhem/:/opt/fhem/"
 
   # example with extending npm packages to your image
-  fhem:
+  fhem_c7:
     build:
       context: .
       dockerfile_inline: |
@@ -172,7 +172,7 @@ services:
 
 
   # example with extending python packages to your image
-  fhem:
+  fhem_c8:
     build:
       context: .
       dockerfile_inline: |

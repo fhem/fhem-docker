@@ -24,6 +24,19 @@ on:
     
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  docker_lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Lint docker-compose.yml
+        uses: sjafferali/docker-compose-lint-action@v0.1.2
+        with:
+          compose-file: './docker-compose.yml'
+
+
+
   get_dependencies:
     # Min Version for the prereq scanner to ignore core modules
     runs-on: ubuntu-latest
