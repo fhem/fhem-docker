@@ -20,5 +20,5 @@ jobs:
           image-tags: "dev !latest pr*"  # any image tag
           tag-selection: both  # select both tagged and untagged package versions
           cut-off: 6w  # package versions should be older than 4 weeks
-          keep-n-most-recent: 5  # keep up to `n` tagged package versions for each of the packages
+          # keep-n-most-recent: 5  # keep up to `n` tagged package versions for each of the packages
           dry-run: true
