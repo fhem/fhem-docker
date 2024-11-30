@@ -25,6 +25,7 @@ setup_file() {
 
 teardown_file() {
     sleep 0
+
     rm -f /tmp/log
     rm -rf /opt/fhem/*
     [ -z ${GITHUB_RUN_ID+x} ] || echo '::endgroup::' >&3    
@@ -193,4 +194,40 @@ teardown() {
     assert_output --partial "is to old"
     assert_output --partial "Your container will soon be terminated"
     assert_output --partial 'ERROR'
+}
+
+
+@test "verify directory permissions fhem directory" {
+    assert_not_file_owner fhem ${FHEM_DIR}  
+ 
+    run prepareFhemUser
+
+    assert_file_owner fhem ${FHEM_DIR} 
+}
+
+@test "verify directory permissions /dev/tty[0-9] directory" {
+    DIR_TEST="/dev/tty5"
+    mkdir -p "${DIR_TEST}"
+ 
+    run prepareFhemUser
+
+    assert_equal " tty" "$(printf "%s"  "$(stat "-c %G" "${DIR_TEST}" )" )"
+}
+
+@test "verify directory permissions /dev/ttyACM directory" {
+    DIR_TEST="/dev/ttyACM"
+    mkdir -p "${DIR_TEST}"
+ 
+    run prepareFhemUser
+
+    assert_equal " dialout" "$(printf "%s"  "$(stat "-c %G" "${DIR_TEST}" )" )"
+}
+
+@test "verify directory permissions /dev/gpio3 directory" {
+    DIR_TEST="/dev/gpio3"
+    mkdir -p "${DIR_TEST}"
+ 
+    run prepareFhemUser
+
+    assert_equal " gpio" "$(printf "%s"  "$(stat "-c %G" "${DIR_TEST}" )" )"
 }
