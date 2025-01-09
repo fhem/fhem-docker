@@ -12,6 +12,9 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: install svn
+      shell: bash
+      run: sudo apt-get install -y svn
     - name: Get latest svn revision from remote server
       shell: bash
       id: svnRemote
