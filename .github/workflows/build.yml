@@ -315,13 +315,13 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
-      - uses: Wandalen/wretry.action@v3.7.3
+      - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in bidge network mode
         with:
           attempt_limit: 3
           command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
         
-      - uses: Wandalen/wretry.action@v3.7.3
+      - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
@@ -391,7 +391,7 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
   
-      - uses: Wandalen/wretry.action@v3.7.3
+      - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
