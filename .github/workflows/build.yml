@@ -14,23 +14,142 @@ on:
     branches: [ dev ]
 
   release:
-    types: # This configuration does not affect the page_build event above
+    types: 
       - published
       - released
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+    
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  test_build:
-    # The type of runner that the job will run on
+  docker_lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Lint docker-compose.yml
+        uses: sjafferali/docker-compose-lint-action@v0.1.2
+        with:
+          compose-file: './docker-compose.yml'
+
+
+
+  get_dependencies:
+    # Min Version for the prereq scanner to ignore core modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Prepare SVN repository checkout and variables
+        id: prepareSVN
+        uses: ./.github/workflows/prepare-svn
+
+      - name: Remove contrib from dependency scan
+        run: |
+          rm -r ./src/fhem/trunk/fhem/contrib || true
+
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+          install-modules-with: cpanm
+          install-modules-args: --notest
+          install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Path File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util Module::CoreList
+
+      - name: clone 3rdparty repositories at github
+        run: | 
+          mapfile -t REPO_URLS < <( scripts/get-FHEMRepositorys.sh | awk '{print $4}' && printf '\0' )
+          mkdir ./3rdparty
+          cd ./3rdparty
+          printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone --depth 1 "{}" "$(basename $(dirname {}))/$(basename {})"; '
+
+      - name: Init PPI Cache 
+        uses: actions/cache@v4
+        with:
+          path: .cache/PPI
+          save-always: true
+          restore-keys: |
+            PPI-SVN-
+          key: PPI-SVN-${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
+  
+      - name: "create private modules filter regex, to not install them from CPAN"    
+        run: |
+          DYNAMIC_EXCLUDE=$(perl scripts/get-Packages.pl ./3rdparty ./src/fhem/trunk/fhem)
+          STATIC_EXCLUDE=$(grep -v '^#' scripts/excluded_packages.txt | tr '\n' '|'  | sed 's/^|//' | sed 's/|\{2,\}/|/g' | sed 's/.$//')
+          echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
+
+      - name: create cpanfile from local cloned 3rdparty repositories
+        run: | 
+          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
+          perl scripts/parse-METAJson.pl ./3rdparty
+          echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
+          cat cpanfile >> $GITHUB_STEP_SUMMARY
+
+          
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: cpanfile
+          overwrite: true
+
+      - name: create cpanfile from FHEM svn dependencies
+        run: | 
+          rm cpanfile
+          scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
+          perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
+          echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
+          cat cpanfile >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpanfile-FHEM
+          path: cpanfile
+          overwrite: true
+        
+  base_build:
+    strategy:
+      matrix:
+        dockerfile: [-bullseye, -threaded-bullseye]
+        platform: [arm/v7, amd64, arm64, 386]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+        with:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Build for bats with fhem base layer ${{ matrix.platform }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: base
+          cache-from: | 
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          tags: baseonly
+
+  cpan_build:
+    needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [Dockerfile, Dockerfile-bullseye]
-    # Steps represent a sequence of tasks that will be executed as part of the job
+        dockerfile: [-bullseye, -threaded-bullseye]
+        platform: [arm/v7, arm64, 386]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v4
@@ -38,19 +157,91 @@ jobs:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v4.4.1
+        uses: rlespinasse/github-slug-action@v5.0.0
 
       - name: Get git vars
         shell: bash
         run: |
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
-
         id: gitVars
 
       - name: Prepare SVN repository checkout and variables
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+          
+      - name: Prepare docker for build and publish
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+        with:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Build cpan packages for ${{ matrix.platform }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: base-cpan
+          cache-from: | 
+            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          tags: buildcpanonly
+    
+            
+  test_build:
+    # The type of runner that the job will run on
+    needs: [get_dependencies, base_build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bullseye, -threaded-bullseye]
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    env:
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.0.0
+
+      - name: Get git vars
+        shell: bash
+        run: |
+          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
+        id: gitVars
+
+      - name: Prepare SVN repository checkout and variables
+        id: prepareSVN
+        uses: ./.github/workflows/prepare-svn
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+          
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -64,30 +255,91 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem-docker
             fhem/fhem
           flavor: |
-              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1 || endsWith(matrix.dockerfile, 'Dockerfile')] }}
+              latest= ${{ env.TAG_LATEST }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
 
+      - name: Build and cache fhem base layer
+        uses: docker/build-push-action@v6
+        id: docker_build_fhem
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-bats
+          cache-from: | 
+            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}            
+          cache-to: type=gha,mode=max,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+          tags: with-fhem
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
-      - name: Build for test full blown amd64 
-        uses: docker/build-push-action@v5
+      - name: Build for bats with fhem base layer
+        uses: docker/build-push-action@v6
+        id: docker_build_bats
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-bats
+          cache-from: | 
+            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+          tags: bats-withfhem
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+
+      - uses: Wandalen/wretry.action@v3.8.0
+        name: Run bats unit and integration tests in bidge network mode
+        with:
+          attempt_limit: 3
+          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
+        
+      - uses: Wandalen/wretry.action@v3.8.0
+        name: Run bats unit and integration tests in host network mode
+        with:
+          attempt_limit: 3
+          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
+
+      - name: Build for test fhem, python and nodejs layer added for amd64
+        uses: docker/build-push-action@v6
         id: docker_build
         with:
           context: .
           load: true  
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
+          target: with-fhem-extended-python-nodejs
           cache-from: | 
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}  
+            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -98,17 +350,6 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=1
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=1
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=1
-            IMAGE_LAYER_PYTHON=1
-            IMAGE_LAYER_PYTHON_EXT=1
-            IMAGE_LAYER_NODEJS=1
-            IMAGE_LAYER_NODEJS_EXT=0
 
       - name: Inspect and run integration tests
         run: |
@@ -117,23 +358,53 @@ jobs:
 
       - name: Run build in unittests
         run: |
-          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 -e CPAN_PKGS=Test2::Suite ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
+          CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
           until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
           do sleep 1;
           echo -n "."; 
           done;
           echo -e "\n"
-          docker exec ${CONTAINER} /bin/bash -c 'prove --recurse /opt/fhem/t/FHEM' || true
+          docker exec ${CONTAINER} /bin/bash -c "prove --exec 'perl fhem.pl -t' -I FHEM --recurse /opt/fhem/t/FHEM/" || true
           docker container rm $CONTAINER --force --volumes
+
+      - name: Build for bats with fhem extended layer
+        uses: docker/build-push-action@v6
+        id: docker_build_bats_extended
+        with:
+          context: .
+          load: true  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-bats-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
+          tags: bats-withfhem-extended
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+  
+      - uses: Wandalen/wretry.action@v3.8.0
+        name: Run bats unit and integration tests in host network mode
+        with:
+          attempt_limit: 3
+          command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
 
   published_build:
     runs-on: ubuntu-latest
-    needs: test_build
+    needs: [test_build, cpan_build]
     strategy:
       matrix:
-        dockerfile: [Dockerfile, Dockerfile-bullseye]
-
+        dockerfile: [-bullseye, -threaded-bullseye]
+    env:
+        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -142,7 +413,7 @@ jobs:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v4.4.1
+        uses: rlespinasse/github-slug-action@v5.0.0
 
       - name: Get git vars
         shell: bash
@@ -150,10 +421,15 @@ jobs:
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
         id: gitVars
 
-      - name: Prepare SVN repository checkout and variables
-        id: prepareSVN
-        uses: ./.github/workflows/prepare-svn
-
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-FHEM
+  
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+    
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -167,34 +443,41 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/fhem-docker
             fhem/fhem
           flavor: |
-              latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+              latest= ${{ env.TAG_LATEST }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
-      - name: Build and push cross compiled full blown image on supported platforms
-        uses: docker/build-push-action@v5
+      - name: Build and push cross compiled fhem, python and nodejs layer on supported platforms
+        uses: docker/build-push-action@v6
         id: docker_build
         with:
           context: .
           load: false  
-          file: ./${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/386
+          push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
+          target: with-fhem-extended-python-nodejs
           cache-from: | 
+            type=gha,scope=base-cpan_linux/386-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm/v7-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
@@ -202,50 +485,45 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=1
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=1
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=1
-            IMAGE_LAYER_PYTHON=1
-            IMAGE_LAYER_PYTHON_EXT=1
-            IMAGE_LAYER_NODEJS=1
-            IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
 
       - name: Docker meta
         id: meta_base
         uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
              ghcr.io/${{ github.repository_owner }}/fhem-minimal-docker
              fhem/fhem-minimal
           flavor: |
-             latest= ${{ fromJSON('["auto", "false"]')[github.event.release.prerelease == 1] }}
+             latest= ${{ env.TAG_LATEST }}
           tags: |
-            type=semver,pattern={{version}},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=ref,event=branch,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
-            type=ref,event=pr,suffix=${{ fromJSON('["-bullseye", "-buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}
-            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }},value=
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled base image on supported platforms
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: docker_build_base
         with:
           context: .
           load: false  
-          file: ./${{ matrix.dockerfile }}
-          platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64,386
+          push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
+          target: with-fhem
           cache-from: | 
+            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/arm/v7-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/386-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
             type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/cross-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=base_linux/cross-${{ matrix.dockerfile }}
           tags: ${{ steps.meta_base.outputs.tags }}
+          annotations: ${{ steps.meta_base.outputs.annotations }}
           labels: ${{ steps.meta_base.outputs.labels }}
           build-args: |
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
@@ -254,15 +532,4 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-            FHEM_VERSION=${{ steps.buildVars.outputs.VARIANT_FHEM }}
-            VCS_REF=${{ steps.buildVars.outputs.FHEM_REVISION_LATEST }}
-            IMAGE_LAYER_SYS_EXT=0
-            IMAGE_LAYER_PERL_EXT=1
-            IMAGE_LAYER_DEV=0
-            IMAGE_LAYER_PERL_CPAN=1
-            IMAGE_LAYER_PERL_CPAN_EXT=0
-            IMAGE_LAYER_PYTHON=0
-            IMAGE_LAYER_PYTHON_EXT=0
-            IMAGE_LAYER_NODEJS=0
-            IMAGE_LAYER_NODEJS_EXT=0
-            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian ${{ fromJSON('["bullseye", "buster"]')[endsWith(matrix.dockerfile, 'Dockerfile')] }}.
+            L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.

@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-bullseye@sha256:b1e1930cd1377c8db81226d3c65e7bd825f0c9f08b7daa838992692c8504dc19 AS base
+FROM perl:5.36.3-slim-threaded-bullseye@sha256:51d5c5c317a508676d6e0790a1a8b9fc2d17c1def80e67b297b3ae91bd19ba89 AS base
 
 ARG TARGETPLATFORM
 
@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-bullseye@sha256:4edb499288f40881a320dd95df1fa6656991226f67b9131818b0c785c97faa31 AS build-cpan 
+FROM perl:5.36.3-threaded-bullseye@sha256:b975af4332429b522c3b848bcf2a1c99b2b1b7355a796359810313956b3a7e5d AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 
@@ -67,13 +67,12 @@ EOF
 # Install Modules from CPAN
 #
 
-# JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
+# JSON::XS isn't marked as compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
-  
   cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/
   
   rm -rf /root/.cpanm 
@@ -182,7 +181,7 @@ ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
    CONFIGTYPE=fhem.cfg
 
 # Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
-# Arguments to instantiate AS variables
+# Arguments to instantiate as variables
 ARG PLATFORM="linux"
 ARG TAG=""
 ARG IMAGE_VCS_REF=""
@@ -207,6 +206,7 @@ ARG L_VENDOR_FHEM="FHEM e.V."
 ARG L_LICENSES_FHEM="GPL-2.0"
 ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
 
+
 # non-standard labels
 LABEL org.fhem.authors=${L_AUTHORS_FHEM}
 LABEL org.fhem.url=${L_URL_FHEM}
@@ -218,17 +218,17 @@ LABEL org.fhem.description=${L_DESCR_FHEM}
 
 # annotation labels according to
 # https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors=${L_AUTHORS}
-LABEL org.opencontainers.image.url=${L_URL}
-LABEL org.opencontainers.image.documentation=${L_USAGE}
-LABEL org.opencontainers.image.source=${L_VCS_URL}
-LABEL org.opencontainers.image.version=${IMAGE_VERSION}
-LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
-LABEL org.opencontainers.image.vendor=${L_VENDOR}
-LABEL org.opencontainers.image.licenses=${L_LICENSES}
-LABEL org.opencontainers.image.title=${L_TITLE} 
-LABEL org.opencontainers.image.description=${L_DESCR}
+LABEL org.opencontainers.image.created ${BUILD_DATE} \
+   org.opencontainers.image.authors ${L_AUTHORS} \
+   org.opencontainers.image.url ${L_URL} \
+   org.opencontainers.image.documentation ${L_USAGE} \
+   org.opencontainers.image.source ${L_VCS_URL} \
+   org.opencontainers.image.version ${IMAGE_VERSION} \
+   org.opencontainers.image.revision ${IMAGE_VCS_REF} \
+   org.opencontainers.image.vendor ${L_VENDOR} \
+   org.opencontainers.image.licenses ${L_LICENSES} \
+   org.opencontainers.image.title ${L_TITLE} 
+LABEL org.opencontainers.image.description ${L_DESCR}
 
 RUN chmod 755 /*.sh /usr/local/bin/* \ 
     && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
@@ -249,7 +249,7 @@ CMD [ "start" ]
 # Add additional Perl and System layers
 #
 
-FROM with-fhem AS with-fhem-extended
+FROM with-fhem as with-fhem-extended
 
 ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
@@ -283,7 +283,7 @@ COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib
 # Add additional Python layer
 #
 
-FROM with-fhem-extended AS with-fhem-extended-python
+FROM with-fhem-extended as with-fhem-extended-python
 
 RUN <<EOF 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 

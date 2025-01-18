@@ -1,0 +1,57 @@
+# Specify excluded packages which are not inclided from CPAN. 
+# May they are not really a package but specidied like a package. So the automatic removal of these requiremens doesn't work.
+# Some  packages are also not compatible, so we remove them here
+# Every line gets cobined in a regex wir or construct, so regex like instructions can also be applied here
+# Every statement must begin at beginning, because ^ is prepended before this lists
+
+# Remove anything which starts with "FHEM"
+FHEM
+# Meta isn't a package, it resided in main
+META$
+meta$
+Meta$
+# Wrog specified in a SIGNALduino Module. Update in SVN outstanding
+Digest:CRC$
+# We build only for linux, so we remove the WIN32, because they are not bound to a feature
+Win32::
+# FHEM has a local lib dir, we remove this
+lib$
+# YAF seems not to be updated for a long time and makes a problem with IMAGE::Magick
+YAF$
+# These are all module wich run in main and not their namespace:
+OW$
+RTypes$
+RRDs$
+Slim::
+HM485d::HM485_Protocol$
+lib::HM485::
+lib::OWNet$
+longer$
+myCtrlHAL$
+fhconverter$
+TradfriUtils$
+encode$
+fhwebsocket$
+Device::LIFX
+ABFALL_
+SetExtensions$
+HttpUtils$
+UPnP::ControlPoint$
+FritzBoxUtils$
+configDB$
+RESIDENTStk$
+SHC_datafields$
+TcpServerUtils$
+Blocking$
+uConv$
+ZWLib$
+UpNp:Common
+HttpUtils$
+Unit$
+DevIo$
+AttrTemplate$
+ProtoThreads$
+# CARP is core, here is something wrong:
+carp$
+# Pcakage does not exists (anymore?) on metacpan
+JSON::backportPP$  
