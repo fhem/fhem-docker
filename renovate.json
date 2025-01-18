@@ -14,7 +14,14 @@
       "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMinor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}"
     },
     {
-      "groupName": "perlImagesMinor",
+      "groupName": "perlImagesMinor36",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "minimumReleaseAge": "3 days",
+      "allowedVersions": "/^(5\\.)36(\\.\\d)?(.*)$/",
+    },
+    {
+      "groupName": "perlImagesMajor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "14 days",
