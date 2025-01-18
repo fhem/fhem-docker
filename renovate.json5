@@ -18,14 +18,15 @@
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "3 days",
-      "allowedVersions": "/^(5\\.)36(\\.\\d)?(.*)$/",
+      "automerge": true,
+      "allowedVersions": "/^(5\\.)36(\\.\\d)?(.*)$/"
     },
     {
       "groupName": "perlImagesMajor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "14 days",
-      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/",
+      "allowedVersions": "/^(5\\.)([1-9][02468])(\\.\\d)?(.*)$/"
     }
   ]
 }
