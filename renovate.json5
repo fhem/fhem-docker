@@ -19,7 +19,7 @@
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
-      "allowedVersions": "/^(5\\.)(36)(\\.\\d)/",
+      "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)$/",
       "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)$"
     },
     {
