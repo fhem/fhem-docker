@@ -19,16 +19,16 @@
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
-      "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)$/",
-      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)$"
+      "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)/",
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)"
     },
     {
       "groupName": "perlImagesMajor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "14 days",
-      "allowedVersions": "/^5\\.([1-9][02468])(\\.\\d)?(.*)$/",
-      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)$"
+      "allowedVersions": "/^5\\.([1-9][02468])(\\.\\d)?(.*)/",
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)"
     }
   ]
 }
