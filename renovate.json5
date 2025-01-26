@@ -2,8 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "docker:pinDigests"
+    "docker:pinDigests",
+    ":separateMultipleMajorReleases"
   ],
+  
   "packageRules": [
     {
       "groupName": "Docker Digest",
@@ -26,6 +28,7 @@
       "groupName": "perlImagesMajor",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
+      "automerge": false,
       "minimumReleaseAge": "14 days",
       "allowedVersions": "/^5\\.([1-9][02468])(\\.\\d)?(.*)/",
       "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)"
