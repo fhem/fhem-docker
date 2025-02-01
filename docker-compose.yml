@@ -23,7 +23,7 @@ services:
 
   # Minimum example w/o any custom environment variables
   fhem_5_a:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-docker:5-bookworm@sha256:35cffc139afbc116cc230b1523928829d4dce8697e08b186eb43143f95b06d41
     restart: always
     networks:
       - net
@@ -34,7 +34,7 @@ services:
 
   # Example w/ custom environment variables
   fhem_5_b:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-docker:5-bookworm@sha256:35cffc139afbc116cc230b1523928829d4dce8697e08b186eb43143f95b06d41
     restart: always
     networks:
       - net
@@ -54,7 +54,7 @@ services:
   # Example to connect USB to the container w/o
   # privileged mode (preferred method)
   fhem_5_c:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-docker:5-bookworm@sha256:35cffc139afbc116cc230b1523928829d4dce8697e08b186eb43143f95b06d41
     restart: always
     networks:
       - net
@@ -75,7 +75,7 @@ services:
   # Example to connect USB to the container w/
   # privileged mode (not recommended for security reasons)
   fhem_5_d:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-docker:5-bookworm@sha256:35cffc139afbc116cc230b1523928829d4dce8697e08b186eb43143f95b06d41
     restart: always
     privileged: true
     networks:
@@ -96,7 +96,7 @@ services:
   # Example for privileged container w/
   # host network (not recommended for security reasons)
   fhem_5_e:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-docker:5-bookworm@sha256:35cffc139afbc116cc230b1523928829d4dce8697e08b186eb43143f95b06d41
     restart: always
     privileged: true
     network_mode: "host"
@@ -199,7 +199,7 @@ services:
 
   # Minimum example w/o any custom environment variables
   fhem_4_a:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye@sha256:92c289c95407e031f7d1916c532dbaff06182fdc54fba59af017fcb592f6be2a
     restart: always
     networks:
       - net
@@ -210,7 +210,7 @@ services:
 
   # Example w/ custom environment variables
   fhem_4_b:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye@sha256:92c289c95407e031f7d1916c532dbaff06182fdc54fba59af017fcb592f6be2a
     restart: always
     networks:
       - net
@@ -230,7 +230,7 @@ services:
   # Example to connect USB to the container w/o
   # privileged mode (preferred method)
   fhem_4_c:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye@sha256:92c289c95407e031f7d1916c532dbaff06182fdc54fba59af017fcb592f6be2a
     restart: always
     networks:
       - net
@@ -251,7 +251,7 @@ services:
   # Example to connect USB to the container w/
   # privileged mode (not recommended for security reasons)
   fhem_4_d:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye@sha256:92c289c95407e031f7d1916c532dbaff06182fdc54fba59af017fcb592f6be2a
     restart: always
     privileged: true
     networks:
@@ -272,7 +272,7 @@ services:
   # Example for privileged container w/
   # host network (not recommended for security reasons)
   fhem_4_e:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
+    image: ghcr.io/fhem/fhem-docker:4-bullseye@sha256:92c289c95407e031f7d1916c532dbaff06182fdc54fba59af017fcb592f6be2a
     restart: always
     privileged: true
     network_mode: "host"
