@@ -22,7 +22,8 @@
       "minimumReleaseAge": "3 days",
       "automerge": true,
       "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)/",
-      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)"
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
+      "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$",
     },
     {
       "groupName": "perlImagesMajor",
@@ -31,7 +32,8 @@
       "automerge": false,
       "minimumReleaseAge": "14 days",
       "allowedVersions": "/^5\\.([1-9][02468])(\\.\\d)?(.*)/",
-      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)"
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
+      "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$"
     }
   ]
 }
