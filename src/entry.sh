@@ -637,7 +637,7 @@ function prepareFhemUser() {
   find ${FHEM_DIR}/ -path '*/*script*/*' -type f -exec chmod --quiet u+x {} \;
 
   printfInfo "Correcting group ownership for /dev/tty* \n"
-  find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
+  find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference :tty {} \; 2>/dev/null
   find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
   find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
   find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
@@ -742,7 +742,7 @@ END_OF_INLINE
   printfInfo "Updating SSH key pinning and SSH client permissions for user 'fhem' \n"
   cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k1,2 > ${FHEM_DIR}/.ssh/known_hosts.tmp
   mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
-  chown -R fhem.fhem ${FHEM_DIR}/.ssh/
+  chown -R fhem:fhem ${FHEM_DIR}/.ssh/
   chmod 640 ${FHEM_DIR}/.ssh/known_hosts
   chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
   chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub
