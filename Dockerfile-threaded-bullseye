@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.4-threaded-bullseye@sha256:e4c350ebc24d5a82cf1c9eafd49e6686e340a5efd7687bde3a28747f358dae68 AS build-cpan 
+FROM perl:5.38.4-threaded-bullseye@sha256:ea8780780ed137a4e5e0d0cb8528adf0192b0d519ec0df2cbd076018028e3f36 AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 

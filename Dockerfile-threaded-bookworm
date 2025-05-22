@@ -50,7 +50,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.4-threaded-bookworm@sha256:b21d6b0681ce1d905a61988752beb646e0cc5ad091ea9b7a7a8b292ac5feddcf AS build-cpan 
+FROM perl:5.38.4-threaded-bookworm@sha256:369dca99dc1b55443851c53fbf0bb0412d7fd23fcdd69e0f5fbff7c824dfc57d AS build-cpan 
 
 ARG TARGETPLATFORM
 
