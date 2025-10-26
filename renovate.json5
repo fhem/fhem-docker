@@ -8,7 +8,7 @@
   
   "packageRules": [
     {
-      "managers": ["docker-compose"],
+      "matchManagers": ["docker-compose"],
       "pinDigests": false
     },
     {
