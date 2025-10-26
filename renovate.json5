@@ -8,6 +8,10 @@
   
   "packageRules": [
     {
+      "matchManagers": ["docker-compose"],
+      "pinDigests": false
+    },
+    {
       "groupName": "Docker Digest",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
