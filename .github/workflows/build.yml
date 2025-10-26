@@ -96,7 +96,7 @@ jobs:
           key: ${{ steps.cache-ppi-restore.outputs.cache-primary-key }}
           path: .cache/PPI
               
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: cpanfile-3rdParty
           path: cpanfile
@@ -110,7 +110,7 @@ jobs:
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: cpanfile-FHEM
           path: cpanfile
