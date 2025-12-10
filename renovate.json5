@@ -20,12 +20,12 @@
       "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMinor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}"
     },
     {
-      "groupName": "perlImagesMinor36",
+      "groupName": "perlImagesMinor38",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
-      "allowedVersions": "/^(5\\.)(36)(\\.\\d)?(.*)/",
+      "allowedVersions": "/^(5\\.)(38)(\\.\\d)?(.*)/",
       "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
       "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$",
     },
