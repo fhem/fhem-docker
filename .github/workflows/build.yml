@@ -176,11 +176,11 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-FHEM
   
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
@@ -240,11 +240,11 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-FHEM
   
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
@@ -428,11 +428,11 @@ jobs:
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
         id: gitVars
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-FHEM
   
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
