@@ -29,8 +29,8 @@ Recommended pulling from [Github Container Registry](https://github.com/orgs/fhe
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem-docker:5-bullseye
-        docker pull ghcr.io/fhem/fhem-docker:5-threaded-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:5-bookworm
+        docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
 
 ##### Version 4 - EOL Jan 2025
 
@@ -42,8 +42,8 @@ Recommended pulling from [Github Container Registry](https://github.com/orgs/fhe
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
 - NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
 
-        docker pull ghcr.io/fhem/fhem-docker:4-bookworm
-        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bookworm
+        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
+        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
 
 If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
 
