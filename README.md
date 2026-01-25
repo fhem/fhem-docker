@@ -12,15 +12,11 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
 Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 
-### From Docker Hub
-
-    docker pull fhem/fhem:latest
-
 ### From Github container registry
 
 #### Image with serval services installed
 
-##### Version 5 (beta)
+##### Version 5
 
 - debian bookworm
 - Perl 5.36.3 (optional threaded)
@@ -31,6 +27,12 @@ Recommended pulling from [Github Container Registry](https://github.com/orgs/fhe
 
         docker pull ghcr.io/fhem/fhem-docker:5-bookworm
         docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
+
+### From Docker Hub
+
+You can pull the same image as on gitgub container registry (ghcr)
+
+    docker pull fhem/fhem:5-bookworm
 
 ##### Version 4 - EOL Jan 2025
 
@@ -144,7 +146,7 @@ Devices might still need to be checked and adjusted manually if you would like t
 
 #### Since version 4
 
-To extand the image wirh a custom package for example, you have to use standard docker tools.
+To extend the image with a custom package for example, you have to use standard docker tools.
 
 If you are defining a docker-compose.yml file describing your configuration, then you can add a build definition instead of starting the image from the registry:
 
