@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-bullseye@sha256:598bb19504c77827ddcc5103b8ea73d1b8c9ac4be78a872074b9331557e34eeb AS base
+FROM perl:5.38.5-slim-bullseye@sha256:a870caab0f9cce4d7373425748551d9ca3d36634f4e9939ea9db7b550c0210ce AS base
 
 ARG TARGETPLATFORM
 
@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.5-bullseye@sha256:6b713be4fc437f07b25502242efa899b0d2ae984ae0c9f51ea7e39ee57eef1b1 AS build-cpan 
+FROM perl:5.38.5-bullseye@sha256:d20cd65de1ac08fc55bec91d5350d3bd9fa776f9f73a86aaa7389e3dd2ebdf67 AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 
