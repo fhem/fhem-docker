@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-bullseye@sha256:6eddc8f6370910bd47a1771588a69cd7b51f6becff74a7e033f86695db91721b AS base
+FROM perl:5.38.5-slim-bullseye@sha256:598bb19504c77827ddcc5103b8ea73d1b8c9ac4be78a872074b9331557e34eeb AS base
 
 ARG TARGETPLATFORM
 
