@@ -131,6 +131,20 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 
 Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
+### CPAN inventory
+
+The generated `cpanfile` artifacts describe the expected CPAN dependencies before the image build starts. To document what actually ended up in an image, the build now exports an inventory of installed Perl modules after the CPAN installation stage finished.
+
+For every platform built in GitHub Actions, the `cpan_build` job builds a dedicated export stage and uploads an artifact named like `cpan-inventory-bookworm-arm64`. It contains:
+
+* `core/core-modules.tsv|json` for the modules installed from the FHEM `cpanfile`
+* `3rdparty/3rdparty-modules.tsv|json` for the modules installed from the `3rdParty/cpanfile`
+* `all/all-modules.tsv|json` for the combined installed module set
+
+The inventory is generated directly in `build-cpan` after the `cpm install` steps and exported through a separate `cpan-inventory` stage. This keeps the inventory out of the regular runtime images and still makes it possible to compare the dynamic `cpanfile` input with the actually installed module set even when the CPAN build layer was restored from cache.
+
+The workflow also uploads a `cpan-compare...` artifact per platform. It contains the comparison result between the generated `cpanfile` dependencies and the exported installed-module inventory and fails the `cpan_build` job when required modules are missing or versions are too low.
+
 
 ## Customize your container configuration
 
@@ -539,5 +553,3 @@ If you are running a 3rd party module, advice the maintainer to this description
 
     Add the topic 'fhem' and 'perl' and provide an instruction in your readme.md with 
     instruction how to use update add / update all to install your module.
-
-

@@ -176,6 +176,13 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+          install-modules-with: cpanm
+          install-modules-args: --notest
+          install-modules: Module::CPANfile
+
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
@@ -199,16 +206,79 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          load: true  
+          load: true
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.platform }}
           push: false
           target: base-cpan
-          cache-from: | 
+          cache-from: |
             type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: buildcpanonly
+
+      - name: Export installed CPAN inventory for ${{ matrix.platform }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: cpan-inventory
+          cache-from: |
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          outputs: type=local,dest=.artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+
+      - name: Summarize installed CPAN inventory for ${{ matrix.platform }}
+        run: |
+          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core/core-summary.txt >> $GITHUB_STEP_SUMMARY
+          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty/3rdparty-summary.txt >> $GITHUB_STEP_SUMMARY
+          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all/all-summary.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: Compare expected and installed CPAN modules for ${{ matrix.platform }}
+        run: |
+          mkdir -p .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          perl scripts/compare-cpanfile-installed.pl \
+            --cpanfile cpanfile \
+            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core/core-modules.json \
+            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --label core
+          perl scripts/compare-cpanfile-installed.pl \
+            --cpanfile 3rdParty/cpanfile \
+            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty/3rdparty-modules.json \
+            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --label 3rdparty
+          perl scripts/compare-cpanfile-installed.pl \
+            --cpanfile cpanfile \
+            --cpanfile 3rdParty/cpanfile \
+            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all/all-modules.json \
+            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --label all
+
+      - name: Summarize CPAN comparison for ${{ matrix.platform }}
+        if: always()
+        run: |
+          for report in \
+            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core-summary.txt \
+            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty-summary.txt \
+            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all-summary.txt
+          do
+            test -f "$report" && cat "$report" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cpan-compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          path: .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          overwrite: true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpan-inventory${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          path: .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          overwrite: true
     
             
   test_build:
