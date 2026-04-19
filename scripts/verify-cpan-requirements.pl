@@ -95,15 +95,23 @@ sub find_log_hits {
 
     my $module_pattern = quotemeta($module);
     my $file_pattern   = quotemeta( $module =~ s{::}{/}gr ) . '\.pm';
-    my @hits;
+    my @failure_hits;
+    my @context_hits;
 
     for my $line ( @{$logs_ref} ) {
         next unless $line =~ /$module_pattern|$file_pattern/i;
-        push @hits, $line;
-        last if @hits >= 10;
+        if ( $line =~ /failed to install distribution|error|undefined reference|can't locate|cannot find|not found|no such file|missing|build failed|configure failed/i ) {
+            push @failure_hits, $line;
+            last if @failure_hits >= 5;
+            next;
+        }
+
+        push @context_hits, $line;
+        last if @context_hits >= 5;
     }
 
-    return \@hits;
+    return \@failure_hits if @failure_hits;
+    return \@context_hits;
 }
 
 my %requirements;

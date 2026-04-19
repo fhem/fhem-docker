@@ -92,6 +92,18 @@ sub extract_failure_candidates {
     return \@candidates;
 }
 
+sub extract_failed_distributions {
+    my ($path) = @_;
+    return [] unless -f $path;
+
+    my @distributions;
+    for my $line ( split /\n/, slurp($path) ) {
+        next unless $line =~ /,([^,|]+)\|\s+Failed to install distribution\b/i;
+        push @distributions, trim($1);
+    }
+    return \@distributions;
+}
+
 my @status_notes;
 for my $status_file (@status_files) {
     push @status_notes, read_status_notes($status_file);
@@ -106,6 +118,20 @@ if (@status_notes) {
 }
 
 for my $log_path (@logs) {
+    my $failed_distributions = extract_failed_distributions($log_path);
+    if (@{$failed_distributions}) {
+        my $label = $log_path =~ /3rdparty/ ? '3rdparty' : 'core';
+        print "### Failed distributions in `$label`\n";
+        my $limit = @{$failed_distributions} > 12 ? 12 : scalar @{$failed_distributions};
+        for my $idx ( 0 .. $limit - 1 ) {
+            print '- `' . $failed_distributions->[$idx] . "`\n";
+        }
+        if ( @{$failed_distributions} > $limit ) {
+            print '- ... and ' . ( @{$failed_distributions} - $limit ) . " more\n";
+        }
+        print "\n";
+    }
+
     my $candidates = extract_failure_candidates($log_path);
     next unless @{$candidates};
 
@@ -159,6 +185,7 @@ for my $report_path (@reports) {
             my ($entry) = @_;
             my $text = '`' . ( $entry->{module} // 'unknown' ) . '`';
             $text .= ' required `' . $entry->{required} . '`' if defined $entry->{required} && $entry->{required} ne q[];
+            $text .= ' load error `' . shorten( $entry->{load_error} ) . '`' if defined $entry->{load_error} && $entry->{load_error} ne q[];
             return $text;
         }
     );
