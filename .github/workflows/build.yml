@@ -191,7 +191,17 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-          
+
+      - name: Prepare artifact path variables
+        run: |
+          PLATFORM_SLUG="${{ matrix.platform }}"
+          PLATFORM_SLUG="${PLATFORM_SLUG//\//-}"
+          echo "PLATFORM_SLUG=${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_ARTIFACT_DIR=.artifacts/cpan${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_COMPARE_DIR=.artifacts/compare${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_INVENTORY_ARTIFACT=cpan-inventory${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_COMPARE_ARTIFACT=cpan-compare${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -228,41 +238,41 @@ jobs:
           cache-from: |
             type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
-          outputs: type=local,dest=.artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          outputs: type=local,dest=${{ env.CPAN_ARTIFACT_DIR }}
 
       - name: Summarize installed CPAN inventory for ${{ matrix.platform }}
         run: |
-          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core/core-summary.txt >> $GITHUB_STEP_SUMMARY
-          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty/3rdparty-summary.txt >> $GITHUB_STEP_SUMMARY
-          cat .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all/all-summary.txt >> $GITHUB_STEP_SUMMARY
+          cat "${CPAN_ARTIFACT_DIR}/core/core-summary.txt" >> "$GITHUB_STEP_SUMMARY"
+          cat "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" >> "$GITHUB_STEP_SUMMARY"
+          cat "${CPAN_ARTIFACT_DIR}/all/all-summary.txt" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Compare expected and installed CPAN modules for ${{ matrix.platform }}
         run: |
-          mkdir -p .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          mkdir -p "${CPAN_COMPARE_DIR}"
           perl scripts/compare-cpanfile-installed.pl \
             --cpanfile cpanfile \
-            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core/core-modules.json \
-            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --installed-json "${CPAN_ARTIFACT_DIR}/core/core-modules.json" \
+            --output-dir "${CPAN_COMPARE_DIR}" \
             --label core
           perl scripts/compare-cpanfile-installed.pl \
             --cpanfile 3rdParty/cpanfile \
-            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty/3rdparty-modules.json \
-            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --installed-json "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-modules.json" \
+            --output-dir "${CPAN_COMPARE_DIR}" \
             --label 3rdparty
           perl scripts/compare-cpanfile-installed.pl \
             --cpanfile cpanfile \
             --cpanfile 3rdParty/cpanfile \
-            --installed-json .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all/all-modules.json \
-            --output-dir .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }} \
+            --installed-json "${CPAN_ARTIFACT_DIR}/all/all-modules.json" \
+            --output-dir "${CPAN_COMPARE_DIR}" \
             --label all
 
       - name: Summarize CPAN comparison for ${{ matrix.platform }}
         if: always()
         run: |
           for report in \
-            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/core-summary.txt \
-            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/3rdparty-summary.txt \
-            .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}/all-summary.txt
+            "${CPAN_COMPARE_DIR}/core-summary.txt" \
+            "${CPAN_COMPARE_DIR}/3rdparty-summary.txt" \
+            "${CPAN_COMPARE_DIR}/all-summary.txt"
           do
             test -f "$report" && cat "$report" >> "$GITHUB_STEP_SUMMARY"
           done
@@ -270,14 +280,14 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: cpan-compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
-          path: .artifacts/compare${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          name: ${{ env.CPAN_COMPARE_ARTIFACT }}
+          path: ${{ env.CPAN_COMPARE_DIR }}
           overwrite: true
 
       - uses: actions/upload-artifact@v7
         with:
-          name: cpan-inventory${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
-          path: .artifacts/cpan${{ matrix.dockerfile }}-${{ replace(matrix.platform, '/', '-') }}
+          name: ${{ env.CPAN_INVENTORY_ARTIFACT }}
+          path: ${{ env.CPAN_ARTIFACT_DIR }}
           overwrite: true
     
             
