@@ -82,9 +82,10 @@ jobs:
           echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories
-        run: | 
+        run: |
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
+          perl scripts/export-cpan-requirements.pl --cpanfile cpanfile --output-file requirements/3rdparty.json --label 3rdparty
           echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
@@ -102,11 +103,18 @@ jobs:
           path: cpanfile
           overwrite: true
 
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpan-requirements-3rdParty
+          path: requirements/3rdparty.json
+          overwrite: true
+
       - name: create cpanfile from FHEM svn dependencies
-        run: | 
+        run: |
           rm cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
+          perl scripts/export-cpan-requirements.pl --cpanfile cpanfile --output-file requirements/core.json --label core
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
@@ -114,6 +122,12 @@ jobs:
         with:
           name: cpanfile-FHEM
           path: cpanfile
+          overwrite: true
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpan-requirements-FHEM
+          path: requirements/core.json
           overwrite: true
         
   base_build:
@@ -176,21 +190,24 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
-      - uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: "5.38"
-          install-modules-with: cpanm
-          install-modules-args: --notest
-          install-modules: Module::CPANfile
-
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
-  
+
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-FHEM
+          path: requirements
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-3rdParty
+          path: requirements
 
       - name: Prepare artifact path variables
         run: |
@@ -198,9 +215,7 @@ jobs:
           PLATFORM_SLUG="${PLATFORM_SLUG//\//-}"
           echo "PLATFORM_SLUG=${PLATFORM_SLUG}" >> "$GITHUB_ENV"
           echo "CPAN_ARTIFACT_DIR=.artifacts/cpan${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
-          echo "CPAN_COMPARE_DIR=.artifacts/compare${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
           echo "CPAN_INVENTORY_ARTIFACT=cpan-inventory${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
-          echo "CPAN_COMPARE_ARTIFACT=cpan-compare${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
 
       - name: Prepare docker for build and publish
         id: prepareDOCKER
@@ -246,33 +261,12 @@ jobs:
           cat "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" >> "$GITHUB_STEP_SUMMARY"
           cat "${CPAN_ARTIFACT_DIR}/all/all-summary.txt" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Compare expected and installed CPAN modules for ${{ matrix.platform }}
-        run: |
-          mkdir -p "${CPAN_COMPARE_DIR}"
-          perl scripts/compare-cpanfile-installed.pl \
-            --cpanfile cpanfile \
-            --installed-json "${CPAN_ARTIFACT_DIR}/core/core-modules.json" \
-            --output-dir "${CPAN_COMPARE_DIR}" \
-            --label core
-          perl scripts/compare-cpanfile-installed.pl \
-            --cpanfile 3rdParty/cpanfile \
-            --installed-json "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-modules.json" \
-            --output-dir "${CPAN_COMPARE_DIR}" \
-            --label 3rdparty
-          perl scripts/compare-cpanfile-installed.pl \
-            --cpanfile cpanfile \
-            --cpanfile 3rdParty/cpanfile \
-            --installed-json "${CPAN_ARTIFACT_DIR}/all/all-modules.json" \
-            --output-dir "${CPAN_COMPARE_DIR}" \
-            --label all
-
-      - name: Summarize CPAN comparison for ${{ matrix.platform }}
-        if: always()
+      - name: Summarize CPAN verification for ${{ matrix.platform }}
         run: |
           for report in \
-            "${CPAN_COMPARE_DIR}/core-summary.txt" \
-            "${CPAN_COMPARE_DIR}/3rdparty-summary.txt" \
-            "${CPAN_COMPARE_DIR}/all-summary.txt"
+            "${CPAN_ARTIFACT_DIR}/verify/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/all/all-summary.txt"
           do
             if [ -f "$report" ]; then
               cat "$report" >> "$GITHUB_STEP_SUMMARY"
@@ -280,17 +274,17 @@ jobs:
           done
 
       - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: ${{ env.CPAN_COMPARE_ARTIFACT }}
-          path: ${{ env.CPAN_COMPARE_DIR }}
-          overwrite: true
-
-      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.CPAN_INVENTORY_ARTIFACT }}
           path: ${{ env.CPAN_ARTIFACT_DIR }}
           overwrite: true
+
+      - name: Assert CPAN verification for ${{ matrix.platform }}
+        run: |
+          perl scripts/assert-cpan-verification.pl \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json"
     
             
   test_build:
@@ -330,6 +324,16 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-FHEM
+          path: requirements
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-3rdParty
+          path: requirements
           
       - name: Prepare docker for build and publish
         id: prepareDOCKER
@@ -518,6 +522,16 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-FHEM
+          path: requirements
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpan-requirements-3rdParty
+          path: requirements
     
       - name: Prepare docker for build and publish
         id: prepareDOCKER

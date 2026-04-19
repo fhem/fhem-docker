@@ -140,10 +140,12 @@ For every platform built in GitHub Actions, the `cpan_build` job builds a dedica
 * `core/core-modules.tsv|json` for the modules installed from the FHEM `cpanfile`
 * `3rdparty/3rdparty-modules.tsv|json` for the modules installed from the `3rdParty/cpanfile`
 * `all/all-modules.tsv|json` for the combined installed module set
+* `verify/core|3rdparty|all/*` for the requirement verification reports
+* `logs/core-install.log` and `logs/3rdparty-install.log` for the captured `cpm install` output
 
 The inventory is generated directly in `build-cpan` after the `cpm install` steps and exported through a separate `cpan-inventory` stage. This keeps the inventory out of the regular runtime images and still makes it possible to compare the dynamic `cpanfile` input with the actually installed module set even when the CPAN build layer was restored from cache.
 
-The workflow also uploads a `cpan-compare...` artifact per platform. It contains the comparison result between the generated `cpanfile` dependencies and the exported installed-module inventory and fails the `cpan_build` job when required modules are missing or versions are too low.
+For verification, the workflow now derives requirement lists from the generated `cpanfile`s, validates them inside `build-cpan` with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
 
 
 ## Customize your container configuration
