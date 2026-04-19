@@ -72,17 +72,15 @@ EOF
 # JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
-  mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify;
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+  mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
   
-  if cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1; then
-    cat /usr/src/app/cpan-logs/core-install.log
-  else
-    cat /usr/src/app/cpan-logs/core-install.log
-    exit 1
-  fi
+  core_status=0
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1 || core_status=$?
+  cat /usr/src/app/cpan-logs/core-install.log
+  printf 'exit_code=%s\n' "$core_status" > /usr/src/app/cpan-verify/core/core-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
   
   rm -rf /root/.cpanm 
@@ -110,21 +108,20 @@ EOF
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
   fi
   
-  if cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ > /usr/src/app/cpan-logs/3rdparty-install.log 2>&1; then
-    cat /usr/src/app/cpan-logs/3rdparty-install.log
-  else
-    cat /usr/src/app/cpan-logs/3rdparty-install.log
-    exit 1
-  fi
+  thirdparty_status=0
+  cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ > /usr/src/app/cpan-logs/3rdparty-install.log 2>&1 || thirdparty_status=$?
+  cat /usr/src/app/cpan-logs/3rdparty-install.log
+  printf 'exit_code=%s\n' "$thirdparty_status" > /usr/src/app/cpan-verify/3rdparty/3rdparty-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/all --label all
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
+  printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm
 EOF

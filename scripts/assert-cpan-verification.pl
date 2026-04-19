@@ -6,12 +6,14 @@ use Getopt::Long qw(GetOptions);
 use JSON::PP qw(decode_json);
 
 my @reports;
+my @status_files;
 
 GetOptions(
-    'report=s@' => \@reports,
+    'report=s@'      => \@reports,
+    'status-file=s@' => \@status_files,
 ) or die "Usage: $0 --report <path> [--report <path> ...]\n";
 
-die "At least one --report is required\n" unless @reports;
+die "At least one --report or --status-file is required\n" unless @reports || @status_files;
 
 my $exit_code = 0;
 for my $report (@reports) {
@@ -26,6 +28,20 @@ for my $report (@reports) {
 
     if ($bad) {
         warn "$report has $bad actionable verification failures\n";
+        $exit_code = 1;
+    }
+}
+
+for my $status_file (@status_files) {
+    open( my $fh, '<', $status_file ) or die "Cannot open $status_file: $!";
+    my $content = do { local $/; <$fh> };
+    close($fh) or die "Cannot close $status_file: $!";
+
+    my ($install_exit_code) = $content =~ /^exit_code=(\d+)/m;
+    next unless defined $install_exit_code;
+
+    if ( $install_exit_code != 0 ) {
+        warn "$status_file recorded cpm install exit code $install_exit_code\n";
         $exit_code = 1;
     }
 }

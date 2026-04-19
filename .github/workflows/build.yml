@@ -255,9 +255,67 @@ jobs:
           path: ${{ env.CPAN_ARTIFACT_DIR }}
           overwrite: true
 
+      - name: Render CPAN PR comment for ${{ matrix.platform }}
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          perl scripts/render-cpan-pr-comment.pl \
+            --dockerfile "${{ matrix.dockerfile }}" \
+            --platform "${{ matrix.platform }}" \
+            --artifact "${CPAN_INVENTORY_ARTIFACT}" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/core-install.log" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/3rdparty-install.log" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            > "${CPAN_ARTIFACT_DIR}/cpan-pr-comment.md"
+
+      - name: Comment CPAN findings on PR for ${{ matrix.platform }}
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          COMMENT_FILE: ${{ env.CPAN_ARTIFACT_DIR }}/cpan-pr-comment.md
+          COMMENT_MARKER: <!-- cpan-build-report:${{ matrix.dockerfile }}:${{ matrix.platform }} -->
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
+            const marker = process.env.COMMENT_MARKER;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
       - name: Assert CPAN verification for ${{ matrix.platform }}
         run: |
           perl scripts/assert-cpan-verification.pl \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
             --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json"
