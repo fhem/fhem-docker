@@ -274,7 +274,9 @@ jobs:
             "${CPAN_COMPARE_DIR}/3rdparty-summary.txt" \
             "${CPAN_COMPARE_DIR}/all-summary.txt"
           do
-            test -f "$report" && cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done
 
       - uses: actions/upload-artifact@v7

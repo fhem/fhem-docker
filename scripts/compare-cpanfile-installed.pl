@@ -38,14 +38,45 @@ sub version_satisfies {
     return 1 if !defined $required || $required eq q[] || $required eq '0';
     return 0 if !defined $installed || $installed eq q[];
 
-    my ($installed_obj, $required_obj);
-    eval {
-        $installed_obj = version->parse($installed);
-        $required_obj  = version->parse($required);
-        1;
-    } or return $installed ge $required;
+    my @constraints = grep { $_ ne q[] } split /\s*,\s*/, $required;
+    @constraints = ($required) unless @constraints;
 
-    return $installed_obj >= $required_obj;
+    for my $constraint (@constraints) {
+        return 0 unless version_matches_constraint( $installed, $constraint );
+    }
+
+    return 1;
+}
+
+sub version_matches_constraint {
+    my ( $installed, $constraint ) = @_;
+
+    if ( $constraint =~ /\A\s*(<=|>=|==|!=|<|>)\s*(.+?)\s*\z/ ) {
+        my ( $operator, $required_version ) = ( $1, $2 );
+        my $comparison = compare_versions( $installed, $required_version );
+
+        return $comparison < 0  if $operator eq '<';
+        return $comparison <= 0 if $operator eq '<=';
+        return $comparison > 0  if $operator eq '>';
+        return $comparison >= 0 if $operator eq '>=';
+        return $comparison == 0 if $operator eq '==';
+        return $comparison != 0 if $operator eq '!=';
+    }
+
+    return compare_versions( $installed, $constraint ) >= 0;
+}
+
+sub compare_versions {
+    my ( $left, $right ) = @_;
+
+    my ( $left_obj, $right_obj );
+    eval {
+        $left_obj  = version->parse($left);
+        $right_obj = version->parse($right);
+        1;
+    } or return $left cmp $right;
+
+    return $left_obj <=> $right_obj;
 }
 
 my %expected;
