@@ -51,7 +51,6 @@ FROM perl:5.38.5-threaded-bullseye@sha256:ed084543c6e2ab11f5b49bc33ae41404122a89
 COPY cpanfile /usr/src/app/core/cpanfile
 COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
 COPY scripts/verify-cpan-requirements.pl /usr/local/bin/verify-cpan-requirements.pl
-COPY requirements/core.json /usr/src/app/requirements/core.json
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
@@ -108,7 +107,6 @@ EOF
 
 # Install all CPAN Modules, needed from 3rd party module repositorys 
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
-COPY requirements/3rdparty.json /usr/src/app/requirements/3rdparty.json
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
@@ -123,9 +121,9 @@ RUN <<EOF
   fi
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/all --label all
-  perl /usr/local/bin/verify-cpan-requirements.pl --requirements-json /usr/src/app/requirements/core.json --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
-  perl /usr/local/bin/verify-cpan-requirements.pl --requirements-json /usr/src/app/requirements/3rdparty.json --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
-  perl /usr/local/bin/verify-cpan-requirements.pl --requirements-json /usr/src/app/requirements/core.json --requirements-json /usr/src/app/requirements/3rdparty.json --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm
 EOF

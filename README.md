@@ -145,7 +145,7 @@ For every platform built in GitHub Actions, the `cpan_build` job builds a dedica
 
 The inventory is generated directly in `build-cpan` after the `cpm install` steps and exported through a separate `cpan-inventory` stage. This keeps the inventory out of the regular runtime images and still makes it possible to compare the dynamic `cpanfile` input with the actually installed module set even when the CPAN build layer was restored from cache.
 
-For verification, the workflow now derives requirement lists from the generated `cpanfile`s, validates them inside `build-cpan` with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
+For verification, `build-cpan` now reads the generated `cpanfile`s directly inside the container, validates them with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The workflow host only evaluates the exported verification reports. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
 
 
 ## Customize your container configuration

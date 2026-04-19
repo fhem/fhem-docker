@@ -10,6 +10,7 @@ use Module::CoreList;
 use version ();
 
 my @requirements_json;
+my @cpanfiles;
 my @log_files;
 my @lib_dirs;
 my $output_dir;
@@ -17,13 +18,14 @@ my $label = 'verification';
 
 GetOptions(
     'requirements-json=s@' => \@requirements_json,
+    'cpanfile=s@'          => \@cpanfiles,
     'log=s@'               => \@log_files,
     'lib=s@'               => \@lib_dirs,
     'output-dir=s'         => \$output_dir,
     'label=s'              => \$label,
-) or die "Usage: $0 --requirements-json <path> [--requirements-json <path> ...] --output-dir <path> [--log <path> ...] [--lib <path> ...] [--label <name>]\n";
+) or die "Usage: $0 (--cpanfile <path> [--cpanfile <path> ...] | --requirements-json <path> [--requirements-json <path> ...]) --output-dir <path> [--log <path> ...] [--lib <path> ...] [--label <name>]\n";
 
-die "At least one --requirements-json is required\n" unless @requirements_json;
+die "At least one --cpanfile or --requirements-json is required\n" unless @requirements_json || @cpanfiles;
 die "--output-dir is required\n" unless defined $output_dir;
 
 sub compare_versions {
@@ -105,6 +107,18 @@ sub find_log_hits {
 }
 
 my %requirements;
+for my $path (@cpanfiles) {
+    my @lines = split /\n/, slurp($path);
+    for my $line (@lines) {
+        next if $line =~ /^\s*#/;
+        next unless $line =~ /\b(?:requires|recommends|suggests)\s+['"]([^'"]+)['"](?:\s*,\s*['"]?([^'";]+?)['"]?)?\s*;/;
+
+        my $module   = $1;
+        my $required = normalize_required($2);
+        $requirements{$module} = $required unless exists $requirements{$module};
+    }
+}
+
 for my $path (@requirements_json) {
     my $data = decode_json( slurp($path) );
     for my $entry ( @{ $data->{requirements} // [] } ) {

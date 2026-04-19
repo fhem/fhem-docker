@@ -85,7 +85,6 @@ jobs:
         run: |
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
-          perl scripts/export-cpan-requirements.pl --cpanfile cpanfile --output-file requirements/3rdparty.json --label 3rdparty
           echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
@@ -103,18 +102,11 @@ jobs:
           path: cpanfile
           overwrite: true
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: cpan-requirements-3rdParty
-          path: requirements/3rdparty.json
-          overwrite: true
-
       - name: create cpanfile from FHEM svn dependencies
         run: |
           rm cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
-          perl scripts/export-cpan-requirements.pl --cpanfile cpanfile --output-file requirements/core.json --label core
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
@@ -124,12 +116,6 @@ jobs:
           path: cpanfile
           overwrite: true
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: cpan-requirements-FHEM
-          path: requirements/core.json
-          overwrite: true
-        
   base_build:
     strategy:
       matrix:
@@ -198,16 +184,6 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-FHEM
-          path: requirements
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-3rdParty
-          path: requirements
 
       - name: Prepare artifact path variables
         run: |
@@ -325,16 +301,6 @@ jobs:
           name: cpanfile-3rdParty
           path: 3rdParty
 
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-FHEM
-          path: requirements
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-3rdParty
-          path: requirements
-          
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -523,16 +489,6 @@ jobs:
           name: cpanfile-3rdParty
           path: 3rdParty
 
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-FHEM
-          path: requirements
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpan-requirements-3rdParty
-          path: requirements
-    
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
