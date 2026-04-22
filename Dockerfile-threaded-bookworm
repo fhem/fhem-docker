@@ -65,6 +65,8 @@ RUN <<EOF
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
     libusb-dev \
     libgd-dev \
+    libfann-dev \
+    libotr5-dev \
     graphviz \
     python3-dev    
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
@@ -86,6 +88,11 @@ RUN <<EOF
   mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
+  fi
+  # Math::Pari emits 64-bit-only assembler on linux/386 and Crypt::Random depends on it there.
+  if [ "${TARGETPLATFORM}" = "linux/386" ]; then
+    sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
+    sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
   fi
   core_status=0
   cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1 || core_status=$?
