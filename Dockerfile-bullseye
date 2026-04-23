@@ -60,8 +60,14 @@ RUN <<EOF
       graphviz \
       libgd-dev \
       libfann-dev \
+      pkg-config \
       libotr5-dev \
       python3-dev  
+  cat <<'SCRIPT' > /usr/local/bin/imlib2-config
+#!/bin/sh
+exec pkg-config imlib2 "$@"
+SCRIPT
+  chmod +x /usr/local/bin/imlib2-config
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
@@ -79,10 +85,12 @@ RUN <<EOF
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
   
-  # Math::Pari emits 64-bit-only assembler on linux/386 and Crypt::Random depends on it there.
+  # Math::Pari emits 64-bit-only assembler on linux/386, Crypt::Random depends on it there,
+  # and HiPi pulls in Image::Imlib2 which does not build on the current i386 Debian path.
   if [ "${TARGETPLATFORM}" = "linux/386" ]; then
     sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
     sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
+    sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
 
   core_status=0
