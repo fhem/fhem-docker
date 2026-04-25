@@ -59,3 +59,11 @@ JSON::backportPP$
 Crypt::OTR$
 # Expects the legacy imlib2-config based build interface on Debian
 Image::Imlib2$
+# FHEM META.json sometimes lists local modules or non-CPAN namespaces as CPAN prereqs
+Data$
+Time$
+HUEBridge$
+HUEDevice$
+LIGHTIFY$
+RPi::DHT$
+tradfri$

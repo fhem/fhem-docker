@@ -7,6 +7,7 @@ use Data::Dumper;
 use CPAN::Meta::Merge;
 use Scalar::Util qw/blessed/;
 use File::Find::Rule;
+use FindBin;
 use JSON;
 use Perl::PrereqScanner::NotQuiteLite::App;
 use Module::CoreList;
@@ -32,6 +33,31 @@ sub merge_hashes {
     return $hash1;
 }
 
+sub build_exclude_regex {
+    my @patterns;
+
+    if ( defined $ENV{'FHEM_MODULES'} && $ENV{'FHEM_MODULES'} ne q[] ) {
+        push @patterns, $ENV{'FHEM_MODULES'};
+    }
+
+    my $exclude_file = "$FindBin::Bin/excluded_packages.txt";
+    if ( -f $exclude_file ) {
+        open( my $fh, '<', $exclude_file ) or die "can not open $exclude_file: $!";
+        while ( my $line = <$fh> ) {
+            chomp $line;
+            $line =~ s/\r\z//;
+            $line =~ s/^\s+//;
+            $line =~ s/\s+$//;
+            next if $line eq q[] || $line =~ /^#/;
+            push @patterns, "^$line";
+        }
+        close($fh) or die "can not close $exclude_file: $!";
+    }
+
+    return qr/(?!)/ unless @patterns;
+    return qr/(?:@{[join '|', @patterns]})/;
+}
+
 sub filter_nested_hashref {
     my $hashref = shift;
     my $filter_value = shift;
@@ -42,6 +68,7 @@ sub filter_nested_hashref {
         if (ref $hashref->{$key} eq 'HASH') {
             #print "$key->";
             $hashref->{$key} = filter_nested_hashref($hashref->{$key}, $filter_value);
+            delete $hashref->{$key} if !%{ $hashref->{$key} };
             
             #print Dumper $hashref->{$key};
         } elsif ( $key =~ $filter_value || Module::CoreList->is_core( $key,undef,5.36) )
@@ -57,8 +84,7 @@ sub filter_nested_hashref {
 #my $newCPANFile;
 # Alle Perl-Moduldateien im Verzeichnisbaum finden
 #print Dumper \%ENV;
-my $FHEM_MODULES = $ENV{'FHEM_MODULES'} // "";
-my $regex=qr/$FHEM_MODULES/;
+my $regex = build_exclude_regex();
 print $regex;
 foreach my $directory (@directories) {
 
@@ -133,6 +159,7 @@ foreach my $directory (@directories) {
         
         # merge requirements together
         my $struct = merge_hashes($cpanfile_requirements, $module_requirements);
+        $struct = filter_nested_hashref($struct, $regex);
         print "struct: ";
         print Dumper $struct;        
 
