@@ -105,7 +105,7 @@ RUN <<EOF
     sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
   core_status=0
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1 || core_status=$?
+  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$(nproc) --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1 || core_status=$?
   cat /usr/src/app/cpan-logs/core-install.log
   printf 'exit_code=%s\n' "$core_status" > /usr/src/app/cpan-verify/core/core-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
@@ -145,7 +145,7 @@ RUN <<EOF
   fi
   
   thirdparty_status=0
-  cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ > /usr/src/app/cpan-logs/3rdparty-install.log 2>&1 || thirdparty_status=$?
+  cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$(nproc) --local-lib-contained 3rdparty/ > /usr/src/app/cpan-logs/3rdparty-install.log 2>&1 || thirdparty_status=$?
   cat /usr/src/app/cpan-logs/3rdparty-install.log
   printf 'exit_code=%s\n' "$thirdparty_status" > /usr/src/app/cpan-verify/3rdparty/3rdparty-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
