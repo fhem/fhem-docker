@@ -258,6 +258,7 @@ jobs:
       - name: Render CPAN PR comment for ${{ matrix.platform }}
         if: always() && github.event_name == 'pull_request'
         run: |
+          mkdir -p "${CPAN_ARTIFACT_DIR}"
           perl scripts/render-cpan-pr-comment.pl \
             --dockerfile "${{ matrix.dockerfile }}" \
             --platform "${{ matrix.platform }}" \
@@ -281,6 +282,10 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            if (!fs.existsSync(process.env.COMMENT_FILE)) {
+              core.warning(`CPAN comment file not found: ${process.env.COMMENT_FILE}`);
+              return;
+            }
             const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
             const marker = process.env.COMMENT_MARKER;
             const { owner, repo } = context.repo;

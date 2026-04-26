@@ -111,7 +111,24 @@ sub find_log_hits {
 my %requirements;
 for my $path (@cpanfiles) {
     my @lines = split /\n/, slurp($path);
+    my $skip_phase_depth = 0;
     for my $line (@lines) {
+        if ($skip_phase_depth) {
+            my $opens  = $line =~ tr/{/{/;
+            my $closes = $line =~ tr/}/}/;
+            $skip_phase_depth += $opens - $closes;
+            $skip_phase_depth = 0 if $skip_phase_depth < 0;
+            next;
+        }
+
+        if ( $line =~ /^\s*on\s+(?:test|develop)\s*=>\s*sub\s*\{/ ) {
+            my $opens  = $line =~ tr/{/{/;
+            my $closes = $line =~ tr/}/}/;
+            $skip_phase_depth = $opens - $closes;
+            $skip_phase_depth = 1 if $skip_phase_depth <= 0;
+            next;
+        }
+
         next if $line =~ /^\s*#/;
         next unless $line =~ /\b(?:requires|recommends|suggests)\s+['"]([^'"]+)['"](?:\s*,\s*['"]?([^'";]+?)['"]?)?\s*;/;
 

@@ -85,11 +85,13 @@ RUN <<EOF
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
   
-  # Math::Pari emits 64-bit-only assembler on linux/386, Crypt::Random depends on it there,
-  # and HiPi pulls in Image::Imlib2 which does not build on the current i386 Debian path.
+  # Math::Pari emits 64-bit-only assembler on linux/386, Crypt::Random depends on it there.
   if [ "${TARGETPLATFORM}" = "linux/386" ]; then
     sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
     sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
+  fi
+  # HiPi pulls in Image::Imlib2 and currently only builds reliably on amd64.
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
     sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
 
@@ -114,7 +116,9 @@ RUN <<EOF
       libgd-dev \
       libdbus-1-dev \
       libimlib2-dev \
-      libsodium-dev 
+      libsodium-dev \
+      libsnmp-dev \
+      libsnmp-perl
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
@@ -301,6 +305,7 @@ RUN <<EOF
       mplayer \
       normalize-audio \
       snmp \
+      libsnmp-perl \
       snmp-mibs-downloader \
       sox \
       vorbis-tools \
