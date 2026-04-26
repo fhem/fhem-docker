@@ -67,3 +67,5 @@ HUEDevice$
 LIGHTIFY$
 RPi::DHT$
 tradfri$
+Test2::FHEM::Command$
+Test2::FHEM::SIGNALduino::RDmsg$

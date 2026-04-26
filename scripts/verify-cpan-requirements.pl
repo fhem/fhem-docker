@@ -135,7 +135,15 @@ for my $log_file (@log_files) {
     push @log_lines, split /\n/, slurp($log_file);
 }
 
-my @inc_prefixes = grep { defined $_ && $_ ne q[] } @lib_dirs;
+my %seen_inc_prefix;
+my @inc_prefixes;
+for my $lib_dir ( grep { defined $_ && $_ ne q[] } @lib_dirs ) {
+    for my $inc_prefix ( $lib_dir, "$lib_dir/$Config{archname}" ) {
+        next if $seen_inc_prefix{$inc_prefix}++;
+        next if $inc_prefix ne $lib_dir && !-d $inc_prefix;
+        push @inc_prefixes, $inc_prefix;
+    }
+}
 local @INC = ( @inc_prefixes, @INC );
 
 my @satisfied_local;
