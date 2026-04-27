@@ -1,6 +1,9 @@
 name: Reusable composit workflow which prepares caching, docker build & login for later push 
 description: build images and push them to registries
 outputs:
+  BUILDX_BUILDER:
+    description: "Name of the active Docker Buildx builder"
+    value: ${{ steps.setupBuildx.outputs.name }}
   VARIANT_FHEM:
     description: "Combined string, with FHEM Version and latest svn commit id"
     value: ${{ steps.svnVars.outputs.VARIANT_FHEM }}
@@ -35,6 +38,7 @@ runs:
         platforms: all
 
     - name: Set up Docker Buildx
+      id: setupBuildx
       uses: docker/setup-buildx-action@v4
 
     - name: Login to DockerHub

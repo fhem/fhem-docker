@@ -53,6 +53,9 @@ EOF
 FROM perl:5.38.5-threaded-bookworm@sha256:790b35631fa0f05d2b3d1b45282234664279f7e88215312e14f2030e806e1a87 AS build-cpan 
 
 ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG CPAN_CPM_CACHE_ID=perl-cpm-default
 
 COPY cpanfile /usr/src/app/core/cpanfile
 COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
@@ -89,7 +92,7 @@ EOF
 
 # JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
-RUN <<EOF
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
   set -x;
   mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
@@ -115,7 +118,6 @@ RUN <<EOF
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
   
   rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm/
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.]* ~/.??* 
 EOF
   
@@ -141,7 +143,7 @@ EOF
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
 
 # Fixup modules which do not work on all platforms and install afterwards
-RUN <<EOF
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
   set -x;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
@@ -165,7 +167,6 @@ RUN <<EOF
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
   printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
   rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm
 EOF
 
 
