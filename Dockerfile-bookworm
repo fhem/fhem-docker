@@ -152,7 +152,9 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
   fi
-  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
+  # SNMP's CPAN module version must match the system Net-SNMP library. It is not
+  # usable on linux/386 with Debian bookworm's libsnmp-dev version.
+  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ] || [ "${TARGETPLATFORM}" = "linux/386" ]; then
     sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
   fi
   cpm_workers=$(nproc)
