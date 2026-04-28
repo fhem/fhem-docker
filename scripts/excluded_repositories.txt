@@ -3,5 +3,5 @@
 
 # Pending upstream clarification:
 # "Maintenance status and possible replacement for SNMP dependency"
-# https://github.com/byterazor/Fhem-NetworkDevice/issues
+# https://github.com/byterazor/Fhem-NetworkDevice/issues/1
 byterazor/Fhem-NetworkDevice
