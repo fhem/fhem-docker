@@ -207,8 +207,8 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Restore CPM cache for ${{ matrix.platform }}
-        uses: actions/cache@v5
-        id: cache-cpm
+        uses: actions/cache/restore@v5
+        id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}
           key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
@@ -226,7 +226,7 @@ jobs:
                 "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}"
               }
             }
-          skip-extraction: ${{ steps.cache-cpm.outputs.cache-hit }}
+          skip-extraction: true
 
       - name: Build cpan packages for ${{ matrix.platform }}
         uses: docker/build-push-action@v7
@@ -244,6 +244,37 @@ jobs:
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: buildcpanonly
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
 
       - name: Export installed CPAN inventory for ${{ matrix.platform }}
         uses: docker/build-push-action@v7
@@ -404,8 +435,8 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Restore CPM cache for amd64
-        uses: actions/cache@v5
-        id: cache-cpm
+        uses: actions/cache/restore@v5
+        id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-amd64
           key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
@@ -423,7 +454,7 @@ jobs:
                 "id": "perl-cpm${{ matrix.dockerfile }}-amd64"
               }
             }
-          skip-extraction: ${{ steps.cache-cpm.outputs.cache-hit }}
+          skip-extraction: true
 
       - name: Docker meta
         id: meta
@@ -466,6 +497,37 @@ jobs:
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-amd64": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-amd64"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-amd64
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
 
       - name: Build for bats with fhem base layer
         uses: docker/build-push-action@v7
