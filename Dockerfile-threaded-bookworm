@@ -56,6 +56,7 @@ ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG CPAN_CPM_CACHE_ID=perl-cpm-default
+ARG CPAN_CPM_VERSION=v1.0.1
 
 COPY cpanfile /usr/src/app/core/cpanfile
 COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
@@ -73,6 +74,8 @@ RUN <<EOF
     libotr5-dev \
     graphviz \
     python3-dev    
+  cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
+  cpm --version
   cat <<'SCRIPT' > /usr/local/bin/imlib2-config
 #!/bin/sh
 exec pkg-config imlib2 "$@"
