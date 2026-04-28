@@ -294,9 +294,15 @@ jobs:
 
       - name: Summarize installed CPAN inventory for ${{ matrix.platform }}
         run: |
-          cat "${CPAN_ARTIFACT_DIR}/core/core-summary.txt" >> "$GITHUB_STEP_SUMMARY"
-          cat "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" >> "$GITHUB_STEP_SUMMARY"
-          cat "${CPAN_ARTIFACT_DIR}/all/all-summary.txt" >> "$GITHUB_STEP_SUMMARY"
+          for report in \
+            "${CPAN_ARTIFACT_DIR}/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/all/all-summary.txt"
+          do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
 
       - name: Summarize CPAN verification for ${{ matrix.platform }}
         run: |
@@ -311,6 +317,7 @@ jobs:
           done
 
       - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: ${{ env.CPAN_INVENTORY_ARTIFACT }}
           path: ${{ env.CPAN_ARTIFACT_DIR }}
