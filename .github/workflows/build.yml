@@ -211,8 +211,9 @@ jobs:
         id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}
-          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-
 
       - name: Inject CPM cache mount for ${{ matrix.platform }}
@@ -439,8 +440,9 @@ jobs:
         id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-amd64
-          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-
 
       - name: Inject CPM cache mount for amd64
