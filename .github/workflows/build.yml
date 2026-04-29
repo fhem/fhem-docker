@@ -25,7 +25,8 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
   CPAN_CPM_VERSION: v1.0.1
-  CPAN_CPM_CACHE_VERSION: v101
+  CPAN_CPM_MIRROR: https://www.cpan.org
+  CPAN_CPM_CACHE_VERSION: v102
 
 jobs:
   docker_lint:
@@ -245,6 +246,7 @@ jobs:
           build-args: |
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
           cache-from: |
             type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
@@ -293,6 +295,7 @@ jobs:
           build-args: |
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
           cache-from: |
             type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
@@ -510,6 +513,7 @@ jobs:
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -565,6 +569,7 @@ jobs:
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -603,6 +608,7 @@ jobs:
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
