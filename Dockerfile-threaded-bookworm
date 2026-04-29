@@ -76,7 +76,7 @@ RUN <<EOF
     python3-dev    
   cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
   cpm --version
-  cpm --version | grep -F "cpm ${CPAN_CPM_VERSION#v}"
+  cpm --version | grep -F "cpm ${CPAN_CPM_VERSION}"
   cat <<'SCRIPT' > /usr/local/bin/imlib2-config
 #!/bin/sh
 exec pkg-config imlib2 "$@"
