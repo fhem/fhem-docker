@@ -113,10 +113,7 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
     sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
-  cpm_workers=$(nproc)
-  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
-    cpm_workers=1
-  fi
+  cpm_workers=1
   core_status=0
   cpm install --mirror=${CPAN_CPM_MIRROR} --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ > /usr/src/app/cpan-logs/core-install.log 2>&1 || core_status=$?
   cat /usr/src/app/cpan-logs/core-install.log
@@ -159,10 +156,7 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" = "linux/arm/v7" ] || [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm64" ]; then
     sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
   fi
-  cpm_workers=$(nproc)
-  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
-    cpm_workers=1
-  fi
+  cpm_workers=1
   
   thirdparty_status=0
   cpm install --mirror=${CPAN_CPM_MIRROR} --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained 3rdparty/ > /usr/src/app/cpan-logs/3rdparty-install.log 2>&1 || thirdparty_status=$?
