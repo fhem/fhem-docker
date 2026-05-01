@@ -27,11 +27,16 @@ inputs:
     description: "name of the dockerfile, used for identify the cache"
     required: false
     default: "Dockerfile"
+  SETUP_QEMU:
+    description: "Whether to register QEMU/binfmt handlers for cross-platform builds"
+    required: false
+    default: "true"
 
 runs:
   using: "composite"
   steps:
     - name: Docker Setup QEMU
+      if: inputs.SETUP_QEMU == 'true'
       uses: docker/setup-qemu-action@v4
       with:
         image: tonistiigi/binfmt:latest
