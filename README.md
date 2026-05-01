@@ -147,6 +147,19 @@ The inventory is generated directly in `build-cpan` after the `cpm install` step
 
 For verification, `build-cpan` now reads the generated `cpanfile`s directly inside the container, validates them with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The workflow host only evaluates the exported verification reports. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
 
+Some CPAN requirements are removed for specific image and platform combinations before `cpm install` runs. These removals are also listed in the CPAN build report comment on pull requests.
+
+| Image family | Architecture | Excluded from `core` | Excluded from `3rdparty` |
+| --- | --- | --- | --- |
+| `*-bookworm`, `*-bullseye` | `linux/amd64` | none | none |
+| `*-bullseye` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | none |
+| `*-bookworm` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | `SNMP` |
+| `*-bookworm`, `*-bullseye` | `linux/arm/v7` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
+| `*-bookworm` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
+| `*-bullseye` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants` |
+
+`Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` because `Math::Pari` emits 64-bit-only assembler there. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
+
 
 ## Customize your container configuration
 

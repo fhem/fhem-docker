@@ -71,6 +71,58 @@ sub read_status_notes {
     return @notes;
 }
 
+sub normalize_platform {
+    my ($value) = @_;
+    return 'linux/' . $value unless $value =~ m{\Alinux/};
+    return $value;
+}
+
+sub excluded_requirements_for {
+    my ( $dockerfile_name, $platform_name ) = @_;
+    my $target = normalize_platform($platform_name);
+
+    my @core;
+    my @thirdparty;
+
+    if ( $target ne 'linux/amd64' && $target ne 'linux/386' ) {
+        push @core,       'Device::Firmata::Constants';
+        push @thirdparty, 'Device::Firmata::Constants';
+    }
+
+    if ( $target eq 'linux/386' ) {
+        push @core, 'Math::Pari', 'Crypt::Random';
+    }
+
+    if ( $target ne 'linux/amd64' ) {
+        push @core, 'HiPi';
+    }
+
+    my $is_bookworm = $dockerfile_name =~ /bookworm/;
+    if (
+        ( $is_bookworm && ( $target eq 'linux/arm/v7' || $target eq 'linux/386' || $target eq 'linux/arm64' ) )
+        || ( !$is_bookworm && $target eq 'linux/arm/v7' )
+      )
+    {
+        push @thirdparty, 'SNMP';
+    }
+
+    return ( \@core, \@thirdparty );
+}
+
+sub print_excluded_requirements {
+    my ( $core_excluded, $thirdparty_excluded ) = @_;
+    return unless @{$core_excluded} || @{$thirdparty_excluded};
+
+    print "### Excluded CPAN requirements for this image\n";
+    if ( @{$core_excluded} ) {
+        print "- `core`: " . join( ', ', map { "`$_`" } @{$core_excluded} ) . "\n";
+    }
+    if ( @{$thirdparty_excluded} ) {
+        print "- `3rdparty`: " . join( ', ', map { "`$_`" } @{$thirdparty_excluded} ) . "\n";
+    }
+    print "\n";
+}
+
 sub extract_failure_candidates {
     my ($path) = @_;
     return [] unless -f $path;
@@ -113,11 +165,16 @@ print "<!-- cpan-build-report:$dockerfile:$platform -->\n";
 print "## CPAN Build Report `$dockerfile` / `$platform`\n\n";
 print "Artifact: `$artifact`\n\n" if $artifact ne q[];
 
+my ( $core_excluded, $thirdparty_excluded ) = excluded_requirements_for( $dockerfile, $platform );
+print_excluded_requirements( $core_excluded, $thirdparty_excluded );
+
 if (@status_notes) {
     print "Detected non-zero `cpm install` exit codes: " . join( ', ', @status_notes ) . "\n\n";
 }
 
 for my $log_path (@logs) {
+    next unless @status_notes;
+
     my $failed_distributions = extract_failed_distributions($log_path);
     if (@{$failed_distributions}) {
         my $label = $log_path =~ /3rdparty/ ? '3rdparty' : 'core';

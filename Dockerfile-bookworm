@@ -190,6 +190,8 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
   perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
+  core_status=$(sed -n 's/^exit_code=//p' /usr/src/app/cpan-verify/core/core-install-status.txt | tail -n 1)
+  core_status=${core_status:-0}
   printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
   rm -rf /root/.cpanm 
 EOF
