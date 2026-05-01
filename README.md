@@ -19,7 +19,7 @@ Recommended pulling from [Github Container Registry](https://github.com/orgs/fhe
 ##### Version 5
 
 - debian bookworm
-- Perl 5.36.3 (optional threaded)
+- Perl 5.38.5 (optional threaded)
 - NodeJS 18.19 LTS
 - Python 3.11.2
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
@@ -37,7 +37,7 @@ You can pull the same image as on gitgub container registry (ghcr)
 ##### Version 4 - EOL Jan 2025
 
 - debian bullseye 
-- Perl 5.36.3 (optional threaded)
+- Perl 5.38.5 (optional threaded)
 - NodeJS 18 LTS
 - Python 3.9.2
 - Python 2.7.18
@@ -72,7 +72,7 @@ To let this image work correctly, you need as least a FHEM revision 25680 or new
 ##### Version 5 (beta)
 
 - debian bookworm
-- Perl 5.36.3 (optional threaded)
+- Perl 5.38.5 (optional threaded)
 - Python 3.11.2
 - Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
@@ -85,7 +85,7 @@ If you are using only modules which are provided via FHEM svn repository, you mo
 ##### Version 4 - EOL Jan 2025
 
 - debian bullseye
-- Perl 5.36.3 (optional threaded)
+- Perl 5.38.5 (optional threaded)
 - Python 3.9.2
 - Python 2.7.18
 - Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 

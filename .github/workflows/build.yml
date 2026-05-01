@@ -157,11 +157,34 @@ jobs:
 
   cpan_build:
     needs: [get_dependencies, base_build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
-        platform: [arm/v7, arm64, 386]
+        include:
+          - dockerfile: -bookworm
+            platform: arm/v7
+            runner: ubuntu-latest
+            setup_qemu: "true"
+          - dockerfile: -bookworm
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
+          - dockerfile: -bookworm
+            platform: 386
+            runner: ubuntu-latest
+            setup_qemu: "true"
+          - dockerfile: -threaded-bookworm
+            platform: arm/v7
+            runner: ubuntu-latest
+            setup_qemu: "true"
+          - dockerfile: -threaded-bookworm
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
+          - dockerfile: -threaded-bookworm
+            platform: 386
+            runner: ubuntu-latest
+            setup_qemu: "true"
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v6
@@ -207,9 +230,10 @@ jobs:
         with:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_OWNER: ${{ github.repository_owner }}
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
+          SETUP_QEMU: ${{ matrix.setup_qemu }}
 
       - name: Restore CPM cache for ${{ matrix.platform }}
         uses: actions/cache/restore@v5
