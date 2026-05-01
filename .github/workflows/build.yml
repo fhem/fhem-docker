@@ -23,6 +23,11 @@ on:
 
     
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+env:
+  CPAN_CPM_VERSION: v1.0.1
+  CPAN_CPM_MIRROR: https://www.cpan.org
+  CPAN_CPM_CACHE_VERSION: v102
+
 jobs:
   docker_lint:
     runs-on: ubuntu-latest
@@ -82,7 +87,7 @@ jobs:
           echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories
-        run: | 
+        run: |
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
           echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
@@ -103,7 +108,7 @@ jobs:
           overwrite: true
 
       - name: create cpanfile from FHEM svn dependencies
-        run: | 
+        run: |
           rm cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
@@ -115,7 +120,7 @@ jobs:
           name: cpanfile-FHEM
           path: cpanfile
           overwrite: true
-        
+
   base_build:
     strategy:
       matrix:
@@ -179,12 +184,23 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
-  
+
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-          
+
+      - name: Prepare artifact path variables
+        run: |
+          PLATFORM_SLUG="${{ matrix.platform }}"
+          PLATFORM_SLUG="${PLATFORM_SLUG//\//-}"
+          CPM_CACHE_ARCH="${PLATFORM_SLUG}"
+          CPM_CACHE_ARCH="${CPM_CACHE_ARCH//-/}"
+          echo "PLATFORM_SLUG=${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPM_CACHE_ARCH=${CPM_CACHE_ARCH}" >> "$GITHUB_ENV"
+          echo "CPAN_ARTIFACT_DIR=.artifacts/cpan${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_INVENTORY_ARTIFACT=cpan-inventory${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -192,23 +208,199 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
-          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Restore CPM cache for ${{ matrix.platform }}
+        uses: actions/cache/restore@v5
+        id: cache-cpm-restore
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-
+
+      - name: Inject CPM cache mount for ${{ matrix.platform }}
+        uses: reproducible-containers/buildkit-cache-dance@v3.3.2
+        with:
+          builder: ${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}
+          cache-map: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ env.CPM_CACHE_ARCH }}"
+              }
+            }
+          skip-extraction: true
 
       - name: Build cpan packages for ${{ matrix.platform }}
         uses: docker/build-push-action@v7
         with:
           context: .
-          load: true  
+          load: true
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.platform }}
           push: false
           target: base-cpan
-          cache-from: | 
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+          cache-from: |
             type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: buildcpanonly
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ env.CPM_CACHE_ARCH }}"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
+
+      - name: Export installed CPAN inventory for ${{ matrix.platform }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: cpan-inventory
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+          cache-from: |
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          outputs: type=local,dest=${{ env.CPAN_ARTIFACT_DIR }}
+
+      - name: Summarize installed CPAN inventory for ${{ matrix.platform }}
+        run: |
+          for report in \
+            "${CPAN_ARTIFACT_DIR}/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/all/all-summary.txt"
+          do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Summarize CPAN verification for ${{ matrix.platform }}
+        run: |
+          for report in \
+            "${CPAN_ARTIFACT_DIR}/verify/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/all/all-summary.txt"
+          do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ env.CPAN_INVENTORY_ARTIFACT }}
+          path: ${{ env.CPAN_ARTIFACT_DIR }}
+          overwrite: true
+
+      - name: Render CPAN PR comment for ${{ matrix.platform }}
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          mkdir -p "${CPAN_ARTIFACT_DIR}"
+          perl scripts/render-cpan-pr-comment.pl \
+            --dockerfile "${{ matrix.dockerfile }}" \
+            --platform "${{ matrix.platform }}" \
+            --artifact "${CPAN_INVENTORY_ARTIFACT}" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/core-install.log" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/3rdparty-install.log" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            > "${CPAN_ARTIFACT_DIR}/cpan-pr-comment.md"
+
+      - name: Comment CPAN findings on PR for ${{ matrix.platform }}
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          COMMENT_FILE: ${{ env.CPAN_ARTIFACT_DIR }}/cpan-pr-comment.md
+          COMMENT_MARKER: <!-- cpan-build-report:${{ matrix.dockerfile }}:${{ matrix.platform }} -->
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync(process.env.COMMENT_FILE)) {
+              core.warning(`CPAN comment file not found: ${process.env.COMMENT_FILE}`);
+              return;
+            }
+            const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
+            const marker = process.env.COMMENT_MARKER;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+
+      - name: Assert CPAN verification for ${{ matrix.platform }}
+        run: |
+          perl scripts/assert-cpan-verification.pl \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json"
     
             
   test_build:
@@ -248,7 +440,7 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-          
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -256,8 +448,31 @@ jobs:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
           GHCR_OWNER: ${{ github.repository_owner }} 
-          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Restore CPM cache for amd64
+        uses: actions/cache/restore@v5
+        id: cache-cpm-restore
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-
+
+      - name: Inject CPM cache mount for amd64
+        uses: reproducible-containers/buildkit-cache-dance@v3.3.2
+        with:
+          builder: ${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}
+          cache-map: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-amd64"
+              }
+            }
+          skip-extraction: true
 
       - name: Docker meta
         id: meta
@@ -296,9 +511,43 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v6
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-amd64"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
 
       - name: Build for bats with fhem base layer
         uses: docker/build-push-action@v7
@@ -318,6 +567,9 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -354,6 +606,9 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -394,6 +649,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -436,7 +692,7 @@ jobs:
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-    
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -494,6 +750,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -518,6 +775,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -542,6 +800,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
@@ -592,6 +851,7 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors

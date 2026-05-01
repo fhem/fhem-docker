@@ -1,0 +1,7 @@
+# Specify GitHub repositories excluded from the automatic 3rd-party dependency scan.
+# Format: owner/repository, one entry per line. Comments and empty lines are ignored.
+
+# Pending upstream clarification:
+# "Maintenance status and possible replacement for SNMP dependency"
+# https://github.com/byterazor/Fhem-NetworkDevice/issues/1
+byterazor/Fhem-NetworkDevice
