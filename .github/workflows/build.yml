@@ -376,7 +376,7 @@ jobs:
 
       - name: Comment CPAN findings on PR for ${{ matrix.platform }}
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           COMMENT_FILE: ${{ env.CPAN_ARTIFACT_DIR }}/cpan-pr-comment.md
           COMMENT_MARKER: <!-- cpan-build-report:${{ matrix.dockerfile }}:${{ matrix.platform }} -->
