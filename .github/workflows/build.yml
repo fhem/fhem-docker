@@ -163,7 +163,7 @@ jobs:
         include:
           - dockerfile: -bookworm
             platform: arm/v7
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
             setup_qemu: "true"
           - dockerfile: -bookworm
             platform: arm64
@@ -175,7 +175,7 @@ jobs:
             setup_qemu: "true"
           - dockerfile: -threaded-bookworm
             platform: arm/v7
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
             setup_qemu: "true"
           - dockerfile: -threaded-bookworm
             platform: arm64
