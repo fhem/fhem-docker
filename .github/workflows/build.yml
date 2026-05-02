@@ -488,9 +488,18 @@ jobs:
         with:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          GHCR_OWNER: ${{ github.repository_owner }} 
+          GHCR_OWNER: ${{ github.repository_owner }}
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
+
+      - name: Prepare local image tag variables
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          echo "TRIVY_FULL_IMAGE=fhem-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=fhem-minimal-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
+          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
 
       - name: Restore CPM cache for amd64
         uses: actions/cache/restore@v6
@@ -654,6 +663,12 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
+      - name: Tag full image for Trivy scan
+        run: |
+          docker image tag \
+            "${{ fromJSON(steps.meta.outputs.json).tags[0] }}" \
+            "${TRIVY_FULL_IMAGE}"
+
       - name: Inspect and run integration tests
         run: |
           docker image inspect ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
@@ -700,6 +715,93 @@ jobs:
         with:
           attempt_limit: 3
           command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
+
+      - name: Run Trivy scan for full image
+        id: trivy_full
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_FULL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload Trivy full image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-docker${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_FULL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Build minimal image for Trivy scan
+        uses: docker/build-push-action@v7
+        id: docker_build_minimal_trivy
+        with:
+          context: .
+          load: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+
+      - name: Run Trivy scan for minimal image
+        id: trivy_minimal
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_MINIMAL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload Trivy minimal image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-minimal-docker${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_MINIMAL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Assert Trivy scan results
+        if: always()
+        run: |
+          STATUS=0
+          if [ "${{ steps.trivy_full.outcome }}" != "success" ]; then
+            echo "Trivy reported HIGH or CRITICAL findings for ${TRIVY_FULL_IMAGE}."
+            STATUS=1
+          fi
+          if [ "${{ steps.trivy_minimal.outcome }}" != "success" ]; then
+            echo "Trivy reported HIGH or CRITICAL findings for ${TRIVY_MINIMAL_IMAGE}."
+            STATUS=1
+          fi
+          exit "$STATUS"
 
   published_build:
     runs-on: ubuntu-latest
