@@ -46,7 +46,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.5-bullseye@sha256:f1099bb275d0e486770e380db86d3a5b8229668dbd97d085f6119cc62e281ac3 AS build-cpan 
+FROM perl:5.38.5-bullseye@sha256:414eb4439609b730a4d807025778d1c6f39c3c0aac47ad4c4c3326ee5e1c22e9 AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
 COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
