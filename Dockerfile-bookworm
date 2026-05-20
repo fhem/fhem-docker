@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-bookworm@sha256:e5182f6a77e906caaa7ea9ea852179422b4da7472ecb5f3bac0cf27a05895c20 AS base
+FROM perl:5.38.5-slim-bookworm@sha256:58108924a6083d3b7aa428d3d160d6339f982a5a1112caa3df1a6b250c04c1f5 AS base
 
 ARG TARGETPLATFORM
 
