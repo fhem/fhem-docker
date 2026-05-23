@@ -127,8 +127,8 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
-  # Math::Pari emits 64-bit-only assembler on linux/386, Crypt::Random depends on it there.
-  if [ "${TARGETPLATFORM}" = "linux/386" ]; then
+  # Math::Pari/Crypt::Random are unstable on linux/386 and linux/arm/v7.
+  if [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
     sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
     sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
   fi
