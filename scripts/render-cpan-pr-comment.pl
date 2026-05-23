@@ -89,7 +89,7 @@ sub excluded_requirements_for {
         push @thirdparty, 'Device::Firmata::Constants';
     }
 
-    if ( $target eq 'linux/386' ) {
+    if ( $target eq 'linux/386' || $target eq 'linux/arm/v7' ) {
         push @core, 'Math::Pari', 'Crypt::Random';
     }
 
