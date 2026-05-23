@@ -154,11 +154,11 @@ Some CPAN requirements are removed for specific image and platform combinations 
 | `*-bookworm`, `*-bullseye` | `linux/amd64` | none | none |
 | `*-bullseye` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | none |
 | `*-bookworm` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | `SNMP` |
-| `*-bookworm`, `*-bullseye` | `linux/arm/v7` | `Device::Firmata::Constants`, `Math::Pari`, `Crypt::Random`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
+| `*-bookworm`, `*-bullseye` | `linux/arm/v7` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
 | `*-bookworm` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
 | `*-bullseye` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants` |
 
-`Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` and `linux/arm/v7` due runtime instability in `Math::Pari` on those platforms. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
+`Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` because `Math::Pari` emits 64-bit-only assembler there. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
 
 
 ## Customize your container configuration
