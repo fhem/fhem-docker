@@ -17,6 +17,34 @@ sub DockerImageInfo_Initialize {
     return FHEM::Meta::InitMod( __FILE__, $hash );
 }
 
+sub DockerImageInfo_ReadFirstLine {
+    my ($path) = @_;
+
+    return q[] if ( !defined($path) || !-r $path );
+
+    my $fileHdl;
+    return q[] if ( !open( $fileHdl, q[<], $path ) );
+
+    my $line = <$fileHdl>;
+    close($fileHdl);
+
+    return q[] if ( !defined($line) );
+    chomp($line);
+
+    return $line;
+}
+
+sub DockerImageInfo_IsContainerized {
+    my $containerized = DockerImageInfo_ReadFirstLine(q[/containerized]);
+    my $runtime       = DockerImageInfo_ReadFirstLine(q[/container.runtime]);
+
+    return 1 if ( $containerized eq q[1] );
+    return 1 if ( $runtime =~ m/^(?:kubernetes|docker|containerd|cri-o|podman|container)$/x );
+    return 1 if ( -e q[/.dockerenv] );
+
+    return 0;
+}
+
 ###################################
 sub DockerImageInfo_Define {
     my ( $hash, $def ) = @_;
@@ -52,7 +80,7 @@ sub DockerImageInfo_Define {
         $attr{$name}{room}  = 'System';
     }
 
-    if ( -e '/.dockerenv' ) {
+    if ( DockerImageInfo_IsContainerized() ) {
         unlink( $hash->{URL_FILE});
         $hash->{STATE} = "Initialized";
         DockerImageInfo_GetImageInfo( $hash);
@@ -144,6 +172,7 @@ sub DockerImageInfo_GetImageInfo {
 
     my $NAME;
     my $VAL;
+    my %imageInfo;
     my @LINES = split( "\n", `sort -k1,1 -t'=' --stable --unique /image_info.* /image_info` );
 
     foreach my $LINE (@LINES) {
@@ -153,6 +182,7 @@ sub DockerImageInfo_GetImageInfo {
         $NAME =~ s/^org\.opencontainers\.//i;
         $VAL = join( "=", @NV );
         next if ( $NAME eq "image.authors" );
+        $imageInfo{$NAME} = $VAL;
         readingsBulkUpdateIfChanged( $hash, $NAME, $VAL );
     }
 
@@ -186,15 +216,29 @@ sub DockerImageInfo_GetImageInfo {
         readingsBulkUpdateIfChanged( $hash, 'id.groups', $VAL );
     }
 
-    readingsBulkUpdateIfChanged( $hash, q[ssh-id_ed25519.pub],    `cat ./.ssh/id_ed25519.pub` );
-    readingsBulkUpdateIfChanged( $hash, q[ssh-id_rsa.pub],        `cat ./.ssh/id_rsa.pub` );
-    readingsBulkUpdateIfChanged( $hash, q[container.hostname],    `cat /etc/hostname` );
-    readingsBulkUpdateIfChanged( $hash, q[container.cap.e],       `cat /docker.container.cap.e` );
-    readingsBulkUpdateIfChanged( $hash, q[container.cap.p],       `cat /docker.container.cap.p` );
-    readingsBulkUpdateIfChanged( $hash, q[container.cap.i],       `cat /docker.container.cap.i` );
-    readingsBulkUpdateIfChanged( $hash, q[container.id],          `cat /docker.container.id` );
-    readingsBulkUpdateIfChanged( $hash, q[container.privileged],  `cat /docker.privileged` );
-    readingsBulkUpdateIfChanged( $hash, q[container.hostnetwork], `cat /docker.hostnetwork` );
+    my $runtime = DockerImageInfo_ReadFirstLine(q[/container.runtime]);
+    $runtime = ( -e q[/.dockerenv] ) ? q[docker] : q[host] if ( $runtime eq q[] );
+
+    my $containerized = DockerImageInfo_ReadFirstLine(q[/containerized]);
+    $containerized = DockerImageInfo_IsContainerized() ? q[1] : q[0] if ( $containerized eq q[] );
+
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_ed25519.pub],    DockerImageInfo_ReadFirstLine(q[./.ssh/id_ed25519.pub]) );
+    readingsBulkUpdateIfChanged( $hash, q[ssh-id_rsa.pub],        DockerImageInfo_ReadFirstLine(q[./.ssh/id_rsa.pub]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostname],    DockerImageInfo_ReadFirstLine(q[/etc/hostname]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.runtime],     $runtime );
+    readingsBulkUpdateIfChanged( $hash, q[containerized],         $containerized );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.e],       DockerImageInfo_ReadFirstLine(q[/docker.container.cap.e]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.p],       DockerImageInfo_ReadFirstLine(q[/docker.container.cap.p]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.cap.i],       DockerImageInfo_ReadFirstLine(q[/docker.container.cap.i]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.id],          DockerImageInfo_ReadFirstLine(q[/docker.container.id]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.privileged],  DockerImageInfo_ReadFirstLine(q[/docker.privileged]) );
+    readingsBulkUpdateIfChanged( $hash, q[container.hostnetwork], DockerImageInfo_ReadFirstLine(q[/docker.hostnetwork]) );
+
+    my @modelParts = ( qq[runtime=$runtime] );
+    for my $label (qw(image.title image.version image.revision image.source)) {
+        push( @modelParts, qq[$label=$imageInfo{$label}] ) if ( defined( $imageInfo{$label} ) && $imageInfo{$label} ne q[] );
+    }
+    readingsBulkUpdateIfChanged( $hash, q[model], join( q[; ], @modelParts ) );
 
     readingsEndUpdate( $hash, 1 );
 }
@@ -227,6 +271,12 @@ sub DockerImageInfo_GetImageInfo {
     <ul>
       <code>define DockerImageInfo DockerImageInfo</code>
     </ul>
+    <br><br>
+
+    The reading <code>model</code> summarizes the detected runtime and image metadata,
+    for example <code>runtime=kubernetes; image.version=5-bookworm; image.revision=...</code>.
+    The reading <code>container.runtime</code> contains <code>kubernetes</code>,
+    <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> or <code>host</code>.
   </ul>
   <br>
 
@@ -272,6 +322,12 @@ sub DockerImageInfo_GetImageInfo {
     <ul>
       <code>define DockerImageInfo DockerImageInfo</code>
     </ul>
+    <br><br>
+
+    Das Reading <code>model</code> fasst die erkannte Runtime und Image-Metadaten zusammen,
+    zum Beispiel <code>runtime=kubernetes; image.version=5-bookworm; image.revision=...</code>.
+    Das Reading <code>container.runtime</code> enth&auml;lt <code>kubernetes</code>,
+    <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> oder <code>host</code>.
   </ul>
 
   <a name="DockerImageInfoattr"></a>

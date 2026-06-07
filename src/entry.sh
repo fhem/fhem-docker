@@ -245,15 +245,59 @@ function getGlobalAttr() {
 
 
 
-# Collect information about the docker environment
+# Detect the container runtime without relying on Docker-specific marker files.
+#
+# Usage: detectContainerRuntime
+# Global vars: CONTAINER_RUNTIME
+#              CONTAINERIZED
+#
+function detectContainerRuntime() {
+  local dockerEnvFile="${DOCKER_ENV_FILE:-/.dockerenv}"
+  local kubernetesTokenFile="${KUBERNETES_TOKEN_FILE:-/var/run/secrets/kubernetes.io/serviceaccount/token}"
+  local cgroupFile="${CONTAINER_CGROUP_FILE:-/proc/1/cgroup}"
+  local mountInfoFile="${CONTAINER_MOUNTINFO_FILE:-/proc/self/mountinfo}"
+  local runtimeSource=""
+
+  [ -r "$cgroupFile" ] && runtimeSource="$(cat "$cgroupFile")"
+  [ -r "$mountInfoFile" ] && runtimeSource="${runtimeSource}
+$(cat "$mountInfoFile")"
+
+  if [ -f "$kubernetesTokenFile" ] || [ -n "${KUBERNETES_SERVICE_HOST-}" ] || grep -qaE 'kubepods' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=kubernetes
+    export CONTAINERIZED=1
+  elif [ -f "$dockerEnvFile" ] || grep -qaE 'docker' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=docker
+    export CONTAINERIZED=1
+  elif grep -qaE 'containerd' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=containerd
+    export CONTAINERIZED=1
+  elif grep -qaE 'cri-o|crio' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=cri-o
+    export CONTAINERIZED=1
+  elif grep -qaE 'libpod|podman' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=podman
+    export CONTAINERIZED=1
+  else
+    export CONTAINER_RUNTIME=host
+    export CONTAINERIZED=0
+  fi
+}
+
+
+# Collect information about the container environment
 #
 # Usage: collectDockerInfo
 # Global vars: DOCKER_PRIVILEGED
 #              DOCKER_GW
 #              DOCKER_HOST
 #              DOCKER_HOSTNETWORK
+#              CONTAINER_RUNTIME
+#              CONTAINERIZED
 #
 function collectDockerInfo() {
+  detectContainerRuntime
+  echo $CONTAINER_RUNTIME > /container.runtime
+  echo $CONTAINERIZED > /containerized
   if ip link add dummy0 type dummy >/dev/null 2>&1 ; then
     ip link delete dummy0 >/dev/null 2>&1
     export DOCKER_PRIVILEGED=1
@@ -262,7 +306,7 @@ function collectDockerInfo() {
   fi
   echo $DOCKER_PRIVILEGED > /docker.privileged
 
-  cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
+  awk -F/ 'NF > 1 { print $NF; exit }' "${CONTAINER_CGROUP_FILE:-/proc/self/cgroup}" > /docker.container.id
   captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
   captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
   captest --text | grep -P "^Inheritable:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.i

@@ -281,6 +281,8 @@ It is enough for the `telnet` device to only listen on the loopback device (aka 
 
 The image comes with a built-in script to check availability, which communicates with the DockerImageInfo Definition.
 
+DockerImageInfo also reports the detected runtime in `container.runtime` and combines runtime and image metadata in the `model` reading, for example `runtime=kubernetes; image.version=5-bookworm; image.revision=...`. Runtime detection supports Kubernetes, Docker, container runtimes such as containerd, CRI-O and Podman, and `host` as fallback.
+
 If for whatever reason you want to disable checking a specific FHEMWEB instance, you may set the user attribute `DockerHealthCheck` to 0 on that particular FHEMWEB device.
 
 Note that the health check itself cannot be entirely disabled as it will ensure to notify you in case of failures, hindering proper shutdown of FHEM when triggered by Docker or OS shutdown procedure.
