@@ -303,6 +303,57 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
 
 ### Tweak container settings using environment variables
 
+The container entrypoint supports the following environment variables. Values that are shown as paths may be absolute paths or paths relative to `/opt/fhem` unless stated otherwise.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TZ` | `Europe/Berlin` | Container timezone. |
+| `CONFIGTYPE` | `fhem.cfg` | FHEM configuration source, for example `fhem.cfg`, `fhem.cfg.demo`, or `configDB`. |
+| `LOGFILE` | `./log/fhem-%Y-%m-%d.log` | FHEM logfile path and date format. |
+| `PIDFILE` | `./log/fhem.pid` | FHEM PID file path. |
+| `TELNETPORT` | `7072` | Local FHEM Telnet port. Deprecated since v4. |
+| `RESTART` | `1` | Restart FHEM after unexpected termination. Set to `0` to disable automatic restart. |
+| `UMASK` | `0037` | Umask used when FHEM is started. |
+| `FHEM_UID` | `6061` | UID for the `fhem` user. |
+| `FHEM_GID` | `6061` | GID for the `fhem` group. |
+| `FHEM_PERM_DIR` | `0750` | Permissions enforced for directories below `/opt/fhem`. |
+| `FHEM_PERM_FILE` | `0640` | Permissions enforced for files below `/opt/fhem`. |
+| `BLUETOOTH_GID` | `6001` | GID for the `bluetooth` group. |
+| `GPIO_GID` | `6002` | GID for the `gpio` group. |
+| `I2C_GID` | `6003` | GID for the `i2c` group. |
+| `TIMEOUT_STOPPING` | `30` | Seconds to wait for FHEM to stop gracefully before sending `SIGKILL`. |
+| `TIMEOUT_STARTING` | `60` | Seconds to wait for FHEM to report that the server has started. |
+| `TIMEOUT_REAPPEAR` | `15` | Seconds to wait for a terminated FHEM process to reappear before handling it as failed. |
+| `APT_PKGS` | empty | Deprecated: Debian packages to install during initial container setup. Prefer extending the image instead. |
+| `CPAN_PKGS` | empty | Deprecated: CPAN modules to install during initial container setup. Prefer extending the image instead. |
+| `PIP_PKGS` | empty | Deprecated: Python packages to install during initial container setup. Prefer extending the image instead. |
+| `NPM_PKGS` | empty | Deprecated: Node.js packages to install during initial container setup. Prefer extending the image instead. |
+| `FHEM_GLOBALATTR` | generated from `LOGFILE` and `PIDFILE` | Global attributes passed to FHEM at startup. Overrides the generated value when set. |
+| `PERL_JSON_BACKEND` | `Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP` | Perl JSON backend preference order. |
+| `LANG` | `en_US.UTF-8` | Locale setting. |
+| `LANGUAGE` | `en_US:en` | Locale language preference. |
+| `LC_ADDRESS` | `de_DE.UTF-8` | Locale setting. |
+| `LC_MEASUREMENT` | `de_DE.UTF-8` | Locale setting. |
+| `LC_MESSAGES` | `en_DK.UTF-8` | Locale setting. |
+| `LC_MONETARY` | `de_DE.UTF-8` | Locale setting. |
+| `LC_NAME` | `de_DE.UTF-8` | Locale setting. |
+| `LC_NUMERIC` | `de_DE.UTF-8` | Locale setting. |
+| `LC_PAPER` | `de_DE.UTF-8` | Locale setting. |
+| `LC_TELEPHONE` | `de_DE.UTF-8` | Locale setting. |
+| `LC_TIME` | `en_DK.UTF-8` | Locale setting. |
+| `LC_CTYPE` | unset | Passed through to FHEM when set. |
+| `LC_COLLATE` | unset | Passed through to FHEM when set. |
+| `LC_ALL` | unset | Passed through to FHEM when set. |
+| `DOCKER_HOST` | auto-detected | IPv4 address for `host.docker.internal`. |
+| `DOCKER_GW` | auto-detected | IPv4 address for `gateway.docker.internal`. |
+| `DOCKER_ENV_FILE` | `/.dockerenv` | Override path used for Docker runtime detection. |
+| `KUBERNETES_TOKEN_FILE` | `/var/run/secrets/kubernetes.io/serviceaccount/token` | Override path used for Kubernetes runtime detection. |
+| `KUBERNETES_SERVICE_HOST` | unset | Kubernetes runtime detection hint. Usually provided by Kubernetes. |
+| `CONTAINER_CGROUP_FILE` | `/proc/1/cgroup` | Override path used for container runtime detection. |
+| `CONTAINER_MOUNTINFO_FILE` | `/proc/self/mountinfo` | Override path used for container runtime detection. |
+
+In addition, environment variables whose names start with `PERL`, `NODE`, or `PYTHON` are exported to the FHEM user environment so they are available to `fhem.pl` and its child processes.
+
 * Change FHEM logfile format:
     To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
 
@@ -351,7 +402,8 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     To set a different umask for `FHEM_UID` (default is 0037):
 
     ```shell
-        -e UMASK=0037
+    -e UMASK=0037
+    ```
 
 * Change Bluetooth group ID:
     To set a different GID for the group `bluetooth` (default is 6001):
@@ -378,7 +430,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
     ```shell
-    -e TIMEOUT=10
+    -e TIMEOUT_STOPPING=30
     ```
 
 * Set locale:
@@ -395,7 +447,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     -e LC_NUMERIC=de_DE.UTF-8
     -e LC_PAPER=de_DE.UTF-8
     -e LC_TELEPHONE=de_DE.UTF-8
-    -e LC_TIME=de_DE.UTF-8
+    -e LC_TIME=en_DK.UTF-8
     ```
 
 * Set timezone:
