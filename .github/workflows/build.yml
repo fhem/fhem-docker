@@ -24,6 +24,7 @@ on:
     
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
+  # renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
   CPAN_CPM_VERSION: v1.0.1
   CPAN_CPM_MIRROR: https://www.cpan.org
   CPAN_CPM_CACHE_VERSION: v102

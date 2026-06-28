@@ -56,7 +56,7 @@ ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG CPAN_CPM_CACHE_ID=perl-cpm-default
-# renovate: datasource=github-releases depName=skaji/cpm
+# renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
 ARG CPAN_CPM_VERSION=v1.0.1
 ARG CPAN_CPM_MIRROR=https://www.cpan.org
 
@@ -423,7 +423,7 @@ EOF
 #
 #
 FROM with-fhem AS with-fhem-bats
-
+# renovate: datasource=github-tags depName=bats-core packageName=bats-core/bats-core
 ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
 RUN <<EOF
     /tmp/bats/install.sh /opt/bats 
@@ -431,7 +431,9 @@ RUN <<EOF
     rm -r /tmp/bats
 EOF
 
+# renovate: datasource=github-tags depName=bats-support packageName=bats-core/bats-support
 ADD https://github.com/bats-core/bats-support.git#v0.3.0 /opt/bats/test_helper/bats-support
+# renovate: datasource=github-tags depName=bats-assert packageName=bats-core/bats-assert
 ADD https://github.com/bats-core/bats-assert.git#v2.1.0 /opt/bats/test_helper/bats-assert
 ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
 ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
