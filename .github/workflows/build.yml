@@ -24,6 +24,7 @@ on:
     
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
+  # renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
   CPAN_CPM_VERSION: v1.0.1
   CPAN_CPM_MIRROR: https://www.cpan.org
   CPAN_CPM_CACHE_VERSION: v102
@@ -90,8 +91,10 @@ jobs:
         run: |
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
+          mkdir -p 3rdParty
+          cp cpanfile 3rdParty/cpanfile
           echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
-          cat cpanfile >> $GITHUB_STEP_SUMMARY
+          cat 3rdParty/cpanfile >> $GITHUB_STEP_SUMMARY
 
       - name: Always Save ppi cache
         id: cache-ppi-save
@@ -104,12 +107,12 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: cpanfile-3rdParty
-          path: cpanfile
+          path: 3rdParty/cpanfile
           overwrite: true
 
       - name: create cpanfile from FHEM svn dependencies
         run: |
-          rm cpanfile
+          rm -f cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY

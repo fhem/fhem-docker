@@ -3,9 +3,10 @@
   "extends": [
     "config:recommended",
     "docker:pinDigests",
-    ":separateMultipleMajorReleases"
+    ":separateMultipleMajorReleases",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions"
   ],
-  
   "packageRules": [
     {
       "matchManagers": ["docker-compose"],
