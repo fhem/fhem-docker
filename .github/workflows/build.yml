@@ -41,8 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           docker compose -f docker-compose.yml config
-          docker compose -f docker-compose.yml --profile db config
-          docker compose -f docker-compose.yml --profile mail config
+          for profile in db mail; do
+            docker compose -f docker-compose.yml --profile "$profile" config
+          done
           docker compose -f docker-compose.yml --profile db --profile mail config
 
 

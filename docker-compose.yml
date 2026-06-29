@@ -1,13 +1,25 @@
 services:
   fhem:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-minimal-docker:5-bookworm
     restart: unless-stopped
     ports:
       - "8083:8083"
     volumes:
       - ./fhem/:/opt/fhem/
     environment:
-      TZ: Europe/Berlin
+      TZ: ${TZ:-Europe/Berlin}
+      CONFIGTYPE: ${CONFIGTYPE:-fhem.cfg}
+      LOGFILE: ${LOGFILE:-./log/fhem-%Y-%m-%d.log}
+      PIDFILE: ${PIDFILE:-./log/fhem.pid}
+      RESTART: ${RESTART:-1}
+      UMASK: ${UMASK:-0037}
+      FHEM_UID: ${FHEM_UID:-6061}
+      FHEM_GID: ${FHEM_GID:-6061}
+      FHEM_PERM_DIR: ${FHEM_PERM_DIR:-0750}
+      FHEM_PERM_FILE: ${FHEM_PERM_FILE:-0640}
+      TIMEOUT_STOPPING: ${TIMEOUT_STOPPING:-30}
+      TIMEOUT_STARTING: ${TIMEOUT_STARTING:-60}
+      TIMEOUT_REAPPEAR: ${TIMEOUT_REAPPEAR:-15}
 
   postgres:
     image: postgres:16-bookworm
@@ -22,14 +34,22 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fhem}
       TZ: ${TZ:-Europe/Berlin}
 
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
+  mail:
+    image: boky/postfix:5.1.0-alpine
     restart: unless-stopped
     profiles:
       - mail
+    environment:
+      HOSTNAME: ${MAIL_HOSTNAME:-postfix}
+      RELAYHOST: ${MAIL_RELAYHOST:-}
+      RELAYHOST_USERNAME: ${MAIL_RELAYHOST_USERNAME:-}
+      RELAYHOST_PASSWORD: ${MAIL_RELAYHOST_PASSWORD:-}
+      ALLOWED_SENDER_DOMAINS: ${MAIL_ALLOWED_SENDER_DOMAINS:-}
+      ALLOW_EMPTY_SENDER_DOMAINS: ${ALLOW_EMPTY_SENDER_DOMAINS:-true}
+      MYNETWORKS: ${MYNETWORKS:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      TZ: ${TZ:-Europe/Berlin}
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1025:587"
 
 volumes:
   postgres_data:

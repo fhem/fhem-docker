@@ -12,121 +12,45 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
 Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 Use fixed tags instead of `latest`. Update image tags explicitly in Compose or in `FROM` lines so Renovate can track and review the change.
+For normal FHEM-SVN-based setups, the minimal image is the recommended default. Use the regular `fhem-docker` image when you want a broader runtime environment with more tooling preinstalled.
 
 ### From Github container registry
 
+#### Minimal image (recommended)
+
+For normal FHEM-SVN setups and slim, controlled deployments, use the minimal image:
+
+    docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+    docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
+
+This is the recommended default when you only need the FHEM runtime and install additional dependencies explicitly. It is based on Debian bookworm, Perl 5.38.5, Python 3.11.2 and supports `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
+
 #### Standard image
 
-For typical setups and a preinstalled runtime environment, use:
+Use the regular image when your setup benefits from a broader preinstalled runtime environment:
 
     docker pull ghcr.io/fhem/fhem-docker:5-bookworm
+    docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
 
-This image includes the common runtime tooling for a broad FHEM setup.
-
-##### Version 5
-
-- debian bookworm
-- Perl 5.38.5 (optional threaded)
-- NodeJS 18.19 LTS
-- Python 3.11.2
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
-
-        docker pull ghcr.io/fhem/fhem-docker:5-bookworm
-        docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
+This image adds common runtime tooling such as NodeJS 18.19 LTS and Python 3.11.2. Optional helpers like `alexa-fhem`, `alexa-cookie`, `gassistant-fhem`, `homebridge`, `homebridge-fhem` and `tradfri-fhem` are still not enabled by default; prefer sidecar containers where available.
 
 ### From Docker Hub
 
-You can pull the same image as on gitgub container registry (ghcr)
+You can pull the same standard image from Docker Hub:
 
     docker pull fhem/fhem:5-bookworm
 
-##### Version 4 - legacy, EOL Jan 2025
-
-- debian bullseye 
-- Perl 5.38.5 (optional threaded)
-- NodeJS 18 LTS
-- Python 3.9.2
-- Python 2.7.18
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem are not installed per default!
-
-        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
-        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
-
-If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
-
-To let this image work correctly, you need as least a FHEM revision 25680 or newer.
-
-##### Version 3 - legacy, EOL Jan 2024
-
-- debian buster
-- Perl 5.28.1
-- NodeJS 16 LTS
-- Python 3
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
-
-        docker pull ghcr.io/fhem/fhem-docker:3-buster
-
- are available.
-
-
-
-#### Minimal image
-
-For slim, controlled setups where you add dependencies yourself, use:
-
-    docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
-
-This image is a better fit when you only want the FHEM runtime and will install all extra dependencies explicitly.
-
-##### Version 5 (beta)
-
-- debian bookworm
-- Perl 5.38.5 (optional threaded)
-- Python 3.11.2
-- Python 2.7.18
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
-
-        docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
-        docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
-
-If you are using only modules which are provided via the FHEM svn repository, you mostly can use this smaller image.
-
-##### Version 4 - legacy, EOL Jan 2025
-
-- debian bullseye
-- Perl 5.38.5 (optional threaded)
-- Python 3.9.2
-- Python 2.7.18
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
-
-        docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
-        docker pull ghcr.io/fhem/fhem-minimal-docker:4-threaded-bullseye
-
-If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
-
-##### Version 3 - legacy, EOL Jan 2024
-
-- debian buster
-- Perl 5.28.1
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
-
-        docker pull ghcr.io/fhem/fhem-minimal-docker:3-buster
-
- are available.
-
+Legacy v3/v4 tags and details are documented in [docs/legacy-images.md](docs/legacy-images.md).
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-docker:5-bookworm
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-minimal-docker:5-bookworm
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-docker:5-bookworm
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-minimal-docker:5-bookworm
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
@@ -188,7 +112,9 @@ Devices might still need to be checked and adjusted manually if you would like t
 
 ### Extending the image
 
-Build your own image when you need extra packages. Keep the base image pinned to a fixed tag:
+Build your own image when you need extra packages. Keep the base image pinned to a fixed tag.
+
+Use `apt` for Debian packages, `cpm`/CPAN for Perl modules, `pip` for Python packages, and `npm` for Node.js packages.
 
 ```yaml
 services:
@@ -196,65 +122,37 @@ services:
     build:
       context: .
       dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:5-bookworm
-        RUN <<EOF
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean
-        EOF
-        RUN <<EOF
-          pip install --no-cache-dir <PIP PACKAGENAME>
-        EOF
+        FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+        RUN apt-get update && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
+        RUN cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
+        RUN pip install --no-cache-dir <PIP PACKAGE>
+        RUN npm install -g --unsafe-perm --production <NPM PACKAGE>
 ```
 
-If you prefer a dedicated Dockerfile, the same rule applies:
+If you prefer a dedicated Dockerfile, the same rules apply:
 
 ```dockerfile
-FROM ghcr.io/fhem/fhem-docker:5-bookworm
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
 RUN apt-get update && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-RUN pip install --no-cache-dir <PIP PACKAGENAME>
+RUN cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
+RUN pip install --no-cache-dir <PIP PACKAGE>
+RUN npm install -g --unsafe-perm --production <NPM PACKAGE>
 ```
+
+Use `ghcr.io/fhem/fhem-docker:5-bookworm` as the base image instead when you intentionally want the broader standard image runtime.
 
 Important: If you need additional Perl CPAN modules, install them directly from CPAN and not via apt.
 
-For Alexa integrations, install the required Node.js helpers explicitly in your custom image and keep their versions visible in the Dockerfile or Compose build definition. The standard image does not enable `alexa-cookie2` or `alexa-fhem` by default.
+For Alexa integrations, prefer sidecar containers instead of adding the helpers to the FHEM image:
 
-```dockerfile
-FROM ghcr.io/fhem/fhem-docker:5-bookworm
-RUN npm install -g --unsafe-perm --production alexa-cookie2 alexa-fhem
-```
+* `alexa-fhem` Docker: https://github.com/fhem/alexa-fhem-docker, image `ghcr.io/fhem/alexa-fhem:5.1.6`
+* `alexa-cookie-service`: https://github.com/fhem/alexa-cookie-service, image `ghcr.io/fhem/alexa-cookie-service:0.3.1`
+* Upstream `alexa-fhem`: https://github.com/justme-1968/alexa-fhem
 
-Then add the required local configuration, credentials and FHEM definitions for your setup. Those details are intentionally not part of the default Compose stack.
+Keep those services separate from the FHEM image and add the local configuration, credentials and FHEM definitions that your setup needs.
 
 
-#### till version 3 (deprecated)
-
-Don't do this unless you really know what this does!
-You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
-
-* Debian APT packages:
-
-    ```shell
-    -e APT_PKGS="package1 package2"
-    ```
-
-* Perl CPAN modules:
-
-    ```shell
-    -e CPAN_PKGS="App::Name1 App::Name2"
-    ```
-
-* Python PIP packages:
-
-    ```shell
-    -e PIP_PKGS="package1 package2"
-    ```
-
-* Node.js NPM packages:
-
-    ```shell
-    -e NPM_PKGS="package1 package2"
-    ```
+Legacy package-installation variables from image versions 3 and older are documented in [docs/legacy-images.md](docs/legacy-images.md). Prefer extending the image as shown above.
 
 ### Directory and file permissions
 
@@ -573,6 +471,7 @@ Follow initial setup steps:
     ```
 
     `docker-compose.yml` is intended to be used directly, not as a sample catalog. The sub-directory name becomes the project prefix for your containers, which helps when you run multiple stacks on the same host.
+    The Compose file already ships with a few important FHEM environment variables and defaults; override them locally through `.env` when needed.
 
 2. Start the stack with `docker compose`:
 
@@ -588,14 +487,14 @@ Follow initial setup steps:
     Optional services in the provided Compose file are enabled through profiles:
 
     * `db` starts a PostgreSQL container that can be used for configDB or other database-backed FHEM modules.
-    * `mail` starts a local SMTP test relay. FHEM can use the service name `mailhog` on port `1025`; the web UI is available on host port `8025`.
+    * `mail` starts a Postfix relay based on `boky/postfix`.
 
     ```console
     sudo docker compose --profile db up -d
     sudo docker compose --profile mail up -d
     ```
 
-    Alexa helpers, USB devices, host networking and privileged mode need local configuration, secrets, device paths or start commands. Keep those as local Compose changes or custom image builds instead of enabling them in the default stack.
+    Alexa helpers, USB devices, host networking and privileged mode need local configuration, secrets, device paths or start commands. Keep those as local Compose changes or sidecars instead of enabling them in the default stack.
 
 3. Create a local Git repository and add all files as an initial commit:
 
