@@ -11,10 +11,17 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 ## Installation
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
 Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
+Use fixed tags instead of `latest`. Update image tags explicitly in Compose or in `FROM` lines so Renovate can track and review the change.
 
 ### From Github container registry
 
-#### Image with serval services installed
+#### Standard image
+
+For typical setups and a preinstalled runtime environment, use:
+
+    docker pull ghcr.io/fhem/fhem-docker:5-bookworm
+
+This image includes the common runtime tooling for a broad FHEM setup.
 
 ##### Version 5
 
@@ -34,7 +41,7 @@ You can pull the same image as on gitgub container registry (ghcr)
 
     docker pull fhem/fhem:5-bookworm
 
-##### Version 4 - EOL Jan 2025
+##### Version 4 - legacy, EOL Jan 2025
 
 - debian bullseye 
 - Perl 5.38.5 (optional threaded)
@@ -51,7 +58,7 @@ If you are using 3rd Party modules which are not available on the FHEM svn repos
 
 To let this image work correctly, you need as least a FHEM revision 25680 or newer.
 
-##### Version 3 - EOL Jan 2024
+##### Version 3 - legacy, EOL Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -66,8 +73,13 @@ To let this image work correctly, you need as least a FHEM revision 25680 or new
 
 
 
-#### Image with perl core services installed
+#### Minimal image
 
+For slim, controlled setups where you add dependencies yourself, use:
+
+    docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+
+This image is a better fit when you only want the FHEM runtime and will install all extra dependencies explicitly.
 
 ##### Version 5 (beta)
 
@@ -80,9 +92,9 @@ To let this image work correctly, you need as least a FHEM revision 25680 or new
         docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
         docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
 
-If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
+If you are using only modules which are provided via the FHEM svn repository, you mostly can use this smaller image.
 
-##### Version 4 - EOL Jan 2025
+##### Version 4 - legacy, EOL Jan 2025
 
 - debian bullseye
 - Perl 5.38.5 (optional threaded)
@@ -95,7 +107,7 @@ If you are using only modules which are provided via FHEM svn repository, you mo
 
 If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
 
-##### Version 3 - EOL Jan 2024
+##### Version 3 - legacy, EOL Jan 2024
 
 - debian buster
 - Perl 5.28.1
@@ -160,6 +172,9 @@ Some CPAN requirements are removed for specific image and platform combinations 
 
 `Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` and `linux/arm/v7` due runtime instability in `Math::Pari` on those platforms. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
 
+### Tag strategy
+
+Use fixed image tags such as `5-bookworm` or `5-threaded-bookworm` in Compose files and `FROM` statements. Avoid `latest`, because it hides version drift and makes updates harder to review. Renovate-friendly updates should happen by changing the tag in the Compose file or the Dockerfile, not by relying on mutable tags.
 
 ## Customize your container configuration
 
@@ -171,35 +186,46 @@ For that reason, the default value of the global attribute `logfile` is differen
 It is highly recommended to keep this setting. Please note that FileLog are only patched if fhem is fresh installed. 
 Devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
-### Add custom packages 
+### Extending the image
 
-#### Since version 4
+Build your own image when you need extra packages. Keep the base image pinned to a fixed tag:
 
-To extend the image with a custom package for example, you have to use standard docker tools.
-
-If you are defining a docker-compose.yml file describing your configuration, then you can add a build definition instead of starting the image from the registry:
-
-With this, you will create a new image, and install any tool which you additional need:
-
-```
+```yaml
+services:
+  fhem:
     build:
       context: .
       dockerfile_inline: |
         FROM ghcr.io/fhem/fhem-docker:5-bookworm
         RUN <<EOF
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update
           LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean
         EOF
-
         RUN <<EOF
           pip install --no-cache-dir <PIP PACKAGENAME>
         EOF
 ```
 
-See more examples in our docker-compose.yml file.
+If you prefer a dedicated Dockerfile, the same rule applies:
 
-Important: If you need additional Perl CPAN Modules, you must install them directly from CPAN and not via apt!
+```dockerfile
+FROM ghcr.io/fhem/fhem-docker:5-bookworm
+RUN apt-get update && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
+RUN pip install --no-cache-dir <PIP PACKAGENAME>
+```
+
+Important: If you need additional Perl CPAN modules, install them directly from CPAN and not via apt.
+
+For Alexa integrations, install the required Node.js helpers explicitly in your custom image and keep their versions visible in the Dockerfile or Compose build definition. The standard image does not enable `alexa-cookie2` or `alexa-fhem` by default.
+
+```dockerfile
+FROM ghcr.io/fhem/fhem-docker:5-bookworm
+RUN npm install -g --unsafe-perm --production alexa-cookie2 alexa-fhem
+```
+
+Then add the required local configuration, credentials and FHEM definitions for your setup. Those details are intentionally not part of the default Compose stack.
+
 
 #### till version 3 (deprecated)
 
@@ -529,16 +555,16 @@ Also, for host.docker.internal, the SSH host key will automatically be added and
 
 If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` above).
 
-## Adding Git for version control of your Home Automation Docker containers
+## Using Docker Compose
 
 Prerequisites on your Docker host:
 
-1. Ensure docker-compose is installed: See [Install Docker Compose](https://docs.docker.com/compose/install/)
+1. Ensure the Docker Compose plugin is installed: See [Install Docker Compose](https://docs.docker.com/compose/install/)
 2. Ensure Git command is installed, e.g. run `sudo apt install git`
 
 Follow initial setup steps:
 
-1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
+1. Put `docker-compose.yml` and `.gitignore` into an empty sub-folder, e.g. `/docker/home`
 
     ```console
     sudo mkdir -p /docker/home
@@ -546,17 +572,30 @@ Follow initial setup steps:
     sudo curl -fsSL -o /docker/home/.gitignore https://github.com/fhem/fhem-docker/raw/master/.gitignore
     ```
 
-    Note that the sub-directory "home" will be the base prefix name for all    your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
+    `docker-compose.yml` is intended to be used directly, not as a sample catalog. The sub-directory name becomes the project prefix for your containers, which helps when you run multiple stacks on the same host.
 
-2. Being in /docker/home, run command to start your Docker stack:
+2. Start the stack with `docker compose`:
 
     ```console
-    cd /docker/home; sudo docker-compose up -d
+    cd /docker/home
+    sudo docker compose up -d
     ```
 
     All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
     You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
     Note that if you are using configDB already, you need to ensure Docker compatibility before starting the container for the very first time (see `DOCKER_*` environment variables above).
+
+    Optional services in the provided Compose file are enabled through profiles:
+
+    * `db` starts a PostgreSQL container that can be used for configDB or other database-backed FHEM modules.
+    * `mail` starts a local SMTP test relay. FHEM can use the service name `mailhog` on port `1025`; the web UI is available on host port `8025`.
+
+    ```console
+    sudo docker compose --profile db up -d
+    sudo docker compose --profile mail up -d
+    ```
+
+    Alexa helpers, USB devices, host networking and privileged mode need local configuration, secrets, device paths or start commands. Keep those as local Compose changes or custom image builds instead of enabling them in the default stack.
 
 3. Create a local Git repository and add all files as an initial commit:
 
@@ -594,10 +633,8 @@ Follow initial setup steps:
     ```console
     sudo mkdir -p /docker
     cd /docker; sudo git clone git@github.com:user/repo.git
-    cd /docker/home; sudo docker-compose up -d
+    cd /docker/home; sudo docker compose up -d
     ```
-
-
 ## Testing the Image itself in a container
 
 Basic testing of the image is done in the pipeline. The pipeline will start a container and verify that the health check reports the container is alive.

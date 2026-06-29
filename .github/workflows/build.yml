@@ -36,10 +36,14 @@ jobs:
       - name: Checkout this repository
         uses: actions/checkout@v7
 
-      - name: Lint docker-compose.yml
-        uses: sjafferali/docker-compose-lint-action@v0.1.2
-        with:
-          compose-file: './docker-compose.yml'
+      - name: Validate docker compose config
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml config
+          docker compose -f docker-compose.yml --profile db config
+          docker compose -f docker-compose.yml --profile mail config
+          docker compose -f docker-compose.yml --profile db --profile mail config
 
 
 
