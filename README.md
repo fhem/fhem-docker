@@ -12,7 +12,7 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
 Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 Use fixed tags instead of `latest`. Update image tags explicitly in Compose or in `FROM` lines so Renovate can track and review the change.
-For normal FHEM-SVN-based setups, the minimal image is the recommended default. Use the regular `fhem-docker` image when you want a broader runtime environment with more tooling preinstalled.
+For normal FHEM-SVN-based setups, the minimal image is the recommended default and already contains the required FHEM runtime environment. The regular `fhem-docker` image bundles several runtime environments in one container and should be treated as a compatibility option rather than the preferred pattern for new setups.
 
 ### From Github container registry
 
@@ -23,16 +23,16 @@ For normal FHEM-SVN setups and slim, controlled deployments, use the minimal ima
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
 
-This is the recommended default when you only need the FHEM runtime and install additional dependencies explicitly. It is based on Debian bookworm, Perl 5.38.5, Python 3.11.2 and supports `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
+This is the recommended default for new setups. It already contains the required FHEM runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm, Perl 5.38.5, Python 3.11.2 and supports `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
 
 #### Standard image
 
-Use the regular image when your setup benefits from a broader preinstalled runtime environment:
+Use the regular image only when you intentionally need the compatibility image with multiple bundled runtime environments:
 
     docker pull ghcr.io/fhem/fhem-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
 
-This image adds common runtime tooling such as NodeJS 18.19 LTS and Python 3.11.2. Optional helpers like `alexa-fhem`, `alexa-cookie`, `gassistant-fhem`, `homebridge`, `homebridge-fhem` and `tradfri-fhem` are still not enabled by default; prefer sidecar containers where available.
+This image bundles additional runtime environments in the FHEM container. That is useful for compatibility with existing deployments, but it is an anti-pattern for new setups when the same functionality can run as sidecars or explicit image extensions. Some bundled runtime versions can also age independently of the FHEM runtime.
 
 ### From Docker Hub
 
@@ -139,7 +139,7 @@ RUN pip install --no-cache-dir <PIP PACKAGE>
 RUN npm install -g --unsafe-perm --production <NPM PACKAGE>
 ```
 
-Use `ghcr.io/fhem/fhem-docker:5-bookworm` as the base image instead when you intentionally want the broader standard image runtime.
+Use `ghcr.io/fhem/fhem-docker:5-bookworm` as the base image only when you intentionally need the compatibility image with multiple bundled runtime environments.
 
 Important: If you need additional Perl CPAN modules, install them directly from CPAN and not via apt.
 
@@ -147,7 +147,6 @@ For Alexa integrations, prefer sidecar containers instead of adding the helpers 
 
 * `alexa-fhem` Docker: https://github.com/fhem/alexa-fhem-docker, image `ghcr.io/fhem/alexa-fhem:5.1.6`
 * `alexa-cookie-service`: https://github.com/fhem/alexa-cookie-service, image `ghcr.io/fhem/alexa-cookie-service:0.3.1`
-* Upstream `alexa-fhem`: https://github.com/justme-1968/alexa-fhem
 
 Keep those services separate from the FHEM image and add the local configuration, credentials and FHEM definitions that your setup needs.
 
