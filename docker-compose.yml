@@ -6,6 +6,9 @@ services:
       - "8083:8083"
     volumes:
       - ./fhem/:/opt/fhem/
+    networks:
+      - default
+      - backend
     environment:
       TZ: ${TZ:-Europe/Berlin}
       CONFIGTYPE: ${CONFIGTYPE:-fhem.cfg}
@@ -26,6 +29,8 @@ services:
     restart: unless-stopped
     profiles:
       - db
+    networks:
+      - backend
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -39,6 +44,9 @@ services:
     restart: unless-stopped
     profiles:
       - mail
+    networks:
+      - default
+      - backend
     environment:
       HOSTNAME: ${MAIL_HOSTNAME:-postfix}
       RELAYHOST: ${MAIL_RELAYHOST:-}
@@ -50,6 +58,44 @@ services:
       TZ: ${TZ:-Europe/Berlin}
     ports:
       - "1025:587"
+
+  alexa-fhem:
+    image: ghcr.io/fhem/alexa-fhem:5.1.6
+    restart: unless-stopped
+    profiles:
+      - alexa
+    networks:
+      - default
+      - backend
+    volumes:
+      - ./alexa-fhem/:/alexa-fhem/
+    environment:
+      ALEXAFHEM_UID: ${ALEXAFHEM_UID:-6062}
+      ALEXAFHEM_GID: ${ALEXAFHEM_GID:-6062}
+      CONFIG_connections_0_server: ${ALEXAFHEM_FHEM_SERVER:-fhem}
+      CONFIG_connections_0_port: ${ALEXAFHEM_FHEM_PORT:-8083}
+      TZ: ${TZ:-Europe/Berlin}
+
+  alexa-cookie-service:
+    image: ghcr.io/fhem/alexa-cookie-service:0.3.1
+    restart: unless-stopped
+    profiles:
+      - alexa
+    networks:
+      - default
+      - backend
+    volumes:
+      - ./alexa-cookie-service/:/data/
+    environment:
+      AUTH_TOKEN: ${ALEXA_COOKIE_SERVICE_TOKEN:-change-me}
+      PROXY_PUBLIC_HOST: ${ALEXA_COOKIE_SERVICE_HOST:-127.0.0.1}
+      TZ: ${TZ:-Europe/Berlin}
+    ports:
+      - "58090:58090"
+
+networks:
+  backend:
+    internal: true
 
 volumes:
   postgres_data:

@@ -482,13 +482,15 @@ Follow initial setup steps:
 
     * `db` starts a PostgreSQL container that can be used for configDB or other database-backed FHEM modules.
     * `mail` starts a Postfix relay based on `boky/postfix`.
+    * `alexa` starts `alexa-fhem` and `alexa-cookie-service` sidecars on the internal backend network.
 
     ```console
     sudo docker compose --profile db up -d
     sudo docker compose --profile mail up -d
+    sudo docker compose --profile alexa up -d
     ```
 
-    Alexa helpers, USB devices, host networking and privileged mode need local configuration, secrets, device paths or start commands. Keep those as local Compose changes or sidecars instead of enabling them in the default stack.
+    USB devices, host networking and privileged mode need local device paths and host-specific security decisions. Keep those as local Compose changes instead of enabling them in the default stack.
 
     For local additions, create a `compose.override.yml` next to `docker-compose.yml`. Docker Compose reads that file automatically:
 
@@ -499,26 +501,6 @@ Follow initial setup steps:
           - "/dev/ttyUSB0:/dev/ttyUSB0"
         # Use only when a device really needs broad host access.
         # privileged: true
-
-      alexa-fhem:
-        image: ghcr.io/fhem/alexa-fhem:5.1.6
-        restart: unless-stopped
-        volumes:
-          - ./alexa-fhem/:/alexa-fhem/
-        environment:
-          TZ: ${TZ:-Europe/Berlin}
-
-      alexa-cookie-service:
-        image: ghcr.io/fhem/alexa-cookie-service:0.3.1
-        restart: unless-stopped
-        volumes:
-          - ./alexa-cookie-service/:/data/
-        environment:
-          AUTH_TOKEN: ${ALEXA_COOKIE_SERVICE_TOKEN:-change-me}
-          PROXY_PUBLIC_HOST: ${ALEXA_COOKIE_SERVICE_HOST:-127.0.0.1}
-          TZ: ${TZ:-Europe/Berlin}
-        ports:
-          - "58090:58090"
     ```
 
     Host networking is a separate local variant because it conflicts with the default `ports` mapping. Use an explicit override file when you need it:
