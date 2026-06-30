@@ -45,7 +45,6 @@ services:
     profiles:
       - mail
     networks:
-      - default
       - backend
     environment:
       HOSTNAME: ${MAIL_HOSTNAME:-postfix}
@@ -56,8 +55,6 @@ services:
       ALLOW_EMPTY_SENDER_DOMAINS: ${ALLOW_EMPTY_SENDER_DOMAINS:-true}
       MYNETWORKS: ${MYNETWORKS:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       TZ: ${TZ:-Europe/Berlin}
-    ports:
-      - "1025:587"
 
   alexa-fhem:
     image: ghcr.io/fhem/alexa-fhem:5.1.6
@@ -65,7 +62,6 @@ services:
     profiles:
       - alexa
     networks:
-      - default
       - backend
     volumes:
       - ./alexa-fhem/:/alexa-fhem/
