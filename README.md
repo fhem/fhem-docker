@@ -12,7 +12,7 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
 Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
 Use fixed tags instead of `latest`. Update image tags explicitly in Compose or in `FROM` lines so Renovate can track and review the change.
-For normal FHEM-SVN-based setups, the minimal image is the recommended default and already contains the required FHEM runtime environment. The regular `fhem-docker` image bundles several runtime environments in one container and should be treated as a compatibility option rather than the preferred pattern for new setups.
+For normal FHEM-SVN-based setups, the minimal image is the recommended default and already contains the required Perl/FHEM runtime environment, but not Python or NodeJS. The regular `fhem-docker` image bundles several runtime environments in one container and should be treated as a compatibility option rather than the preferred pattern for new setups.
 
 ### From Github container registry
 
@@ -23,7 +23,7 @@ For normal FHEM-SVN setups and slim, controlled deployments, use the minimal ima
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
 
-This is the recommended default for new setups. It already contains the required FHEM runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm, Perl 5.38.5, Python 3.11.2 and supports `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
+This is the recommended default for new setups. It contains the required FHEM Perl runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm and Perl 5.38.5. Python and NodeJS are not part of the minimal image; add them explicitly when your setup needs them. Supported platforms are `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
 
 #### Standard image
 
@@ -67,34 +67,9 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 
 Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
-### CPAN inventory
+### Developer information
 
-The generated `cpanfile` artifacts describe the expected CPAN dependencies before the image build starts. To document what actually ended up in an image, the build now exports an inventory of installed Perl modules after the CPAN installation stage finished.
-
-For every platform built in GitHub Actions, the `cpan_build` job builds a dedicated export stage and uploads an artifact named like `cpan-inventory-bookworm-arm64`. It contains:
-
-* `core/core-modules.tsv|json` for the modules installed from the FHEM `cpanfile`
-* `3rdparty/3rdparty-modules.tsv|json` for the modules installed from the `3rdParty/cpanfile`
-* `all/all-modules.tsv|json` for the combined installed module set
-* `verify/core|3rdparty|all/*` for the requirement verification reports
-* `logs/core-install.log` and `logs/3rdparty-install.log` for the captured `cpm install` output
-
-The inventory is generated directly in `build-cpan` after the `cpm install` steps and exported through a separate `cpan-inventory` stage. This keeps the inventory out of the regular runtime images and still makes it possible to compare the dynamic `cpanfile` input with the actually installed module set even when the CPAN build layer was restored from cache.
-
-For verification, `build-cpan` now reads the generated `cpanfile`s directly inside the container, validates them with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The workflow host only evaluates the exported verification reports. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
-
-Some CPAN requirements are removed for specific image and platform combinations before `cpm install` runs. These removals are also listed in the CPAN build report comment on pull requests.
-
-| Image family | Architecture | Excluded from `core` | Excluded from `3rdparty` |
-| --- | --- | --- | --- |
-| `*-bookworm`, `*-bullseye` | `linux/amd64` | none | none |
-| `*-bullseye` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | none |
-| `*-bookworm` | `linux/386` | `Math::Pari`, `Crypt::Random`, `HiPi` | `SNMP` |
-| `*-bookworm`, `*-bullseye` | `linux/arm/v7` | `Device::Firmata::Constants`, `Math::Pari`, `Crypt::Random`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
-| `*-bookworm` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants`, `SNMP` |
-| `*-bullseye` | `linux/arm64` | `Device::Firmata::Constants`, `HiPi` | `Device::Firmata::Constants` |
-
-`Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` and `linux/arm/v7` due runtime instability in `Math::Pari` on those platforms. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
+Build, CI and CPAN inventory details for contributors are documented in [docs/developer-notes.md](docs/developer-notes.md).
 
 ### Tag strategy
 
@@ -112,31 +87,52 @@ Devices might still need to be checked and adjusted manually if you would like t
 
 ### Extending the image
 
-Build your own image when you need extra packages. Keep the base image pinned to a fixed tag.
+Build your own image when you need extra packages. Keep the base image pinned to a fixed tag. The minimal image does not include Python or NodeJS, so install those runtimes explicitly before using `pip` or `npm`.
 
-Use `apt` for Debian packages, `cpm`/CPAN for Perl modules, `pip` for Python packages, and `npm` for Node.js packages.
-
-```yaml
-services:
-  fhem:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
-        RUN apt-get update && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-        RUN cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
-        RUN pip install --no-cache-dir <PIP PACKAGE>
-        RUN npm install -g --unsafe-perm --production <NPM PACKAGE>
-```
-
-If you prefer a dedicated Dockerfile, the same rules apply:
+Debian packages:
 
 ```dockerfile
 FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
-RUN apt-get update && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-RUN cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
-RUN pip install --no-cache-dir <PIP PACKAGE>
-RUN npm install -g --unsafe-perm --production <NPM PACKAGE>
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME> \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+Perl CPAN modules:
+
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+# renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
+ARG CPAN_CPM_VERSION=v1.1.4
+RUN cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz" \
+    && cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
+```
+
+Python packages:
+
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends python3 python3-pip \
+    && pip install --no-cache-dir <PIP PACKAGE> \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+Node.js packages:
+
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends nodejs \
+    && npm install -g --unsafe-perm --production <NPM PACKAGE> \
+    && npm cache clean --force \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 ```
 
 Use `ghcr.io/fhem/fhem-docker:5-bookworm` as the base image only when you intentionally need the compatibility image with multiple bundled runtime environments.
@@ -149,7 +145,6 @@ For Alexa integrations, prefer sidecar containers instead of adding the helpers 
 * `alexa-cookie-service`: https://github.com/fhem/alexa-cookie-service, image `ghcr.io/fhem/alexa-cookie-service:0.3.1`
 
 Keep those services separate from the FHEM image and add the local configuration, credentials and FHEM definitions that your setup needs.
-
 
 Legacy package-installation variables from image versions 3 and older are documented in [docs/legacy-images.md](docs/legacy-images.md). Prefer extending the image as shown above.
 
@@ -494,6 +489,52 @@ Follow initial setup steps:
     ```
 
     Alexa helpers, USB devices, host networking and privileged mode need local configuration, secrets, device paths or start commands. Keep those as local Compose changes or sidecars instead of enabling them in the default stack.
+
+    For local additions, create a `compose.override.yml` next to `docker-compose.yml`. Docker Compose reads that file automatically:
+
+    ```yaml
+    services:
+      fhem:
+        devices:
+          - "/dev/ttyUSB0:/dev/ttyUSB0"
+        # Use only when a device really needs broad host access.
+        # privileged: true
+
+      alexa-fhem:
+        image: ghcr.io/fhem/alexa-fhem:5.1.6
+        restart: unless-stopped
+        volumes:
+          - ./alexa-fhem/:/alexa-fhem/
+        environment:
+          TZ: ${TZ:-Europe/Berlin}
+
+      alexa-cookie-service:
+        image: ghcr.io/fhem/alexa-cookie-service:0.3.1
+        restart: unless-stopped
+        volumes:
+          - ./alexa-cookie-service/:/data/
+        environment:
+          AUTH_TOKEN: ${ALEXA_COOKIE_SERVICE_TOKEN:-change-me}
+          PROXY_PUBLIC_HOST: ${ALEXA_COOKIE_SERVICE_HOST:-127.0.0.1}
+          TZ: ${TZ:-Europe/Berlin}
+        ports:
+          - "58090:58090"
+    ```
+
+    Host networking is a separate local variant because it conflicts with the default `ports` mapping. Use an explicit override file when you need it:
+
+    ```yaml
+    services:
+      fhem:
+        network_mode: host
+        ports: !reset []
+    ```
+
+    Start it with:
+
+    ```console
+    sudo docker compose -f docker-compose.yml -f compose.host.yml up -d
+    ```
 
 3. Create a local Git repository and add all files as an initial commit:
 
