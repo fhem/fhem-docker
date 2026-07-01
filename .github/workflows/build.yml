@@ -368,7 +368,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cpan-logs${{ matrix.dockerfile }}-${{ matrix.platform }}
+          name: cpan-logs${{ matrix.dockerfile }}-${{ env.PLATFORM_SLUG }}
           path: ${{ env.CPAN_ARTIFACT_DIR }}/logs
           overwrite: true
           if-no-files-found: warn
