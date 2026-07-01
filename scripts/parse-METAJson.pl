@@ -58,6 +58,13 @@ sub build_exclude_regex {
     return qr/(?:@{[join '|', @patterns]})/;
 }
 
+sub is_valid_prereq_name {
+    my ($name) = @_;
+    return 1 if defined $name && $name eq 'perl';
+    return defined $name
+      && $name =~ /\A[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*\z/;
+}
+
 sub filter_nested_hashref {
     my $hashref = shift;
     my $filter_value = shift;
@@ -71,6 +78,9 @@ sub filter_nested_hashref {
             delete $hashref->{$key} if !%{ $hashref->{$key} };
             
             #print Dumper $hashref->{$key};
+        } elsif ( !is_valid_prereq_name($key) ) {
+            warn "Skipping invalid prereq key '$key'\n";
+            delete $hashref->{$key};
         } elsif ( $key =~ $filter_value || Module::CoreList->is_core( $key,undef,5.36) )
         {
             #print "\n Deleting $key";
