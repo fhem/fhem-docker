@@ -73,7 +73,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   alexa-cookie-service:
-    image: ghcr.io/fhem/alexa-cookie-service:0.3.1
+    image: ghcr.io/fhem/alexa-cookie-service:0.3.4
     restart: unless-stopped
     profiles:
       - alexa
