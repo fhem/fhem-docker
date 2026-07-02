@@ -1,366 +1,97 @@
-# This is an exmaple Docker Compose file to start your own Docker Stack
+services:
+  fhem:
+    image: ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./fhem/:/opt/fhem/
+    networks:
+      - default
+      - backend
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+      CONFIGTYPE: ${CONFIGTYPE:-fhem.cfg}
+      LOGFILE: ${LOGFILE:-./log/fhem-%Y-%m-%d.log}
+      PIDFILE: ${PIDFILE:-./log/fhem.pid}
+      RESTART: ${RESTART:-1}
+      UMASK: ${UMASK:-0037}
+      FHEM_UID: ${FHEM_UID:-6061}
+      FHEM_GID: ${FHEM_GID:-6061}
+      FHEM_PERM_DIR: ${FHEM_PERM_DIR:-0750}
+      FHEM_PERM_FILE: ${FHEM_PERM_FILE:-0640}
+      TIMEOUT_STOPPING: ${TIMEOUT_STOPPING:-30}
+      TIMEOUT_STARTING: ${TIMEOUT_STARTING:-60}
+      TIMEOUT_REAPPEAR: ${TIMEOUT_REAPPEAR:-15}
 
-version: '2.3'
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    profiles:
+      - db
+    networks:
+      - backend
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fhem}
+      POSTGRES_USER: ${POSTGRES_USER:-fhem}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fhem}
+      TZ: ${TZ:-Europe/Berlin}
+
+  mail:
+    image: boky/postfix:5.1.0-alpine
+    restart: unless-stopped
+    profiles:
+      - mail
+    networks:
+      - backend
+    environment:
+      HOSTNAME: ${MAIL_HOSTNAME:-postfix}
+      RELAYHOST: ${MAIL_RELAYHOST:-}
+      RELAYHOST_USERNAME: ${MAIL_RELAYHOST_USERNAME:-}
+      RELAYHOST_PASSWORD: ${MAIL_RELAYHOST_PASSWORD:-}
+      ALLOWED_SENDER_DOMAINS: ${MAIL_ALLOWED_SENDER_DOMAINS:-}
+      ALLOW_EMPTY_SENDER_DOMAINS: ${ALLOW_EMPTY_SENDER_DOMAINS:-true}
+      MYNETWORKS: ${MYNETWORKS:-127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      TZ: ${TZ:-Europe/Berlin}
+
+  alexa-fhem:
+    image: ghcr.io/fhem/alexa-fhem:5.1.6
+    restart: unless-stopped
+    profiles:
+      - alexa
+    networks:
+      - backend
+    volumes:
+      - ./alexa-fhem/:/alexa-fhem/
+    environment:
+      ALEXAFHEM_UID: ${ALEXAFHEM_UID:-6062}
+      ALEXAFHEM_GID: ${ALEXAFHEM_GID:-6062}
+      CONFIG_connections_0_server: ${ALEXAFHEM_FHEM_SERVER:-fhem}
+      CONFIG_connections_0_port: ${ALEXAFHEM_FHEM_PORT:-8083}
+      TZ: ${TZ:-Europe/Berlin}
+
+  alexa-cookie-service:
+    image: ghcr.io/fhem/alexa-cookie-service:0.3.1
+    restart: unless-stopped
+    profiles:
+      - alexa
+    networks:
+      - default
+      - backend
+    volumes:
+      - ./alexa-cookie-service/:/data/
+    environment:
+      AUTH_TOKEN: ${ALEXA_COOKIE_SERVICE_TOKEN:-change-me}
+      PROXY_PUBLIC_HOST: ${ALEXA_COOKIE_SERVICE_HOST:-127.0.0.1}
+      TZ: ${TZ:-Europe/Berlin}
+    ports:
+      - "58090:58090"
 
 networks:
-  net:
-    driver: bridge
-    # enable_ipv6: true
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.27.0.0/28
-          gateway: 172.27.0.1
-        # - subnet: fd00:0:0:0:27::/80
-        #   gateway: fd00:0:0:0:27::1
+  backend:
+    internal: true
 
-services:
-
-  ####
-  # HINT: use only ONE of the example "fhem:" service
-  # definitions below !
-  #
-
-  # Minimum example w/o any custom environment variables
-  fhem_5_a:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # Example w/ custom environment variables
-  fhem_5_b:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-      # CONFIGTYPE: configDB
-
-  # Example to connect USB to the container w/o
-  # privileged mode (preferred method)
-  fhem_5_c:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    devices:
-      - "/dev/ttyUSB0:/dev/ttyUSB0"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-  # Example to connect USB to the container w/
-  # privileged mode (not recommended for security reasons)
-  fhem_5_d:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
-    restart: always
-    privileged: true
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-      - "/dev/ttyUSB0:/dev/ttyUSB0"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-  # Example for privileged container w/
-  # host network (not recommended for security reasons)
-  fhem_5_e:
-    image: ghcr.io/fhem/fhem-docker:5-bookworm
-    restart: always
-    privileged: true
-    network_mode: "host"
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-
-  # example with adding a cpan packages to your image
-  fhem_5_f:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:5-bookworm
-        RUN <<EOF
-          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/  << YOUR PAACKAGE NAME >>
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # example with extending debian packages to your image
-  fhem_5_g:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:5-bookworm
-        RUN <<EOF
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # example with extending npm packages to your image
-  fhem_5_h:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:5-bookworm
-        RUN <<EOF
-          npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
-          npm cache clean --force
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-
-  # example with extending python packages to your image
-  fhem_5_i:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:5-bookworm
-        RUN <<EOF
-          pip3 install --no-cache-dir <PIP PACKAGENAME>
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-
-
-
-  ####
-  # HINT: use only ONE of the example "fhem:" service
-  # definitions below !
-  #
-
-  # Minimum example w/o any custom environment variables
-  fhem_4_a:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # Example w/ custom environment variables
-  fhem_4_b:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-      # CONFIGTYPE: configDB
-
-  # Example to connect USB to the container w/o
-  # privileged mode (preferred method)
-  fhem_4_c:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    devices:
-      - "/dev/ttyUSB0:/dev/ttyUSB0"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-  # Example to connect USB to the container w/
-  # privileged mode (not recommended for security reasons)
-  fhem_4_d:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
-    restart: always
-    privileged: true
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-      - "/dev/ttyUSB0:/dev/ttyUSB0"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-  # Example for privileged container w/
-  # host network (not recommended for security reasons)
-  fhem_4_e:
-    image: ghcr.io/fhem/fhem-docker:4-bullseye
-    restart: always
-    privileged: true
-    network_mode: "host"
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-    environment:
-      FHEM_UID: 6061
-      FHEM_GID: 6061
-      TIMEOUT: 10
-      RESTART: 1
-      TELNETPORT: 7072
-      TZ: Europe/Berlin
-
-
-  # example with adding a cpan packages to your image
-  fhem_4_f:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
-        RUN <<EOF
-          cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/  << YOUR PAACKAGE NAME >>
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # example with extending debian packages to your image
-  fhem_4_g:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
-        RUN <<EOF
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-  # example with extending npm packages to your image
-  fhem_4_h:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
-        RUN <<EOF
-          npm install -g --unsafe-perm --production <NPM PACKAGENAME> 
-          npm cache clean --force
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
-
-
-  # example with extending python packages to your image
-  fhem_4_i:
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
-        RUN <<EOF
-          pip3 install --no-cache-dir <PIP PACKAGENAME>
-        EOF
-    pull_policy: build
-    restart: always
-    networks:
-      - net
-    ports:
-      - "8083:8083"
-    volumes:
-      - "./fhem/:/opt/fhem/"
+volumes:
+  postgres_data:
