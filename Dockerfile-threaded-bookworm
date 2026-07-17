@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-threaded-bookworm@sha256:3cdc1c605ef5d0d13c16c2be3d26c9700eee6c1895d9854434c9a9fd3abf7975 AS base
+FROM perl:5.44.0-slim-threaded-bookworm@sha256:b98087dad4d36f9f63de9274ca6f790dede9573beed64cec92371cbb17502e6b AS base
 
 ARG TARGETPLATFORM
 
@@ -50,7 +50,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.5-threaded-bookworm@sha256:15b80cbcbf0883842002b9b85ae365313066d358b1869ef0562d73adb3bef345 AS build-cpan 
+FROM perl:5.44.0-threaded-bookworm@sha256:55e9920866fad27d2f7c0398ab75c9c2da218a16adb94c4cfc3ec7f4247a692a AS build-cpan 
 
 ARG TARGETPLATFORM
 ARG TARGETARCH
