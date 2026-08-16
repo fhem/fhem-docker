@@ -57,7 +57,7 @@ ARG TARGETARCH
 ARG TARGETVARIANT
 ARG CPAN_CPM_CACHE_ID=perl-cpm-default
 # renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
-ARG CPAN_CPM_VERSION=v1.1.4
+ARG CPAN_CPM_VERSION=v1.1.5
 ARG CPAN_CPM_MIRROR=https://www.cpan.org
 
 COPY cpanfile /usr/src/app/core/cpanfile
