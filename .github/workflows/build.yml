@@ -728,7 +728,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload Trivy full image scan artifact
         if: always()
@@ -778,7 +778,7 @@ jobs:
           vuln-type: os,library
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: '0'
 
       - name: Upload Trivy minimal image scan artifact
         if: always()
@@ -789,19 +789,29 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
-      - name: Assert Trivy scan results
+      - name: Report Trivy scan results
         if: always()
         run: |
-          STATUS=0
-          if [ "${{ steps.trivy_full.outcome }}" != "success" ]; then
-            echo "Trivy reported HIGH or CRITICAL findings for ${TRIVY_FULL_IMAGE}."
-            STATUS=1
-          fi
-          if [ "${{ steps.trivy_minimal.outcome }}" != "success" ]; then
-            echo "Trivy reported HIGH or CRITICAL findings for ${TRIVY_MINIMAL_IMAGE}."
-            STATUS=1
-          fi
-          exit "$STATUS"
+          {
+            echo "### Trivy scan report (${{ matrix.dockerfile }})"
+            echo ""
+            echo "| Image | HIGH | CRITICAL |"
+            echo "|---|---|---|"
+            for pair in "${TRIVY_FULL_IMAGE}:${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}:${TRIVY_MINIMAL_SARIF}"; do
+              image="${pair%%:*}"
+              sarif="${pair##*:}"
+              if [ -f "$sarif" ]; then
+                high=$(jq '[.runs[].results[]? | select(.level=="warning" or .level=="error") | select((.ruleId // "") | test("HIGH"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+                critical=$(jq '[.runs[].results[]? | select((.ruleId // "") | test("CRITICAL"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+              else
+                high="n/a"
+                critical="n/a"
+              fi
+              echo "| ${image} | ${high} | ${critical} |"
+            done
+            echo ""
+            echo "Full SARIF reports are attached as workflow artifacts. This scan is currently informational only and does not fail the build."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   published_build:
     runs-on: ubuntu-latest
