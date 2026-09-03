@@ -444,53 +444,50 @@ jobs:
             --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json"
     
             
-  test_build:
-    # The type of runner that the job will run on
+  build_test_images:
+    # Builds every image variant needed by the decoupled test jobs exactly once
+    # and pushes them to GHCR under a run-specific, ephemeral tag so the test
+    # jobs can pull instead of rebuilding.
     needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         dockerfile: [-bookworm, -threaded-bookworm]
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v5.7.1
-
-      - name: Get git vars
-        shell: bash
-        run: |
-          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
-        id: gitVars
-
-      - name: Prepare SVN repository checkout and variables
-        id: prepareSVN
-        uses: ./.github/workflows/prepare-svn
-
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
-  
+
       - uses: actions/download-artifact@v8
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
 
-      - name: Prepare docker for build and publish
+      - name: Set up Docker Buildx
         id: prepareDOCKER
-        uses: ./.github/workflows/prepare-docker
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          GHCR_OWNER: ${{ github.repository_owner }}
-          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCKERFILE: ${{ matrix.dockerfile }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare CI image tag variables
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          CI_IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}"
+          echo "CI_IMAGE_BATS=${CI_IMAGE_BASE}-bats" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_MINIMAL=${CI_IMAGE_BASE}-minimal" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_FULL=${CI_IMAGE_BASE}-full" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_BATS_EXTENDED=${CI_IMAGE_BASE}-bats-extended" >> "$GITHUB_ENV"
 
       - name: Restore CPM cache for amd64
         uses: actions/cache/restore@v6
@@ -505,7 +502,7 @@ jobs:
       - name: Inject CPM cache mount for amd64
         uses: reproducible-containers/buildkit-cache-dance@v3.4.0
         with:
-          builder: ${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}
+          builder: ${{ steps.prepareDOCKER.outputs.name }}
           cache-map: |
             {
               ".cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}": {
@@ -515,49 +512,23 @@ jobs:
             }
           skip-extraction: true
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v6
-        env:
-          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
-        with:
-          images: |
-            ghcr.io/${{ github.repository_owner }}/fhem-docker
-            fhem/fhem
-          flavor: |
-              latest= ${{ env.TAG_LATEST }}
-          tags: |
-            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
-            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
-            type=ref,event=branch,suffix=${{ matrix.dockerfile }}
-            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
-
-      - name: Build and cache fhem base layer
+      - name: Build and push fhem-bats image
         uses: docker/build-push-action@v7
-        id: docker_build_fhem
         with:
           context: .
-          load: true  
+          push: true
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64
-          push: false
           target: with-fhem-bats
-          cache-from: | 
+          cache-from: |
             type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}            
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
           cache-to: type=gha,mode=max,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-          tags: with-fhem
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.CI_IMAGE_BATS }}
           build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
             CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
       - name: Checkout BuildKit cache dance helper
         if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
@@ -580,7 +551,7 @@ jobs:
         run: |
           node .cache/buildkit-cache-dance/dist/index.js \
             --extract \
-            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --builder "${{ steps.prepareDOCKER.outputs.name }}" \
             --cache-map "$CACHE_MAP"
 
       - name: Save CPM cache for amd64
@@ -590,69 +561,145 @@ jobs:
           path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
           key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
 
-      - name: Build for bats with fhem base layer
+      - name: Build and push fhem-minimal image
         uses: docker/build-push-action@v7
-        id: docker_build_bats
         with:
           context: .
-          load: true  
+          push: true
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/amd64
-          push: false
-          target: with-fhem-bats
-          cache-from: | 
+          target: with-fhem
+          cache-from: |
             type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-          tags: bats-withfhem
-          labels: ${{ steps.meta.outputs.labels }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_MINIMAL }}
           build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
             CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+
+      - name: Build and push fhem-extended-python-nodejs image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem-extended-python-nodejs
+          cache-from: |
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_FULL }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+      - name: Build and push fhem-bats-extended-python-nodejs image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem-bats-extended-python-nodejs
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_BATS_EXTENDED }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+  test_bats:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and tag fhem-bats test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          docker pull "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats"
+          docker tag "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats" bats-withfhem:latest
 
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in bidge network mode
         with:
           attempt_limit: 3
           command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
-        
+
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
           command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
 
-      - name: Build for test fhem, python and nodejs layer added for amd64
-        uses: docker/build-push-action@v7
-        id: docker_build
+  test_integration_and_unit:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    env:
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
         with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-extended-python-nodejs
-          cache-from: | 
-            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}  
-            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
-            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/fhem-docker
+            fhem/fhem
+          flavor: |
+              latest= ${{ env.TAG_LATEST }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and tag fhem-full test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-full"
+          docker pull "$CI_IMAGE"
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && docker tag "$CI_IMAGE" "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
 
       - name: Inspect and run integration tests
         run: |
@@ -663,38 +710,38 @@ jobs:
         run: |
           CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
-          until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
+          until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ];
           do sleep 1;
-          echo -n "."; 
+          echo -n ".";
           done;
           echo -e "\n"
           docker exec ${CONTAINER} /bin/bash -c "prove --exec 'perl fhem.pl -t' -I FHEM --recurse /opt/fhem/t/FHEM/" || true
           docker container rm $CONTAINER --force --volumes
 
-      - name: Build for bats with fhem extended layer
-        uses: docker/build-push-action@v7
-        id: docker_build_bats_extended
+  test_bats_extended:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-bats-extended-python-nodejs
-          cache-from: | 
-            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-            type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
-          tags: bats-withfhem-extended
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-  
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and tag fhem-bats-extended test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          docker pull "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended"
+          docker tag "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended" bats-withfhem-extended:latest
+
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
         with:
@@ -702,8 +749,8 @@ jobs:
           command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
 
   trivy_scan:
-    # Own check so Trivy results show up as a dedicated status, separate from test_build
-    needs: [test_build]
+    # Own check so Trivy results show up as a dedicated status, separate from the test jobs
+    needs: [build_test_images]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -714,45 +761,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v8
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          name: cpanfile-FHEM
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: cpanfile-3rdParty
-          path: 3rdParty
-
-      - name: Prepare docker for build
-        id: prepareDOCKER
-        uses: ./.github/workflows/prepare-docker
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare local image tag variables
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          echo "TRIVY_FULL_IMAGE=fhem-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
-          echo "TRIVY_MINIMAL_IMAGE=fhem-minimal-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
+          echo "TRIVY_FULL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-full" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-minimal" >> "$GITHUB_ENV"
           echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
           echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
 
-      - name: Build full image for Trivy scan
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          load: true
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-extended-python-nodejs
-          cache-from: |
-            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-          tags: ${{ env.TRIVY_FULL_IMAGE }}
-          build-args: |
-            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
-            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+      - name: Pull full image for Trivy scan
+        run: docker pull "${TRIVY_FULL_IMAGE}"
 
       - name: Run Trivy scan for full image
         id: trivy_full
@@ -790,24 +816,8 @@ jobs:
           ignore-unfixed: true
           exit-code: '0'
 
-      - name: Build minimal image for Trivy scan
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          load: true
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem
-          cache-from: |
-            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
-          tags: ${{ env.TRIVY_MINIMAL_IMAGE }}
-          build-args: |
-            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
-            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+      - name: Pull minimal image for Trivy scan
+        run: docker pull "${TRIVY_MINIMAL_IMAGE}"
 
       - name: Run Trivy scan for minimal image
         id: trivy_minimal
@@ -853,9 +863,9 @@ jobs:
             echo ""
             echo "| Image | HIGH | CRITICAL |"
             echo "|---|---|---|"
-            for pair in "${TRIVY_FULL_IMAGE}:${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}:${TRIVY_MINIMAL_SARIF}"; do
-              image="${pair%%:*}"
-              sarif="${pair##*:}"
+            for pair in "${TRIVY_FULL_IMAGE}|${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}|${TRIVY_MINIMAL_SARIF}"; do
+              image="${pair%%|*}"
+              sarif="${pair##*|}"
               if [ -f "$sarif" ]; then
                 high=$(jq '[.runs[].results[]? | select(.level=="warning" or .level=="error") | select((.ruleId // "") | test("HIGH"))] | length' "$sarif" 2>/dev/null || echo "n/a")
                 critical=$(jq '[.runs[].results[]? | select((.ruleId // "") | test("CRITICAL"))] | length' "$sarif" 2>/dev/null || echo "n/a")
@@ -871,7 +881,7 @@ jobs:
 
   published_build:
     runs-on: ubuntu-latest
-    needs: [test_build, cpan_build]
+    needs: [test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
     strategy:
       matrix:
         dockerfile: [-bookworm, -threaded-bookworm]
