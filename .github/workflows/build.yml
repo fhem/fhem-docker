@@ -777,6 +777,19 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
+      - name: Print Trivy scan results for full image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
       - name: Build minimal image for Trivy scan
         uses: docker/build-push-action@v7
         with:
@@ -818,6 +831,19 @@ jobs:
           path: ${{ env.TRIVY_MINIMAL_SARIF }}
           if-no-files-found: ignore
           overwrite: true
+
+      - name: Print Trivy scan results for minimal image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
 
       - name: Report Trivy scan results
         if: always()
