@@ -492,15 +492,6 @@ jobs:
           GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
 
-      - name: Prepare local image tag variables
-        run: |
-          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
-          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          echo "TRIVY_FULL_IMAGE=fhem-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
-          echo "TRIVY_MINIMAL_IMAGE=fhem-minimal-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
-          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
-          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
-
       - name: Restore CPM cache for amd64
         uses: actions/cache/restore@v6
         id: cache-cpm-restore
@@ -663,12 +654,6 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
-      - name: Tag full image for Trivy scan
-        run: |
-          docker image tag \
-            "${{ fromJSON(steps.meta.outputs.json).tags[0] }}" \
-            "${TRIVY_FULL_IMAGE}"
-
       - name: Inspect and run integration tests
         run: |
           docker image inspect ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
@@ -716,6 +701,59 @@ jobs:
           attempt_limit: 3
           command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
 
+  trivy_scan:
+    # Own check so Trivy results show up as a dedicated status, separate from test_build
+    needs: [test_build]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpanfile-FHEM
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+
+      - name: Prepare docker for build
+        id: prepareDOCKER
+        uses: ./.github/workflows/prepare-docker
+
+      - name: Prepare local image tag variables
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          echo "TRIVY_FULL_IMAGE=fhem-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=fhem-minimal-docker:${DOCKERFILE_SLUG}-amd64" >> "$GITHUB_ENV"
+          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+
+      - name: Build full image for Trivy scan
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: false
+          target: with-fhem-extended-python-nodejs
+          cache-from: |
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.TRIVY_FULL_IMAGE }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
       - name: Run Trivy scan for full image
         id: trivy_full
         continue-on-error: true
@@ -741,7 +779,6 @@ jobs:
 
       - name: Build minimal image for Trivy scan
         uses: docker/build-push-action@v7
-        id: docker_build_minimal_trivy
         with:
           context: .
           load: true
@@ -754,17 +791,10 @@ jobs:
             type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
             type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
           tags: ${{ env.TRIVY_MINIMAL_IMAGE }}
-          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
             CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
 
       - name: Run Trivy scan for minimal image
         id: trivy_minimal
