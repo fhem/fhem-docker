@@ -21,7 +21,13 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-    
+# Cancel a superseded run for the same branch/PR so its ephemeral CI test
+# images in ghcr.io/.../fhem-docker-ci don't race with cleanup_test_images
+# sweeping images for that same branch. Release runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'release' && github.run_id || (github.event.pull_request.number || github.ref) }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
   # renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
@@ -479,11 +485,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
       - name: Prepare CI image tag variables
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          CI_IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}"
           echo "CI_IMAGE_BATS=${CI_IMAGE_BASE}-bats" >> "$GITHUB_ENV"
           echo "CI_IMAGE_MINIMAL=${CI_IMAGE_BASE}-minimal" >> "$GITHUB_ENV"
           echo "CI_IMAGE_FULL=${CI_IMAGE_BASE}-full" >> "$GITHUB_ENV"
@@ -637,12 +647,17 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
       - name: Pull and tag fhem-bats test image
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          docker pull "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats"
-          docker tag "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats" bats-withfhem:latest
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-bats"
+          docker pull "$CI_IMAGE"
+          docker tag "$CI_IMAGE" bats-withfhem:latest
 
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in bidge network mode
@@ -701,7 +716,8 @@ jobs:
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-full"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-full"
           docker pull "$CI_IMAGE"
           while IFS= read -r tag; do
             [ -n "$tag" ] && docker tag "$CI_IMAGE" "$tag"
@@ -741,12 +757,17 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
       - name: Pull and tag fhem-bats-extended test image
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          docker pull "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended"
-          docker tag "ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended" bats-withfhem-extended:latest
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended"
+          docker pull "$CI_IMAGE"
+          docker tag "$CI_IMAGE" bats-withfhem-extended:latest
 
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
@@ -774,12 +795,16 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
       - name: Prepare local image tag variables
         run: |
           DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
           DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
-          echo "TRIVY_FULL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-full" >> "$GITHUB_ENV"
-          echo "TRIVY_MINIMAL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${{ github.run_id }}-${DOCKERFILE_SLUG}-minimal" >> "$GITHUB_ENV"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          echo "TRIVY_FULL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-full" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-minimal" >> "$GITHUB_ENV"
           echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
           echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
 
@@ -887,18 +912,26 @@ jobs:
 
   cleanup_test_images:
     # Only runs when every consumer of the CI images succeeded, so failed
-    # runs keep their images around for debugging. Deletes the ephemeral
-    # ghcr.io/<owner>/fhem-docker-ci tags pushed by build_test_images.
+    # runs keep their images around for debugging. Sweeps every
+    # ghcr.io/<owner>/fhem-docker-ci tag for this branch, not just the
+    # current run's tags, so images left behind by earlier runs on the same
+    # branch (e.g. superseded pushes) get cleaned up too. The concurrency
+    # group on this workflow ensures only one run per branch is ever
+    # in-flight, so this sweep can't race a still-running sibling run.
     needs: [test_bats, test_integration_and_unit, test_bats_extended, trivy_scan]
     if: success()
     runs-on: ubuntu-latest
     permissions:
       packages: write
     steps:
-      - name: Delete ephemeral CI test images
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Delete ephemeral CI test images for this branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
+          BRANCH_SLUG: ${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}
         run: |
           set -euo pipefail
           OWNER_TYPE=$(gh api "users/${OWNER}" --jq .type)
@@ -910,17 +943,12 @@ jobs:
 
           VERSIONS=$(gh api --paginate "${API_BASE}/packages/container/fhem-docker-ci/versions?per_page=100")
 
-          for suffix in bats minimal full bats-extended; do
-            for dockerfile in bookworm threaded-bookworm; do
-              tag="${{ github.run_id }}-${dockerfile}-${suffix}"
-              id=$(echo "$VERSIONS" | jq -r --arg t "$tag" '.[] | select(.metadata.container.tags[]? == $t) | .id' | head -1)
-              if [ -n "$id" ]; then
-                gh api -X DELETE "${API_BASE}/packages/container/fhem-docker-ci/versions/${id}"
-                echo "Deleted ${tag} (version ${id})"
-              else
-                echo "Tag ${tag} not found, skipping"
-              fi
-            done
+          echo "$VERSIONS" | jq -r --arg prefix "${BRANCH_SLUG}-" '
+            .[] | select(.metadata.container.tags[]? | startswith($prefix)) |
+            "\(.id)\t\(.metadata.container.tags | join(","))"
+          ' | while IFS=$'\t' read -r id tags; do
+            gh api -X DELETE "${API_BASE}/packages/container/fhem-docker-ci/versions/${id}"
+            echo "Deleted version ${id} (${tags})"
           done
 
   published_build:
