@@ -879,6 +879,44 @@ jobs:
             echo "Full SARIF reports are attached as workflow artifacts. This scan is currently informational only and does not fail the build."
           } >> "$GITHUB_STEP_SUMMARY"
 
+  cleanup_test_images:
+    # Only runs when every consumer of the CI images succeeded, so failed
+    # runs keep their images around for debugging. Deletes the ephemeral
+    # ghcr.io/<owner>/fhem-docker-ci tags pushed by build_test_images.
+    needs: [test_bats, test_integration_and_unit, test_bats_extended, trivy_scan]
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete ephemeral CI test images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          OWNER_TYPE=$(gh api "users/${OWNER}" --jq .type)
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            API_BASE="orgs/${OWNER}"
+          else
+            API_BASE="users/${OWNER}"
+          fi
+
+          VERSIONS=$(gh api --paginate "${API_BASE}/packages/container/fhem-docker-ci/versions?per_page=100")
+
+          for suffix in bats minimal full bats-extended; do
+            for dockerfile in bookworm threaded-bookworm; do
+              tag="${{ github.run_id }}-${dockerfile}-${suffix}"
+              id=$(echo "$VERSIONS" | jq -r --arg t "$tag" '.[] | select(.metadata.container.tags[]? == $t) | .id' | head -1)
+              if [ -n "$id" ]; then
+                gh api -X DELETE "${API_BASE}/packages/container/fhem-docker-ci/versions/${id}"
+                echo "Deleted ${tag} (version ${id})"
+              else
+                echo "Tag ${tag} not found, skipping"
+              fi
+            done
+          done
+
   published_build:
     runs-on: ubuntu-latest
     needs: [test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
