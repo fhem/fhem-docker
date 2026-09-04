@@ -561,24 +561,6 @@ jobs:
           path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
           key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
 
-      - name: Build and push fhem-minimal image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          target: with-fhem
-          cache-from: |
-            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
-          tags: ${{ env.CI_IMAGE_MINIMAL }}
-          build-args: |
-            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
-            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
-
       - name: Build and push fhem-extended-python-nodejs image
         uses: docker/build-push-action@v7
         with:
@@ -609,6 +591,30 @@ jobs:
             type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
             type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
           tags: ${{ env.CI_IMAGE_BATS_EXTENDED }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+      # Built last: unlike the other three variants nothing later in this job
+      # needs its cache output, and it was the one variant that didn't exist
+      # in this job before (previously only built in the now-removed
+      # trivy_scan build step on its own builder). Keeping it out of the
+      # bats -> full cache chain avoids a BuildKit cache-ref mismatch that
+      # broke the with-fhem-extended build when this ran in between them.
+      - name: Build and push fhem-minimal image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_MINIMAL }}
           build-args: |
             CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
