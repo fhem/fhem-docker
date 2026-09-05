@@ -814,7 +814,7 @@ jobs:
       - name: Run Trivy scan for full image
         id: trivy_full
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_FULL_IMAGE }}
           scan-type: image
@@ -837,7 +837,7 @@ jobs:
       - name: Print Trivy scan results for full image
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_FULL_IMAGE }}
           scan-type: image
@@ -853,7 +853,7 @@ jobs:
       - name: Run Trivy scan for minimal image
         id: trivy_minimal
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
           scan-type: image
@@ -876,7 +876,7 @@ jobs:
       - name: Print Trivy scan results for minimal image
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
           scan-type: image
@@ -1224,7 +1224,7 @@ jobs:
       - name: Run Trivy scan for full image
         id: trivy_full
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_FULL_IMAGE }}
           scan-type: image
@@ -1247,7 +1247,7 @@ jobs:
       - name: Print Trivy scan results for full image
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_FULL_IMAGE }}
           scan-type: image
@@ -1263,7 +1263,7 @@ jobs:
       - name: Run Trivy scan for minimal image
         id: trivy_minimal
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
           scan-type: image
@@ -1286,7 +1286,7 @@ jobs:
       - name: Print Trivy scan results for minimal image
         if: always()
         continue-on-error: true
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
           scan-type: image
