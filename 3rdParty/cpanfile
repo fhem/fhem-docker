@@ -30,7 +30,7 @@ requires 'XML::LibXML';
 requires 'XML::LibXSLT';
 requires 'experimental';
 requires 'lib::SD_Protocols';
-requires 'perl', '5.018';
+requires 'perl', '5.45.2';
 suggests 'Crypt::CBC';
 suggests 'JSON::XS';
 suggests 'XML::Simple';
