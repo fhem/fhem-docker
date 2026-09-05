@@ -1147,3 +1147,175 @@ jobs:
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+
+  trivy_scan_published:
+    # Scans the image that actually got pushed by published_build, i.e. the
+    # real release artifact rather than the pre-merge CI test image scanned
+    # by trivy_scan. Only runs when published_build actually pushed
+    # (same condition as its push: input) - regular PRs without the
+    # publishImage label don't produce a published image to scan here, but
+    # still get the pre-merge trivy_scan check.
+    needs: [published_build]
+    if: needs.published_build.result == 'success' && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage'))
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    env:
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/fhem-docker
+          flavor: |
+              latest= ${{ env.TAG_LATEST }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
+
+      - name: Docker meta (minimal)
+        id: meta_base
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+             ghcr.io/${{ github.repository_owner }}/fhem-minimal-docker
+          flavor: |
+             latest= ${{ env.TAG_LATEST }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare local image tag variables
+        run: |
+          echo "TRIVY_FULL_IMAGE=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=${{ fromJSON(steps.meta_base.outputs.json).tags[0] }}" >> "$GITHUB_ENV"
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-published-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-published-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+
+      - name: Pull full image for Trivy scan
+        run: docker pull "${TRIVY_FULL_IMAGE}"
+
+      - name: Run Trivy scan for full image
+        id: trivy_full
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_FULL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy full image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-docker-published${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_FULL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for full image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Pull minimal image for Trivy scan
+        run: docker pull "${TRIVY_MINIMAL_IMAGE}"
+
+      - name: Run Trivy scan for minimal image
+        id: trivy_minimal
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_MINIMAL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy minimal image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-minimal-docker-published${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_MINIMAL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for minimal image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Report Trivy scan results
+        if: always()
+        run: |
+          {
+            echo "### Trivy scan report for published image (${{ matrix.dockerfile }})"
+            echo ""
+            echo "| Image | HIGH | CRITICAL |"
+            echo "|---|---|---|"
+            for pair in "${TRIVY_FULL_IMAGE}|${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}|${TRIVY_MINIMAL_SARIF}"; do
+              image="${pair%%|*}"
+              sarif="${pair##*|}"
+              if [ -f "$sarif" ]; then
+                high=$(jq '[.runs[].results[]? | select(.level=="warning" or .level=="error") | select((.ruleId // "") | test("HIGH"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+                critical=$(jq '[.runs[].results[]? | select((.ruleId // "") | test("CRITICAL"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+              else
+                high="n/a"
+                critical="n/a"
+              fi
+              echo "| ${image} | ${high} | ${critical} |"
+            done
+            echo ""
+            echo "Full SARIF reports are attached as workflow artifacts. This scan is currently informational only and does not fail the build."
+          } >> "$GITHUB_STEP_SUMMARY"
