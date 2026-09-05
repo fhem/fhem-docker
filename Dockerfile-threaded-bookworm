@@ -210,12 +210,28 @@ RUN <<EOF
         unzip \
         usbutils \
         wget \
-        libarchive-dev \
+        libarchive13 \
         bash \
         libgd3 \
         librsvg2-2 \
         iproute2 \
         libpq5
+    # The upstream Perl base image ships a C header toolchain (libc6-dev and
+    # friends) so that XS modules can be compiled inside the container. This
+    # image carries no C compiler, so those headers can never be used -- but
+    # they keep dragging kernel and OpenSSL CVEs (linux-libc-dev, libssl-dev)
+    # into every image scan. The base tag is pinned to an end-of-life Perl
+    # release, so no rebuilt upstream tag will ever ship fixed versions of
+    # them. Drop the headers here; the matching runtime libraries (libc6,
+    # libssl3, zlib1g, libarchive13) stay installed.
+    # Their auto-installed companions (libc-dev-bin, libnsl-dev, libtirpc-dev,
+    # rpcsvc-proto) are taken by the autoremove below.
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get purge -qqy \
+        linux-libc-dev \
+        libc6-dev \
+        libcrypt-dev \
+        libssl-dev \
+        zlib1g-dev
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
 EOF
@@ -356,7 +372,6 @@ RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       python3 \
-      python3-dev \
       python3-pip \
       python3-setuptools \
       python3-wheel \
