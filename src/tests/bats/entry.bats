@@ -126,6 +126,9 @@ teardown() {
     run bash -c 'tailFileToConsoleStart ${realLogFile}; sleep 1; echo "again" >> $realLogFile; sleep 1; tailFileToConsoleStop'
     assert_output "again"
     refute_output "hello"
+
+    run bash -c 'tailFileToConsoleStart ${realLogFile}; sleep 1; rm $realLogFile; echo "recreated" > $realLogFile; sleep 1; tailFileToConsoleStop'
+    assert_output "recreated"
 }
 
 # bats test_tags=integrationTest

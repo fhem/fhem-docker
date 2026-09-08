@@ -106,6 +106,7 @@ function waitForTextInFile() {
 
 # Prints content added to a file to stdout while running in the background.
 # Robust against truncation and (initial) non-existance of the file.
+# Follow the file name so logging continues after FHEM deletes/recreates it.
 #
 # Usage: tailFileToConsoleStart file [-b]
 # Parameters:  file   File to print
@@ -118,9 +119,9 @@ function tailFileToConsoleStart() {
   local inFlag="${2:-}"
   tailFileToConsoleStop
   if [ "$inFlag" == "-b" ]; then
-    { tail -n +0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n +0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   else
-    { tail -n0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   fi
   gCurrentTailFile="$inLogFile"
   gCurrentTailPid=$!
