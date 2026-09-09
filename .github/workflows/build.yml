@@ -12,6 +12,10 @@ on:
 
   pull_request:
     branches: [ dev ]
+    # 'labeled' is needed so adding publishImage starts a fresh run. Re-running
+    # an existing run replays its original event payload, which does not yet
+    # contain the label, so the publish steps would still evaluate push: false.
+    types: [opened, synchronize, reopened, labeled]
 
   release:
     types: 
@@ -26,7 +30,9 @@ on:
 # sweeping images for that same branch. Release runs are never cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'release' && github.run_id || (github.event.pull_request.number || github.ref) }}
-  cancel-in-progress: ${{ github.event_name != 'release' }}
+  # A 'labeled' run for any other label has all of its jobs skipped, so it must
+  # not cancel a real build that is still in flight - let it queue instead.
+  cancel-in-progress: ${{ github.event_name != 'release' && (github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')) }}
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
@@ -37,6 +43,9 @@ env:
 
 jobs:
   docker_lint:
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
@@ -56,6 +65,9 @@ jobs:
 
   get_dependencies:
     # Min Version for the prereq scanner to ignore core modules
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
@@ -136,6 +148,9 @@ jobs:
           overwrite: true
 
   base_build:
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     strategy:
       matrix:
         dockerfile: [-bookworm, -threaded-bookworm]
