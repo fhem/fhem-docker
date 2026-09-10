@@ -86,6 +86,7 @@ function waitForPidToTerminate() {
 
 # Searches for a text being newly appended to a file, optionally limited by a timeout.
 # Robust against truncation and (initial) non-existance of the file.
+# Follow the file name so the search continues after FHEM deletes/recreates it.
 #
 # Usage: waitForTextInFile file searchText [timeout]
 # Parameters:  file         File to search in
@@ -99,13 +100,14 @@ function waitForTextInFile() {
   local    inFile="$1"
   local    inSearchText="$2"
   local -i inTimeout=${3:-0}  # Wait indefinitely is default
-  local    bashCmd="tail -n0 --retry -f '$inFile' 2>/dev/null | sed -e '/$inSearchText/ q' > /dev/null"
+  local    bashCmd="tail -n0 --retry -F '$inFile' 2>/dev/null | sed -e '/$inSearchText/ q' > /dev/null"
   timeout $inTimeout bash -c "$bashCmd"
 }
 
 
 # Prints content added to a file to stdout while running in the background.
 # Robust against truncation and (initial) non-existance of the file.
+# Follow the file name so logging continues after FHEM deletes/recreates it.
 #
 # Usage: tailFileToConsoleStart file [-b]
 # Parameters:  file   File to print
@@ -118,9 +120,9 @@ function tailFileToConsoleStart() {
   local inFlag="${2:-}"
   tailFileToConsoleStop
   if [ "$inFlag" == "-b" ]; then
-    { tail -n +0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n +0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   else
-    { tail -n0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   fi
   gCurrentTailFile="$inLogFile"
   gCurrentTailPid=$!
