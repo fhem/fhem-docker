@@ -9,3 +9,5 @@ fhem/restoreDir/*
 src/FHEM/trunk/*
 .cache/*
 downloaded-artifacts/
+.artifacts/
+cpan-summary-comment.md

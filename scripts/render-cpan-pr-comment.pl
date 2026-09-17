@@ -161,7 +161,6 @@ for my $status_file (@status_files) {
     push @status_notes, read_status_notes($status_file);
 }
 
-print "<!-- cpan-build-report:$dockerfile:$platform -->\n";
 print "## CPAN Build Report `$dockerfile` / `$platform`\n\n";
 print "Artifact: `$artifact`\n\n" if $artifact ne q[];
 
@@ -209,7 +208,13 @@ for my $report_path (@reports) {
     next unless -f $report_path;
     $report_found = 1;
 
-    my $data    = decode_json( slurp($report_path) );
+    my $data;
+    unless ( eval { $data = decode_json( slurp($report_path) ); 1 } ) {
+        print "### `$report_path`\n";
+        print "Report could not be decoded.\n\n";
+        next;
+    }
+
     my $label   = $data->{label}   // 'unknown';
     my $summary = $data->{summary} // {};
 

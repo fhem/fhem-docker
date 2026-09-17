@@ -7,11 +7,17 @@ use JSON::PP qw(decode_json);
 
 my @reports;
 my @status_files;
+my $status_json = q[];
+my $dockerfile  = q[];
+my $platform    = q[];
 
 GetOptions(
     'report=s@'      => \@reports,
     'status-file=s@' => \@status_files,
-) or die "Usage: $0 --report <path> [--report <path> ...] --status-file <path> [--status-file <path> ...]\n";
+    'status-json=s'  => \$status_json,
+    'dockerfile=s'   => \$dockerfile,
+    'platform=s'     => \$platform,
+) or die "Usage: $0 --report <path> [--report <path> ...] --status-file <path> [--status-file <path> ...] [--status-json <path> --dockerfile <name> --platform <name>]\n";
 
 die "At least one --report or --status-file is required\n" unless @reports || @status_files;
 
@@ -58,12 +64,30 @@ sub append_report_entries {
     push @{$lines}, '  - ... and ' . ( @{$entries} - $limit ) . ' more' if @{$entries} > $limit;
 }
 
+# Short failure descriptions for the aggregated pull request comment rendered by
+# scripts/render-cpan-summary-comment.pl. The list is capped, so the renderer
+# gets the total separately to report how many were left out.
+my @reasons;
+my $reasons_total = 0;
+
+# Three, because that is what render-cpan-summary-comment.pl puts in a table
+# cell; anything beyond that would be written to the artifact and never read.
+my $reasons_shown = 3;
+
+sub add_reason {
+    my ($reason) = @_;
+    $reasons_total++;
+    push @reasons, $reason if @reasons < $reasons_shown;
+    return;
+}
+
 my @output;
 my $exit_code = 0;
 for my $report (@reports) {
     my ( $content, $read_error ) = read_file($report);
     if ($read_error) {
         push @output, $read_error;
+        add_reason("cannot read $report");
         $exit_code = 1;
         next;
     }
@@ -74,6 +98,7 @@ for my $report (@reports) {
         1;
     } or do {
         push @output, "Cannot decode $report: $@";
+        add_reason("cannot decode $report");
         $exit_code = 1;
         next;
     };
@@ -95,6 +120,7 @@ for my $report (@reports) {
         append_report_entries( \@output, 'Missing probable install failures', $data->{missing_probable_install_failures} // [] );
         append_report_entries( \@output, 'Version mismatches',               $data->{version_mismatches} // [] );
         append_report_entries( \@output, 'Perl version mismatches',          $data->{perl_version_mismatches} // [] );
+        add_reason("$label: $bad actionable verification failures");
         $exit_code = 1;
     }
 }
@@ -103,6 +129,7 @@ for my $status_file (@status_files) {
     my ( $content, $read_error ) = read_file($status_file);
     if ($read_error) {
         push @output, $read_error;
+        add_reason("cannot read $status_file");
         $exit_code = 1;
         next;
     }
@@ -112,6 +139,8 @@ for my $status_file (@status_files) {
 
     if ( $install_exit_code != 0 ) {
         push @output, "$status_file recorded cpm install exit code $install_exit_code";
+        my $label = $status_file =~ m{/([^/]+)-install-status\.txt\z} ? $1 : $status_file;
+        add_reason("$label: cpm install exit code $install_exit_code");
         $exit_code = 1;
     }
 }
@@ -131,6 +160,21 @@ if (@output) {
             warn "Cannot open $summary_path: $!";
         }
     }
+}
+
+if ( $status_json ne q[] ) {
+    my $encoder = JSON::PP->new->canonical->pretty;
+    my $payload = {
+        dockerfile    => $dockerfile,
+        platform      => $platform,
+        status        => $exit_code == 0 ? 'ok' : 'failed',
+        reasons       => \@reasons,
+        reasons_total => $reasons_total,
+    };
+
+    open( my $status_fh, '>', $status_json ) or die "Cannot open $status_json: $!\n";
+    print {$status_fh} $encoder->encode($payload);
+    close($status_fh) or die "Cannot close $status_json: $!\n";
 }
 
 exit $exit_code;

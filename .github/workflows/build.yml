@@ -252,6 +252,20 @@ jobs:
           echo "CPM_CACHE_ARCH=${CPM_CACHE_ARCH}" >> "$GITHUB_ENV"
           echo "CPAN_ARTIFACT_DIR=.artifacts/cpan${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
           echo "CPAN_INVENTORY_ARTIFACT=cpan-inventory${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_DIR=.artifacts/cpan-status" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_FILE=.artifacts/cpan-status/cpan-status${{ matrix.dockerfile }}-${PLATFORM_SLUG}.json" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_ARTIFACT=cpan-status${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+
+      # Guarantees that every matrix leg contributes a row to the aggregated
+      # pull request comment, even when the job aborts before the assert runs.
+      - name: Initialize CPAN status for ${{ matrix.platform }}
+        env:
+          MATRIX_DOCKERFILE: ${{ matrix.dockerfile }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "${CPAN_STATUS_DIR}"
+          printf '{"dockerfile":"%s","platform":"%s","status":"unknown","reasons":["job stopped before the CPAN verification assert"]}\n' \
+            "$MATRIX_DOCKERFILE" "$MATRIX_PLATFORM" > "${CPAN_STATUS_FILE}"
 
       - name: Prepare docker for build and publish
         id: prepareDOCKER
@@ -394,10 +408,9 @@ jobs:
           overwrite: true
           if-no-files-found: warn
 
-      - name: Render CPAN PR comment for ${{ matrix.platform }}
-        if: always() && github.event_name == 'pull_request'
+      - name: Render CPAN report for ${{ matrix.platform }}
+        if: always()
         run: |
-          mkdir -p "${CPAN_ARTIFACT_DIR}"
           perl scripts/render-cpan-pr-comment.pl \
             --dockerfile "${{ matrix.dockerfile }}" \
             --platform "${{ matrix.platform }}" \
@@ -410,14 +423,96 @@ jobs:
             --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
             --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
             --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
-            > "${CPAN_ARTIFACT_DIR}/cpan-pr-comment.md"
+            >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment CPAN findings on PR for ${{ matrix.platform }}
-        if: always() && github.event_name == 'pull_request'
+      - name: Assert CPAN verification for ${{ matrix.platform }}
+        run: |
+          perl scripts/assert-cpan-verification.pl \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --dockerfile "${{ matrix.dockerfile }}" \
+            --platform "${{ matrix.platform }}" \
+            --status-json "${CPAN_STATUS_FILE}"
+
+      - name: Upload CPAN status for ${{ matrix.platform }}
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.CPAN_STATUS_ARTIFACT }}
+          path: ${{ env.CPAN_STATUS_FILE }}
+          overwrite: true
+          if-no-files-found: warn
+
+  # Aggregates every cpan_build matrix leg into a single pull request comment,
+  # so a pull request no longer collects one CPAN comment per image and platform.
+  cpan_report:
+    needs: [cpan_build]
+    # Runs for failed cpan_build matrix legs too, but never for a cancelled or
+    # skipped one: that would replace a valid report with an empty one.
+    #
+    # SECURITY: this job must stay on `pull_request` and must never move to
+    # `pull_request_target`. It checks out pull request controlled code and asks
+    # for `pull-requests: write`; under `pull_request` a fork only ever receives
+    # a read-only token, and that is what keeps the combination safe.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.cpan_build.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      # The matrix legs upload one status file each. A missing artifact is not
+      # fatal: the renderer reports the cpan_build job result instead.
+      - name: Download CPAN status artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cpan-status-*
+          path: .artifacts/cpan-status
+          merge-multiple: true
+
+      # Exit code 3 means no status artifact was found. The report then only goes
+      # into the job summary, so a transient download failure cannot replace an
+      # earlier, valid pull request comment with an empty one.
+      - name: Render aggregated CPAN comment
+        id: render
+        run: |
+          set -uo pipefail
+          render_status=0
+          perl scripts/render-cpan-summary-comment.pl \
+            --status-dir .artifacts/cpan-status \
+            --job-result "${{ needs.cpan_build.result }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            > cpan-summary-comment.md || render_status=$?
+          cat cpan-summary-comment.md >> "$GITHUB_STEP_SUMMARY"
+          case "$render_status" in
+            0) ;;
+            3) echo "rendered=false" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            *) exit "$render_status" ;;
+          esac
+          if [ ! -s cpan-summary-comment.md ]; then
+            echo "The renderer produced an empty comment." >&2
+            exit 1
+          fi
+          echo "rendered=true" >> "$GITHUB_OUTPUT"
+
+      # A fork pull request only gets a read-only token, so commenting fails
+      # there. That must not turn the whole job red.
+      - name: Comment CPAN summary on PR
+        if: steps.render.outputs.rendered == 'true'
+        continue-on-error: true
         uses: actions/github-script@v9
         env:
-          COMMENT_FILE: ${{ env.CPAN_ARTIFACT_DIR }}/cpan-pr-comment.md
-          COMMENT_MARKER: <!-- cpan-build-report:${{ matrix.dockerfile }}:${{ matrix.platform }} -->
+          COMMENT_FILE: cpan-summary-comment.md
+          COMMENT_MARKER: "<!-- cpan-build-report:summary -->"
+          LEGACY_MARKER_PREFIX: "<!-- cpan-build-report:"
         with:
           script: |
             const fs = require('fs');
@@ -427,6 +522,7 @@ jobs:
             }
             const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
             const marker = process.env.COMMENT_MARKER;
+            const legacyPrefix = process.env.LEGACY_MARKER_PREFIX;
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
             const comments = await github.paginate(github.rest.issues.listComments, {
@@ -435,9 +531,14 @@ jobs:
               issue_number,
               per_page: 100,
             });
-            const existing = comments.find((comment) =>
-              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            // Anchored at the start of the body and pinned to the workflow bot, so
+            // a comment that merely quotes the marker is never touched.
+            const ours = comments.filter((comment) =>
+              comment.user?.type === 'Bot' &&
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.startsWith(legacyPrefix)
             );
+            const existing = ours.find((comment) => comment.body?.includes(marker));
             if (existing) {
               await github.rest.issues.updateComment({
                 owner,
@@ -453,18 +554,22 @@ jobs:
                 body,
               });
             }
+            // Remove the per image comments earlier runs of this workflow left behind.
+            for (const comment of ours) {
+              if (comment.id === existing?.id) {
+                continue;
+              }
+              try {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                core.warning(`Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
 
-      - name: Assert CPAN verification for ${{ matrix.platform }}
-        run: |
-          perl scripts/assert-cpan-verification.pl \
-            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
-            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
-            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
-            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
-            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
-            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json"
-    
-            
   build_test_images:
     # Builds every image variant needed by the decoupled test jobs exactly once
     # and pushes them to GHCR under a run-specific, ephemeral tag so the test
