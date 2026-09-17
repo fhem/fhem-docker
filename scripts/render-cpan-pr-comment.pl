@@ -161,7 +161,6 @@ for my $status_file (@status_files) {
     push @status_notes, read_status_notes($status_file);
 }
 
-print "<!-- cpan-build-report:$dockerfile:$platform -->\n";
 print "## CPAN Build Report `$dockerfile` / `$platform`\n\n";
 print "Artifact: `$artifact`\n\n" if $artifact ne q[];
 

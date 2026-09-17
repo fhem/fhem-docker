@@ -11,17 +11,22 @@ use JSON::PP qw(decode_json);
 # scripts/assert-cpan-verification.pl; this script merges them into one verdict
 # so a pull request never collects more than one CPAN comment.
 
+# Must stay in sync with COMMENT_MARKER in .github/workflows/build.yml and stay
+# prefixed with LEGACY_MARKER_PREFIX from the same file: the workflow first
+# filters bot comments by that prefix and only then looks for this marker, so a
+# marker that drops the prefix makes every run post a new comment instead of
+# updating the existing one. It is also quoted in docs/developer-notes.md.
+my $marker = '<!-- cpan-build-report:summary -->';
+
 my $status_dir = q[];
 my $job_result = q[];
 my $run_url    = q[];
-my $marker     = '<!-- cpan-build-report:summary -->';
 
 GetOptions(
     'status-dir=s' => \$status_dir,
     'job-result=s' => \$job_result,
     'run-url=s'    => \$run_url,
-    'marker=s'     => \$marker,
-) or die "Usage: $0 --status-dir <path> [--job-result <result>] [--run-url <url>] [--marker <html comment>]\n";
+) or die "Usage: $0 --status-dir <path> [--job-result <result>] [--run-url <url>]\n";
 
 die "--status-dir is required\n" unless $status_dir ne q[];
 
@@ -84,7 +89,7 @@ sub md_cell {
     return $value;
 }
 
-sub status_icon {
+sub status_cell {
     my ($status) = @_;
     return '✅ ok'      if $status eq 'ok';
     return '❌ failed'  if $status eq 'failed';
@@ -96,13 +101,15 @@ sub details_for {
     my @reasons = @{ $entry->{reasons} };
     return '–' unless @reasons;
 
+    # Matches $reasons_shown in scripts/assert-cpan-verification.pl, which caps
+    # the list this reads.
     my $limit = @reasons > 3 ? 3 : scalar @reasons;
     my $text = join( '; ', map { md_cell($_) } @reasons[ 0 .. $limit - 1 ] );
 
     # The producer already caps the list, so trust its count of what it dropped.
-    my $total = $entry->{reasons_total};
-    $total = scalar @reasons unless defined $total && $total >= @reasons;
-    $text .= ' (+' . ( $total - $limit ) . ' more)' if $total > $limit;
+    my $reason_count = $entry->{reasons_total};
+    $reason_count = scalar @reasons unless defined $reason_count && $reason_count >= @reasons;
+    $text .= ' (+' . ( $reason_count - $limit ) . ' more)' if $reason_count > $limit;
     return $text;
 }
 
@@ -150,7 +157,7 @@ for my $entry (@entries) {
     $table .= '| `'
       . md_cell( $entry->{dockerfile} ) . '` | `'
       . md_cell( $entry->{platform} ) . '` | '
-      . status_icon( $entry->{status} ) . ' | '
+      . status_cell( $entry->{status} ) . ' | '
       . details_for($entry) . " |\n";
 }
 
@@ -164,7 +171,6 @@ else {
     print $table . "\n";
 }
 
-print "Full inventories, logs and per-image reports are available as artifacts of the [workflow run]($run_url).\n"
-  if $run_url ne q[];
-print "Full inventories, logs and per-image reports are available as workflow artifacts.\n"
-  if $run_url eq q[];
+my $artifact_hint = 'Full inventories, logs and per-image reports are available as workflow artifacts';
+$artifact_hint .= " of the [workflow run]($run_url)" if $run_url ne q[];
+print "$artifact_hint.\n";

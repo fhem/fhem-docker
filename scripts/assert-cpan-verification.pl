@@ -64,24 +64,20 @@ sub append_report_entries {
     push @{$lines}, '  - ... and ' . ( @{$entries} - $limit ) . ' more' if @{$entries} > $limit;
 }
 
-# Counters that feed the aggregated pull request comment rendered by
-# scripts/render-cpan-summary-comment.pl.
-my %totals = (
-    requirements              => 0,
-    missing_probable_failures => 0,
-    unresolved_requirements   => 0,
-    version_mismatches        => 0,
-    perl_version_mismatches   => 0,
-    install_failures          => 0,
-    reports_read              => 0,
-);
+# Short failure descriptions for the aggregated pull request comment rendered by
+# scripts/render-cpan-summary-comment.pl. The list is capped, so the renderer
+# gets the total separately to report how many were left out.
 my @reasons;
 my $reasons_total = 0;
+
+# Three, because that is what render-cpan-summary-comment.pl puts in a table
+# cell; anything beyond that would be written to the artifact and never read.
+my $reasons_shown = 3;
 
 sub add_reason {
     my ($reason) = @_;
     $reasons_total++;
-    push @reasons, $reason if @reasons < 6;
+    push @reasons, $reason if @reasons < $reasons_shown;
     return;
 }
 
@@ -107,22 +103,13 @@ for my $report (@reports) {
         next;
     };
 
-    $totals{reports_read}++;
-
     my $summary = $data->{summary} // {};
-    my $label   = $data->{label} // $report;
-
-    $totals{requirements}              += ( $summary->{requirements}              // 0 );
-    $totals{missing_probable_failures} += ( $summary->{missing_probable_failures} // 0 );
-    $totals{unresolved_requirements}   += ( $summary->{unresolved_requirements}   // 0 );
-    $totals{version_mismatches}        += ( $summary->{version_mismatches}        // 0 );
-    $totals{perl_version_mismatches}   += ( $summary->{perl_version_mismatches}   // 0 );
-
     my $bad = ( $summary->{missing_probable_failures} // 0 )
       + ( $summary->{version_mismatches} // 0 )
       + ( $summary->{perl_version_mismatches} // 0 );
 
     if ($bad) {
+        my $label = $data->{label} // $report;
         push @output, "$report has $bad actionable verification failures";
         push @output,
           "$label summary: requirements=" . ( $summary->{requirements} // 0 )
@@ -152,7 +139,6 @@ for my $status_file (@status_files) {
 
     if ( $install_exit_code != 0 ) {
         push @output, "$status_file recorded cpm install exit code $install_exit_code";
-        $totals{install_failures}++;
         my $label = $status_file =~ m{/([^/]+)-install-status\.txt\z} ? $1 : $status_file;
         add_reason("$label: cpm install exit code $install_exit_code");
         $exit_code = 1;
@@ -179,12 +165,11 @@ if (@output) {
 if ( $status_json ne q[] ) {
     my $encoder = JSON::PP->new->canonical->pretty;
     my $payload = {
-        dockerfile => $dockerfile,
-        platform   => $platform,
-        status     => $exit_code == 0 ? 'ok' : 'failed',
-        reasons    => \@reasons,
+        dockerfile    => $dockerfile,
+        platform      => $platform,
+        status        => $exit_code == 0 ? 'ok' : 'failed',
+        reasons       => \@reasons,
         reasons_total => $reasons_total,
-        totals        => \%totals,
     };
 
     open( my $status_fh, '>', $status_json ) or die "Cannot open $status_json: $!\n";
