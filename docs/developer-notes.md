@@ -18,7 +18,7 @@ The inventory is generated directly in `build-cpan` after the `cpm install` step
 
 For verification, `build-cpan` now reads the generated `cpanfile`s directly inside the container, validates them with `require` against the real Perl environment, and correlates unresolved modules with the captured install logs. The workflow host only evaluates the exported verification reports. The `cpan_build` job only fails for actionable verification results such as probable install failures or real version mismatches.
 
-Some CPAN requirements are removed for specific image and platform combinations before `cpm install` runs. These removals are also listed in the CPAN build report comment on pull requests.
+Some CPAN requirements are removed for specific image and platform combinations before `cpm install` runs. These removals are also listed in the per platform CPAN build report in the job summary.
 
 | Image family | Architecture | Excluded from `core` | Excluded from `3rdparty` |
 | --- | --- | --- | --- |
@@ -31,3 +31,8 @@ Some CPAN requirements are removed for specific image and platform combinations 
 
 `Device::Firmata::Constants` is only kept on `linux/amd64` and `linux/386`. `Math::Pari` and `Crypt::Random` are removed on `linux/386` and `linux/arm/v7` due runtime instability in `Math::Pari` on those platforms. `HiPi` is only kept on `linux/amd64`, because its dependency chain currently builds reliably only there. `SNMP` is removed where the CPAN module is not usable with the system Net-SNMP library version used by the image.
 
+### CPAN build report on pull requests
+
+Every leg of the `cpan_build` matrix writes its detailed report into its own job summary and additionally uploads a small status file as an artifact named like `cpan-status-bookworm-arm64`. The separate `cpan_report` job collects those status files and maintains a single pull request comment that only states whether all image and platform combinations verified successfully. Per platform details stay in the job summaries and in the `cpan-inventory-*` artifacts, so a pull request no longer collects one comment per matrix leg.
+
+The comment is identified by the marker `<!-- cpan-build-report:summary -->` and is updated in place on later runs. Comments that older runs of the workflow left behind for individual matrix legs are removed by the same job.
