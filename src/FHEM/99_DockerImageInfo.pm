@@ -235,7 +235,7 @@ sub DockerImageInfo_GetImageInfo {
     readingsBulkUpdateIfChanged( $hash, q[container.hostnetwork], DockerImageInfo_ReadFirstLine(q[/docker.hostnetwork]) );
 
     my @modelParts = ( qq[runtime=$runtime] );
-    for my $label (qw(image.title image.version image.revision image.source)) {
+    for my $label (qw(image.title image.version image.source)) {
         push( @modelParts, qq[$label=$imageInfo{$label}] ) if ( defined( $imageInfo{$label} ) && $imageInfo{$label} ne q[] );
     }
     readingsBulkUpdateIfChanged( $hash, q[model], join( q[; ], @modelParts ) );
@@ -274,7 +274,10 @@ sub DockerImageInfo_GetImageInfo {
     <br><br>
 
     The reading <code>model</code> summarizes the detected runtime and image metadata,
-    for example <code>runtime=kubernetes; image.version=5-bookworm; image.revision=...</code>.
+    for example <code>runtime=kubernetes; image.version=5-bookworm</code>. The revision
+    (git commit) of the image is available separately as the <code>image.revision</code>
+    reading and is intentionally excluded from <code>model</code>, so that <code>model</code>
+    stays stable across builds of the same image version.
     The reading <code>container.runtime</code> contains <code>kubernetes</code>,
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> or <code>host</code>.
   </ul>
@@ -325,7 +328,10 @@ sub DockerImageInfo_GetImageInfo {
     <br><br>
 
     Das Reading <code>model</code> fasst die erkannte Runtime und Image-Metadaten zusammen,
-    zum Beispiel <code>runtime=kubernetes; image.version=5-bookworm; image.revision=...</code>.
+    zum Beispiel <code>runtime=kubernetes; image.version=5-bookworm</code>. Die Revision
+    (Git-Commit) des Images steht separat als Reading <code>image.revision</code> zur
+    Verfügung und wird bewusst nicht in <code>model</code> aufgenommen, damit
+    <code>model</code> über Builds derselben Image-Version hinweg stabil bleibt.
     Das Reading <code>container.runtime</code> enth&auml;lt <code>kubernetes</code>,
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> oder <code>host</code>.
   </ul>
