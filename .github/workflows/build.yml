@@ -12,6 +12,10 @@ on:
 
   pull_request:
     branches: [ dev ]
+    # 'labeled' is needed so adding publishImage starts a fresh run. Re-running
+    # an existing run replays its original event payload, which does not yet
+    # contain the label, so the publish steps would still evaluate push: false.
+    types: [opened, synchronize, reopened, labeled]
 
   release:
     types: 
@@ -21,28 +25,53 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-    
+# Cancel a superseded run for the same branch/PR so its ephemeral CI test
+# images in ghcr.io/.../fhem-docker-ci don't race with cleanup_test_images
+# sweeping images for that same branch. Release runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'release' && github.run_id || (github.event.pull_request.number || github.ref) }}
+  # A 'labeled' run for any other label has all of its jobs skipped, so it must
+  # not cancel a real build that is still in flight - let it queue instead.
+  cancel-in-progress: ${{ github.event_name != 'release' && (github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')) }}
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+env:
+  # renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
+  CPAN_CPM_VERSION: v1.1.5
+  CPAN_CPM_MIRROR: https://www.cpan.org
+  CPAN_CPM_CACHE_VERSION: v102
+
 jobs:
   docker_lint:
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Lint docker-compose.yml
-        uses: sjafferali/docker-compose-lint-action@v0.1.2
-        with:
-          compose-file: './docker-compose.yml'
+      - name: Validate docker compose config
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml config
+          for profile in db mail alexa; do
+            docker compose -f docker-compose.yml --profile "$profile" config
+          done
+          docker compose -f docker-compose.yml --profile db --profile mail --profile alexa config
 
 
 
   get_dependencies:
     # Min Version for the prereq scanner to ignore core modules
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Prepare SVN repository checkout and variables
         id: prepareSVN
@@ -67,10 +96,10 @@ jobs:
           printf "%s\n" "${REPO_URLS[@]}" | xargs -I {} -P3 sh -c 'echo "{}: $(basename $(dirname {}))/$(basename {})"; git clone --depth 1 "{}" "$(basename $(dirname {}))/$(basename {})"; '
 
       - name: Init PPI Cache 
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v6
+        id: cache-ppi-restore
         with:
           path: .cache/PPI
-          save-always: true
           restore-keys: |
             PPI-SVN-
           key: PPI-SVN-${{ steps.prepareSVN.outputs.FHEM_REVISION_LATEST }}
@@ -82,42 +111,54 @@ jobs:
           echo "FHEM_MODULES=^(${STATIC_EXCLUDE}|${DYNAMIC_EXCLUDE})" >> "$GITHUB_ENV"
 
       - name: create cpanfile from local cloned 3rdparty repositories
-        run: | 
+        run: |
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" -ignore "fhem-streamdeck" ./3rdparty
           perl scripts/parse-METAJson.pl ./3rdparty
+          mkdir -p 3rdParty
+          cp cpanfile 3rdParty/cpanfile
           echo "## 3rdparty cpanfile" >> $GITHUB_STEP_SUMMARY
-          cat cpanfile >> $GITHUB_STEP_SUMMARY
+          cat 3rdParty/cpanfile >> $GITHUB_STEP_SUMMARY
 
-          
-      - uses: actions/upload-artifact@v4
+      - name: Always Save ppi cache
+        id: cache-ppi-save
+        if: always() && steps.cache-ppi-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ${{ steps.cache-ppi-restore.outputs.cache-primary-key }}
+          path: .cache/PPI
+              
+      - uses: actions/upload-artifact@v7
         with:
           name: cpanfile-3rdParty
-          path: cpanfile
+          path: 3rdParty/cpanfile
           overwrite: true
 
       - name: create cpanfile from FHEM svn dependencies
-        run: | 
-          rm cpanfile
+        run: |
+          rm -f cpanfile
           scan-perl-prereqs-nqlite -save_cpanfile -exclude_core -suggests -private_re "$FHEM_MODULES" ./src/fhem/trunk/fhem
           perl scripts/parse-METAJson.pl ./src/fhem/trunk/fhem
           echo "## FHEM svn cpanfile" >> $GITHUB_STEP_SUMMARY
           cat cpanfile >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cpanfile-FHEM
           path: cpanfile
           overwrite: true
-        
+
   base_build:
+    # Actions cannot filter 'labeled' by label name, so drop runs triggered by
+    # any other label instead of spending a full multi-arch build on them.
+    if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     strategy:
       matrix:
-        dockerfile: [-bullseye, -threaded-bullseye]
+        dockerfile: [-bookworm, -threaded-bookworm]
         platform: [arm/v7, amd64, arm64, 386]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Prepare docker for build and publish
         id: prepareDOCKER
@@ -130,7 +171,7 @@ jobs:
           DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Build for bats with fhem base layer ${{ matrix.platform }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true  
@@ -139,25 +180,48 @@ jobs:
           push: false
           target: base
           cache-from: | 
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: baseonly
 
   cpan_build:
     needs: [get_dependencies, base_build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        dockerfile: [-bullseye, -threaded-bullseye]
-        platform: [arm/v7, arm64, 386]
+        include:
+          - dockerfile: -bookworm
+            platform: arm/v7
+            runner: ubuntu-24.04-arm
+            setup_qemu: "true"
+          - dockerfile: -bookworm
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
+          - dockerfile: -bookworm
+            platform: 386
+            runner: ubuntu-latest
+            setup_qemu: "true"
+          - dockerfile: -threaded-bookworm
+            platform: arm/v7
+            runner: ubuntu-24.04-arm
+            setup_qemu: "true"
+          - dockerfile: -threaded-bookworm
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
+          - dockerfile: -threaded-bookworm
+            platform: 386
+            runner: ubuntu-latest
+            setup_qemu: "true"
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v5.0.0
+        uses: rlespinasse/github-slug-action@v5.7.1
 
       - name: Get git vars
         shell: bash
@@ -169,92 +233,584 @@ jobs:
         id: prepareSVN
         uses: ./.github/workflows/prepare-svn
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
-  
-      - uses: actions/download-artifact@v4
+
+      - uses: actions/download-artifact@v8
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-          
+
+      - name: Prepare artifact path variables
+        run: |
+          PLATFORM_SLUG="${{ matrix.platform }}"
+          PLATFORM_SLUG="${PLATFORM_SLUG//\//-}"
+          CPM_CACHE_ARCH="${PLATFORM_SLUG}"
+          CPM_CACHE_ARCH="${CPM_CACHE_ARCH//-/}"
+          echo "PLATFORM_SLUG=${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPM_CACHE_ARCH=${CPM_CACHE_ARCH}" >> "$GITHUB_ENV"
+          echo "CPAN_ARTIFACT_DIR=.artifacts/cpan${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_INVENTORY_ARTIFACT=cpan-inventory${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_DIR=.artifacts/cpan-status" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_FILE=.artifacts/cpan-status/cpan-status${{ matrix.dockerfile }}-${PLATFORM_SLUG}.json" >> "$GITHUB_ENV"
+          echo "CPAN_STATUS_ARTIFACT=cpan-status${{ matrix.dockerfile }}-${PLATFORM_SLUG}" >> "$GITHUB_ENV"
+
+      # Guarantees that every matrix leg contributes a row to the aggregated
+      # pull request comment, even when the job aborts before the assert runs.
+      - name: Initialize CPAN status for ${{ matrix.platform }}
+        env:
+          MATRIX_DOCKERFILE: ${{ matrix.dockerfile }}
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p "${CPAN_STATUS_DIR}"
+          printf '{"dockerfile":"%s","platform":"%s","status":"unknown","reasons":["job stopped before the CPAN verification assert"]}\n' \
+            "$MATRIX_DOCKERFILE" "$MATRIX_PLATFORM" > "${CPAN_STATUS_FILE}"
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
         with:
           DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
           DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          GHCR_OWNER: ${{ github.repository_owner }} 
-          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
+          GHCR_OWNER: ${{ github.repository_owner }}
+          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCKERFILE: ${{ matrix.dockerfile }}
+          SETUP_QEMU: ${{ matrix.setup_qemu }}
+
+      - name: Restore CPM cache for ${{ matrix.platform }}
+        uses: actions/cache/restore@v6
+        id: cache-cpm-restore
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-
+
+      - name: Inject CPM cache mount for ${{ matrix.platform }}
+        uses: reproducible-containers/buildkit-cache-dance@v3.4.0
+        with:
+          builder: ${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}
+          cache-map: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ env.CPM_CACHE_ARCH }}"
+              }
+            }
+          skip-extraction: true
 
       - name: Build cpan packages for ${{ matrix.platform }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
-          load: true  
+          load: true
           file: ./Dockerfile${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.platform }}
           push: false
           target: base-cpan
-          cache-from: | 
-            type=gha,scope=base_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}-${{ matrix.dockerfile }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+          cache-from: |
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
           tags: buildcpanonly
-    
-            
-  test_build:
-    # The type of runner that the job will run on
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ env.CPM_CACHE_ARCH }}"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.BUILDX_BUILDER }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for ${{ matrix.platform }}
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
+
+      - name: Export installed CPAN inventory for ${{ matrix.platform }}
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/${{ matrix.platform }}
+          push: false
+          target: cpan-inventory
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+          cache-from: |
+            type=gha,scope=base_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/${{ matrix.platform }}${{ matrix.dockerfile }}
+          outputs: type=local,dest=${{ env.CPAN_ARTIFACT_DIR }}
+
+      - name: Summarize installed CPAN inventory for ${{ matrix.platform }}
+        run: |
+          for report in \
+            "${CPAN_ARTIFACT_DIR}/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/all/all-summary.txt"
+          do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Summarize CPAN verification for ${{ matrix.platform }}
+        run: |
+          for report in \
+            "${CPAN_ARTIFACT_DIR}/verify/core/core-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-summary.txt" \
+            "${CPAN_ARTIFACT_DIR}/verify/all/all-summary.txt"
+          do
+            if [ -f "$report" ]; then
+              cat "$report" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ${{ env.CPAN_INVENTORY_ARTIFACT }}
+          path: ${{ env.CPAN_ARTIFACT_DIR }}
+          overwrite: true
+
+      - name: Upload CPAN logs for ${{ matrix.platform }}
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpan-logs${{ matrix.dockerfile }}-${{ env.PLATFORM_SLUG }}
+          path: ${{ env.CPAN_ARTIFACT_DIR }}/logs
+          overwrite: true
+          if-no-files-found: warn
+
+      - name: Render CPAN report for ${{ matrix.platform }}
+        if: always()
+        run: |
+          perl scripts/render-cpan-pr-comment.pl \
+            --dockerfile "${{ matrix.dockerfile }}" \
+            --platform "${{ matrix.platform }}" \
+            --artifact "${CPAN_INVENTORY_ARTIFACT}" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/core-install.log" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/3rdparty-install.log" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Assert CPAN verification for ${{ matrix.platform }}
+        run: |
+          perl scripts/assert-cpan-verification.pl \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/core/core-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-install-status.txt" \
+            --status-file "${CPAN_ARTIFACT_DIR}/verify/all/install-status.txt" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
+            --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --dockerfile "${{ matrix.dockerfile }}" \
+            --platform "${{ matrix.platform }}" \
+            --status-json "${CPAN_STATUS_FILE}"
+
+      - name: Upload CPAN status for ${{ matrix.platform }}
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.CPAN_STATUS_ARTIFACT }}
+          path: ${{ env.CPAN_STATUS_FILE }}
+          overwrite: true
+          if-no-files-found: warn
+
+  # Aggregates every cpan_build matrix leg into a single pull request comment,
+  # so a pull request no longer collects one CPAN comment per image and platform.
+  cpan_report:
+    needs: [cpan_build]
+    # Runs for failed cpan_build matrix legs too, but never for a cancelled or
+    # skipped one: that would replace a valid report with an empty one.
+    #
+    # SECURITY: this job must stay on `pull_request` and must never move to
+    # `pull_request_target`. It checks out pull request controlled code and asks
+    # for `pull-requests: write`; under `pull_request` a fork only ever receives
+    # a read-only token, and that is what keeps the combination safe.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.cpan_build.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      # The matrix legs upload one status file each. A missing artifact is not
+      # fatal: the renderer reports the cpan_build job result instead.
+      - name: Download CPAN status artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cpan-status-*
+          path: .artifacts/cpan-status
+          merge-multiple: true
+
+      # Exit code 3 means no status artifact was found. The report then only goes
+      # into the job summary, so a transient download failure cannot replace an
+      # earlier, valid pull request comment with an empty one.
+      - name: Render aggregated CPAN comment
+        id: render
+        run: |
+          set -uo pipefail
+          render_status=0
+          perl scripts/render-cpan-summary-comment.pl \
+            --status-dir .artifacts/cpan-status \
+            --job-result "${{ needs.cpan_build.result }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            > cpan-summary-comment.md || render_status=$?
+          cat cpan-summary-comment.md >> "$GITHUB_STEP_SUMMARY"
+          case "$render_status" in
+            0) ;;
+            3) echo "rendered=false" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            *) exit "$render_status" ;;
+          esac
+          if [ ! -s cpan-summary-comment.md ]; then
+            echo "The renderer produced an empty comment." >&2
+            exit 1
+          fi
+          echo "rendered=true" >> "$GITHUB_OUTPUT"
+
+      # A fork pull request only gets a read-only token, so commenting fails
+      # there. That must not turn the whole job red.
+      - name: Comment CPAN summary on PR
+        if: steps.render.outputs.rendered == 'true'
+        continue-on-error: true
+        uses: actions/github-script@v9
+        env:
+          COMMENT_FILE: cpan-summary-comment.md
+          COMMENT_MARKER: "<!-- cpan-build-report:summary -->"
+          LEGACY_MARKER_PREFIX: "<!-- cpan-build-report:"
+        with:
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync(process.env.COMMENT_FILE)) {
+              core.warning(`CPAN comment file not found: ${process.env.COMMENT_FILE}`);
+              return;
+            }
+            const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
+            const marker = process.env.COMMENT_MARKER;
+            const legacyPrefix = process.env.LEGACY_MARKER_PREFIX;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            // Anchored at the start of the body and pinned to the workflow bot, so
+            // a comment that merely quotes the marker is never touched.
+            const ours = comments.filter((comment) =>
+              comment.user?.type === 'Bot' &&
+              comment.user?.login === 'github-actions[bot]' &&
+              comment.body?.startsWith(legacyPrefix)
+            );
+            const existing = ours.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
+            // Remove the per image comments earlier runs of this workflow left behind.
+            for (const comment of ours) {
+              if (comment.id === existing?.id) {
+                continue;
+              }
+              try {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: comment.id,
+                });
+              } catch (error) {
+                core.warning(`Could not delete comment ${comment.id}: ${error.message}`);
+              }
+            }
+
+  build_test_images:
+    # Builds every image variant needed by the decoupled test jobs exactly once
+    # and pushes them to GHCR under a run-specific, ephemeral tag so the test
+    # jobs can pull instead of rebuilding.
     needs: [get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bullseye, -threaded-bullseye]
-    # Steps represent a sequence of tasks that will be executed as part of the job
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpanfile-FHEM
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: cpanfile-3rdParty
+          path: 3rdParty
+
+      - name: Set up Docker Buildx
+        id: prepareDOCKER
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Prepare CI image tag variables
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE_BASE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}"
+          echo "CI_IMAGE_BATS=${CI_IMAGE_BASE}-bats" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_MINIMAL=${CI_IMAGE_BASE}-minimal" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_FULL=${CI_IMAGE_BASE}-full" >> "$GITHUB_ENV"
+          echo "CI_IMAGE_BATS_EXTENDED=${CI_IMAGE_BASE}-bats-extended" >> "$GITHUB_ENV"
+
+      - name: Restore CPM cache for amd64
+        uses: actions/cache/restore@v6
+        id: cache-cpm-restore
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
+            cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-
+
+      - name: Inject CPM cache mount for amd64
+        uses: reproducible-containers/buildkit-cache-dance@v3.4.0
+        with:
+          builder: ${{ steps.prepareDOCKER.outputs.name }}
+          cache-map: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-amd64"
+              }
+            }
+          skip-extraction: true
+
+      - name: Build and push fhem-bats image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem-bats
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_BATS }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+      - name: Checkout BuildKit cache dance helper
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/checkout@v7
+        with:
+          repository: reproducible-containers/buildkit-cache-dance
+          ref: v3.3.2
+          path: .cache/buildkit-cache-dance
+
+      - name: Extract CPM cache mount for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        env:
+          CACHE_MAP: |
+            {
+              ".cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}": {
+                "target": "/root/.perl-cpm",
+                "id": "perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}-amd64"
+              }
+            }
+        run: |
+          node .cache/buildkit-cache-dance/dist/index.js \
+            --extract \
+            --builder "${{ steps.prepareDOCKER.outputs.name }}" \
+            --cache-map "$CACHE_MAP"
+
+      - name: Save CPM cache for amd64
+        if: always() && steps.cache-cpm-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
+          key: ${{ steps.cache-cpm-restore.outputs.cache-primary-key }}
+
+      - name: Build and push fhem-extended-python-nodejs image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem-extended-python-nodejs
+          cache-from: |
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_FULL }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+      - name: Build and push fhem-bats-extended-python-nodejs image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem-bats-extended-python-nodejs
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_BATS_EXTENDED }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+      # Built last: unlike the other three variants nothing later in this job
+      # needs its cache output, and it was the one variant that didn't exist
+      # in this job before (previously only built in the now-removed
+      # trivy_scan build step on its own builder). Keeping it out of the
+      # bats -> full cache chain avoids a BuildKit cache-ref mismatch that
+      # broke the with-fhem-extended build when this ran in between them.
+      - name: Build and push fhem-minimal image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          target: with-fhem
+          cache-from: |
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/amd64${{ matrix.dockerfile }}
+          tags: ${{ env.CI_IMAGE_MINIMAL }}
+          build-args: |
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            CPAN_CPM_VERSION=${{ env.CPAN_CPM_VERSION }}
+            CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
+
+  test_bats:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Pull and tag fhem-bats test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-bats"
+          docker pull "$CI_IMAGE"
+          docker tag "$CI_IMAGE" bats-withfhem:latest
+
+      - uses: Wandalen/wretry.action@v3.8.0
+        name: Run bats unit and integration tests in bidge network mode
+        with:
+          attempt_limit: 3
+          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
+
+      - uses: Wandalen/wretry.action@v3.8.0
+        name: Run bats unit and integration tests in host network mode
+        with:
+          attempt_limit: 3
+          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
+
+  test_integration_and_unit:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
     env:
       TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v5.0.0
-
-      - name: Get git vars
-        shell: bash
-        run: |
-          echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
-        id: gitVars
-
-      - name: Prepare SVN repository checkout and variables
-        id: prepareSVN
-        uses: ./.github/workflows/prepare-svn
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: cpanfile-FHEM
-  
-      - uses: actions/download-artifact@v4
-        with:
-          name: cpanfile-3rdParty
-          path: 3rdParty
-          
-      - name: Prepare docker for build and publish
-        id: prepareDOCKER
-        uses: ./.github/workflows/prepare-docker
-        with:
-          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-          GHCR_OWNER: ${{ github.repository_owner }} 
-          GHCR_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}   
-          DOCKERFILE: ${{ matrix.dockerfile }}
+        uses: rlespinasse/github-slug-action@v5.7.1
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
@@ -269,87 +825,23 @@ jobs:
             type=ref,event=branch,suffix=${{ matrix.dockerfile }}
             type=ref,event=pr,suffix=${{ matrix.dockerfile }}
 
-      - name: Build and cache fhem base layer
-        uses: docker/build-push-action@v6
-        id: docker_build_fhem
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-bats
-          cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}            
-          cache-to: type=gha,mode=max,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-          tags: with-fhem
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build for bats with fhem base layer
-        uses: docker/build-push-action@v6
-        id: docker_build_bats
-        with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-bats
-          cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-          tags: bats-withfhem
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-
-      - uses: Wandalen/wretry.action@v3.8.0
-        name: Run bats unit and integration tests in bidge network mode
-        with:
-          attempt_limit: 3
-          command: timeout 9m docker run --rm -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags '!hostMode,!extendedOnly'
-        
-      - uses: Wandalen/wretry.action@v3.8.0
-        name: Run bats unit and integration tests in host network mode
-        with:
-          attempt_limit: 3
-          command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
-
-      - name: Build for test fhem, python and nodejs layer added for amd64
-        uses: docker/build-push-action@v6
-        id: docker_build
-        with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-extended-python-nodejs
-          cache-from: | 
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}  
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+      - name: Pull and tag fhem-full test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-full"
+          docker pull "$CI_IMAGE"
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && docker tag "$CI_IMAGE" "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
 
       - name: Inspect and run integration tests
         run: |
@@ -360,60 +852,242 @@ jobs:
         run: |
           CONTAINER=$(docker run -d -ti --health-interval=10s --health-timeout=8s --health-start-period=10s --health-retries=5 ${{ fromJSON(steps.meta.outputs.json).tags[0] }} )
           sleep 15;
-          until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ]; 
+          until [ "$(/usr/bin/docker inspect -f {{.State.Health.Status}} $CONTAINER)" == "healthy" ];
           do sleep 1;
-          echo -n "."; 
+          echo -n ".";
           done;
           echo -e "\n"
           docker exec ${CONTAINER} /bin/bash -c "prove --exec 'perl fhem.pl -t' -I FHEM --recurse /opt/fhem/t/FHEM/" || true
           docker container rm $CONTAINER --force --volumes
 
-      - name: Build for bats with fhem extended layer
-        uses: docker/build-push-action@v6
-        id: docker_build_bats_extended
+  test_bats_extended:
+    needs: [build_test_images]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
         with:
-          context: .
-          load: true  
-          file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          target: with-fhem-bats-extended-python-nodejs
-          cache-from: | 
-            type=gha,scope=fhem_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,mode=max,scope=full_linux/amd64-${{ matrix.dockerfile }}
-          tags: bats-withfhem-extended
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
-            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
-            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
-  
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Pull and tag fhem-bats-extended test image
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          CI_IMAGE="ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-bats-extended"
+          docker pull "$CI_IMAGE"
+          docker tag "$CI_IMAGE" bats-withfhem-extended:latest
+
       - uses: Wandalen/wretry.action@v3.8.0
         name: Run bats unit and integration tests in host network mode
         with:
           attempt_limit: 3
           command: timeout 1m docker run --rm  -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem-extended:latest -T -t . --filter-tags 'extendedOnly'
 
-  published_build:
+  trivy_scan:
+    # Own check so Trivy results show up as a dedicated status, separate from the test jobs
+    needs: [build_test_images]
     runs-on: ubuntu-latest
-    needs: [test_build, cpan_build]
     strategy:
       matrix:
-        dockerfile: [-bullseye, -threaded-bullseye]
+        dockerfile: [-bookworm, -threaded-bookworm]
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Prepare local image tag variables
+        run: |
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          BRANCH_SLUG="${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}"
+          echo "TRIVY_FULL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-full" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=ghcr.io/${{ github.repository_owner }}/fhem-docker-ci:${BRANCH_SLUG}-${{ github.run_id }}-${DOCKERFILE_SLUG}-minimal" >> "$GITHUB_ENV"
+          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+
+      - name: Pull full image for Trivy scan
+        run: docker pull "${TRIVY_FULL_IMAGE}"
+
+      - name: Run Trivy scan for full image
+        id: trivy_full
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_FULL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy full image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-docker${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_FULL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for full image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Pull minimal image for Trivy scan
+        run: docker pull "${TRIVY_MINIMAL_IMAGE}"
+
+      - name: Run Trivy scan for minimal image
+        id: trivy_minimal
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_MINIMAL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy minimal image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-minimal-docker${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_MINIMAL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for minimal image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Report Trivy scan results
+        if: always()
+        run: |
+          {
+            echo "### Trivy scan report (${{ matrix.dockerfile }})"
+            echo ""
+            echo "| Image | HIGH | CRITICAL |"
+            echo "|---|---|---|"
+            for pair in "${TRIVY_FULL_IMAGE}|${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}|${TRIVY_MINIMAL_SARIF}"; do
+              image="${pair%%|*}"
+              sarif="${pair##*|}"
+              if [ -f "$sarif" ]; then
+                high=$(jq '[.runs[].results[]? | select(.level=="warning" or .level=="error") | select((.ruleId // "") | test("HIGH"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+                critical=$(jq '[.runs[].results[]? | select((.ruleId // "") | test("CRITICAL"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+              else
+                high="n/a"
+                critical="n/a"
+              fi
+              echo "| ${image} | ${high} | ${critical} |"
+            done
+            echo ""
+            echo "Full SARIF reports are attached as workflow artifacts. This scan is currently informational only and does not fail the build."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup_test_images:
+    # Only runs when every consumer of the CI images succeeded, so failed
+    # runs keep their images around for debugging. Sweeps every
+    # ghcr.io/<owner>/fhem-docker-ci tag for this branch, not just the
+    # current run's tags, so images left behind by earlier runs on the same
+    # branch (e.g. superseded pushes) get cleaned up too. The concurrency
+    # group on this workflow ensures only one run per branch is ever
+    # in-flight, so this sweep can't race a still-running sibling run.
+    needs: [test_bats, test_integration_and_unit, test_bats_extended, trivy_scan]
+    if: success()
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Delete ephemeral CI test images for this branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          BRANCH_SLUG: ${{ env.GITHUB_HEAD_REF_SLUG || env.GITHUB_REF_SLUG }}
+        run: |
+          set -euo pipefail
+          OWNER_TYPE=$(gh api "users/${OWNER}" --jq .type)
+          if [ "$OWNER_TYPE" = "Organization" ]; then
+            API_BASE="orgs/${OWNER}"
+          else
+            API_BASE="users/${OWNER}"
+          fi
+
+          VERSIONS=$(gh api --paginate "${API_BASE}/packages/container/fhem-docker-ci/versions?per_page=100")
+
+          echo "$VERSIONS" | jq -r --arg prefix "${BRANCH_SLUG}-" '
+            .[] | select(.metadata.container.tags[]? | startswith($prefix)) |
+            "\(.id)\t\(.metadata.container.tags | join(","))"
+          ' | while IFS=$'\t' read -r id tags; do
+            gh api -X DELETE "${API_BASE}/packages/container/fhem-docker-ci/versions/${id}"
+            echo "Deleted version ${id} (${tags})"
+          done
+
+  published_build:
+    runs-on: ubuntu-latest
+    needs: [test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
     env:
         TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v5.0.0
+        uses: rlespinasse/github-slug-action@v5.7.1
 
       - name: Get git vars
         shell: bash
@@ -421,15 +1095,15 @@ jobs:
           echo "IMAGE_VERSION=$( git describe --tags --dirty --match "v[0-9]*")" >> $GITHUB_OUTPUT
         id: gitVars
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: cpanfile-FHEM
   
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: cpanfile-3rdParty
           path: 3rdParty
-    
+
       - name: Prepare docker for build and publish
         id: prepareDOCKER
         uses: ./.github/workflows/prepare-docker
@@ -442,7 +1116,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
@@ -459,7 +1133,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled fhem, python and nodejs layer on supported platforms
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         id: docker_build
         with:
           context: .
@@ -469,12 +1143,17 @@ jobs:
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem-extended-python-nodejs
           cache-from: | 
-            type=gha,scope=base-cpan_linux/386-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/arm64-${{ matrix.dockerfile }}
-            type=gha,scope=base-cpan_linux/arm/v7-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
-          cache-to: type=gha,mode=max,scope=full_linux/cross-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}  
+            type=gha,scope=base-cpan_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm/v7${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+            
+          #cache-to: type=gha,mode=max,scope=full_linux/cross${{ matrix.dockerfile }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
@@ -482,14 +1161,65 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
 
+      - name: Cache ARM v64
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: false  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/arm/v7
+          push: false
+          target: with-fhem-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/arm64${{ matrix.dockerfile }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+
+      - name: Cache ARM v7
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: false  
+          file: ./Dockerfile${{ matrix.dockerfile }}
+          platforms: linux/arm/v7
+          push: false
+          target: with-fhem-extended-python-nodejs
+          cache-from: | 
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=full_linux/arm/v7${{ matrix.dockerfile }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            IMAGE_VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            IMAGE_VCS_REF=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
+            L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
+            L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
+            L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
+            L_DESCR=A full blown Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+    
       - name: Docker meta
         id: meta_base
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         env:
           DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
@@ -506,7 +1236,7 @@ jobs:
             type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
 
       - name: Build and push cross compiled base image on supported platforms
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         id: docker_build_base
         with:
           context: .
@@ -516,12 +1246,15 @@ jobs:
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem
           cache-from: | 
-            type=gha,scope=base_linux/arm64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/arm/v7-${{ matrix.dockerfile }}
-            type=gha,scope=base_linux/386-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/amd64-${{ matrix.dockerfile }}
-            type=gha,scope=full_linux/cross-${{ matrix.dockerfile }}
+            type=gha,scope=base_linux/amd64${{ matrix.dockerfile }}  
+            type=gha,scope=base-cpan_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=base-cpan_linux/arm/v7${{ matrix.dockerfile }}
+            type=gha,scope=fhem_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/amd64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/386${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm64${{ matrix.dockerfile }}
+            type=gha,scope=full_linux/arm/v7${{ matrix.dockerfile }}          
           tags: ${{ steps.meta_base.outputs.tags }}
           annotations: ${{ steps.meta_base.outputs.annotations }}
           labels: ${{ steps.meta_base.outputs.labels }}
@@ -529,7 +1262,180 @@ jobs:
             BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             IMAGE_VERSION=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.version'] }}
             IMAGE_VCS_REF=${{ fromJSON(steps.meta_base.outputs.json).labels['org.opencontainers.image.revision'] }}
+            CPAN_CPM_CACHE_ID=perl-cpm${{ matrix.dockerfile }}-${{ env.CPAN_CPM_CACHE_VERSION }}
             L_USAGE=${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/README.md
             L_VCS_URL=${{ github.server_url }}/${{ github.repository }}/
             L_AUTHORS=${{ github.server_url }}/${{ github.repository }}/graphs/contributors
             L_DESCR=A minimal (perl) Docker image for FHEM house automation system, based on Debian Perl ${{ matrix.dockerfile }}.
+
+  trivy_scan_published:
+    # Scans the image that actually got pushed by published_build, i.e. the
+    # real release artifact rather than the pre-merge CI test image scanned
+    # by trivy_scan. Only runs when published_build actually pushed
+    # (same condition as its push: input) - regular PRs without the
+    # publishImage label don't produce a published image to scan here, but
+    # still get the pre-merge trivy_scan check.
+    needs: [published_build]
+    if: needs.published_build.result == 'success' && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage'))
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [-bookworm, -threaded-bookworm]
+    env:
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+    steps:
+      - name: Checkout this repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v5.7.1
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/fhem-docker
+          flavor: |
+              latest= ${{ env.TAG_LATEST }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
+
+      - name: Docker meta (minimal)
+        id: meta_base
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+             ghcr.io/${{ github.repository_owner }}/fhem-minimal-docker
+          flavor: |
+             latest= ${{ env.TAG_LATEST }}
+          tags: |
+            type=semver,pattern={{version}},suffix=${{ matrix.dockerfile }}
+            type=semver,pattern={{major}},enable=${{ github.event.release.prerelease == 0 }},suffix=${{ matrix.dockerfile }}
+            type=ref,event=branch,suffix=${{ matrix.dockerfile }},enable=${{ github.event.release.prerelease == 0 && env.GITHUB_REF_SLUG != 'master' }}
+            type=ref,event=pr,suffix=${{ matrix.dockerfile }}
+            type=raw,enable=${{ env.GITHUB_REF_SLUG == 'master' }},priority=200,prefix=,suffix=${{ matrix.dockerfile }},value=
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare local image tag variables
+        run: |
+          echo "TRIVY_FULL_IMAGE=${{ fromJSON(steps.meta.outputs.json).tags[0] }}" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_IMAGE=${{ fromJSON(steps.meta_base.outputs.json).tags[0] }}" >> "$GITHUB_ENV"
+          DOCKERFILE_SLUG="${{ matrix.dockerfile }}"
+          DOCKERFILE_SLUG="${DOCKERFILE_SLUG#-}"
+          echo "TRIVY_FULL_SARIF=trivy-fhem-docker-published-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+          echo "TRIVY_MINIMAL_SARIF=trivy-fhem-minimal-docker-published-${DOCKERFILE_SLUG}-amd64.sarif" >> "$GITHUB_ENV"
+
+      - name: Pull full image for Trivy scan
+        run: docker pull "${TRIVY_FULL_IMAGE}"
+
+      - name: Run Trivy scan for full image
+        id: trivy_full
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_FULL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy full image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-docker-published${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_FULL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for full image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_FULL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Pull minimal image for Trivy scan
+        run: docker pull "${TRIVY_MINIMAL_IMAGE}"
+
+      - name: Run Trivy scan for minimal image
+        id: trivy_minimal
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: sarif
+          output: ${{ env.TRIVY_MINIMAL_SARIF }}
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Upload Trivy minimal image scan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-fhem-minimal-docker-published${{ matrix.dockerfile }}-amd64
+          path: ${{ env.TRIVY_MINIMAL_SARIF }}
+          if-no-files-found: ignore
+          overwrite: true
+
+      - name: Print Trivy scan results for minimal image
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.TRIVY_MINIMAL_IMAGE }}
+          scan-type: image
+          format: table
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Report Trivy scan results
+        if: always()
+        run: |
+          {
+            echo "### Trivy scan report for published image (${{ matrix.dockerfile }})"
+            echo ""
+            echo "| Image | HIGH | CRITICAL |"
+            echo "|---|---|---|"
+            for pair in "${TRIVY_FULL_IMAGE}|${TRIVY_FULL_SARIF}" "${TRIVY_MINIMAL_IMAGE}|${TRIVY_MINIMAL_SARIF}"; do
+              image="${pair%%|*}"
+              sarif="${pair##*|}"
+              if [ -f "$sarif" ]; then
+                high=$(jq '[.runs[].results[]? | select(.level=="warning" or .level=="error") | select((.ruleId // "") | test("HIGH"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+                critical=$(jq '[.runs[].results[]? | select((.ruleId // "") | test("CRITICAL"))] | length' "$sarif" 2>/dev/null || echo "n/a")
+              else
+                high="n/a"
+                critical="n/a"
+              fi
+              echo "| ${image} | ${high} | ${critical} |"
+            done
+            echo ""
+            echo "Full SARIF reports are attached as workflow artifacts. This scan is currently informational only and does not fail the build."
+          } >> "$GITHUB_STEP_SUMMARY"

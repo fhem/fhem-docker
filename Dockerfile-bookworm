@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-bullseye@sha256:1009c76f861ea5689e4493b460e800f9d66ec4bdc913493de389956d01b69a03 AS base
+FROM perl:5.38.5-slim-bookworm@sha256:4efc7e9098eb1341415ffb05413b3d1e09bad4d79bfe630a9b6f0978acdc47c0 AS base
 
 ARG TARGETPLATFORM
 
@@ -20,10 +20,12 @@ ENV LANG=en_US.UTF-8 \
    TERM=xterm \
    TZ=Europe/Berlin
 
+
+
+
 RUN <<EOF
-    sed -i "s/bullseye main/bullseye main contrib non-free/g" /etc/apt/sources.list 
-    sed -i "s/bullseye-updates main/bullseye-updates main contrib non-free/g" /etc/apt/sources.list 
-    sed -i "s/bullseye\/updates main/bullseye\/updates main contrib non-free/g" /etc/apt/sources.list 
+    set -x;
+    sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/debian.sources
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         ca-certificates \
@@ -32,12 +34,14 @@ RUN <<EOF
     LC_ALL=C c_rehash 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
     echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
+    
     LC_ALL=C locale-gen 
     ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime 
     echo "Europe/Berlin" > /etc/timezone 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata 
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
+    
 EOF
 
 
@@ -46,7 +50,15 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.5-bullseye@sha256:d2cdf77cdbfb7efcc8a89c46a47b4f882d681878cc42abc71c07d3c13ab38efd AS build-cpan 
+FROM perl:5.38.5-bookworm@sha256:5cf2a9c0f2e1bc2aa72489bb6ca33001489425223583f0913bee895ccb468502 AS build-cpan 
+
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG CPAN_CPM_CACHE_ID=perl-cpm-default
+# renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
+ARG CPAN_CPM_VERSION=v1.1.5
+ARG CPAN_CPM_MIRROR=https://www.cpan.org
 
 COPY cpanfile /usr/src/app/core/cpanfile
 COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
@@ -55,23 +67,30 @@ COPY scripts/cpm-install-with-retry.sh /usr/local/bin/cpm-install-with-retry
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
+  set -ex;
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
-      libusb-dev \
-      graphviz \
-      libgd-dev \
-      libfann-dev \
-      pkg-config \
-      libotr5-dev \
-      python3-dev  
+    libusb-dev \
+    libgd-dev \
+    libfann-dev \
+    pkg-config \
+    libotr5-dev \
+    graphviz \
+    python3-dev
+  cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
+  cpm --version
+  cpm --version | grep -F "cpm ${CPAN_CPM_VERSION}"
   cat <<'SCRIPT' > /usr/local/bin/imlib2-config
 #!/bin/sh
 exec pkg-config imlib2 "$@"
 SCRIPT
   chmod +x /usr/local/bin/imlib2-config
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.]* ~/.??* 
 EOF
+
+
+
 
 #
 # Fixup modules which do not work on all platforms and install afterwards
@@ -79,13 +98,14 @@ EOF
 #
 
 # JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
-ENV PERL_CANARY_STABILITY_NOPROMPT=1 
-RUN <<EOF
+ENV PERL_CANARY_STABILITY_NOPROMPT=1 \
+    PERL_CPM_PREBUILT=1
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
+  set -x;
   mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
-  
   # Math::Pari/Crypt::Random are unstable on linux/386 and linux/arm/v7.
   if [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
     sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
@@ -95,22 +115,21 @@ RUN <<EOF
   if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
     sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
-
   cpm_workers=1
   core_status=0
-  cpm-install-with-retry /usr/src/app/cpan-logs/core-install.log cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ || core_status=$?
+  cpm-install-with-retry /usr/src/app/cpan-logs/core-install.log cpm install --mirror=${CPAN_CPM_MIRROR} --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ || core_status=$?
   cat /usr/src/app/cpan-logs/core-install.log
   printf 'exit_code=%s\n' "$core_status" > /usr/src/app/cpan-verify/core/core-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
   
   rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm/
-  rm -rf /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 EOF
-
-
+  
+  
 # Install Packages used for building 3rdparty cpan modules:
 RUN <<EOF
+  set -x;
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libbluetooth-dev \
@@ -120,25 +139,29 @@ RUN <<EOF
       libimlib2-dev \
       libsodium-dev \
       libsnmp-dev
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+  LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.]* ~/.??* 
 EOF
 
 
 # Install all CPAN Modules, needed from 3rd party module repositorys 
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
+
 # Fixup modules which do not work on all platforms and install afterwards
-RUN <<EOF
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
+  set -x;
   if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
   fi
-  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
+  # SNMP's CPAN module version must match the system Net-SNMP library. It is not
+  # usable on linux/386 and linux/arm64 with Debian bookworm's libsnmp-dev version.
+  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ] || [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm64" ]; then
     sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
   fi
   cpm_workers=1
   
   thirdparty_status=0
-  cpm-install-with-retry /usr/src/app/cpan-logs/3rdparty-install.log cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained 3rdparty/ || thirdparty_status=$?
+  cpm-install-with-retry /usr/src/app/cpan-logs/3rdparty-install.log cpm install --mirror=${CPAN_CPM_MIRROR} --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained 3rdparty/ || thirdparty_status=$?
   cat /usr/src/app/cpan-logs/3rdparty-install.log
   printf 'exit_code=%s\n' "$thirdparty_status" > /usr/src/app/cpan-verify/3rdparty/3rdparty-install-status.txt
   perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
@@ -150,17 +173,17 @@ RUN <<EOF
   core_status=${core_status:-0}
   printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
   rm -rf /root/.cpanm 
-  rm -rf /root/.perl-cpm
 EOF
 
 
 FROM base AS base-cpan 
 
 RUN <<EOF
+    # android-libadb \
+    set -x;
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
         adb \
-        android-libadb \
         avahi-daemon \
         avrdude \
         bluez \
@@ -176,7 +199,7 @@ RUN <<EOF
         lsb-release \
         mariadb-client \
         net-tools \
-        netcat \
+        netcat-traditional \
         openssh-client \
         procps \
         sendemail \
@@ -187,14 +210,30 @@ RUN <<EOF
         unzip \
         usbutils \
         wget \
-        libarchive-dev \
+        libarchive13 \
         bash \
         libgd3 \
         librsvg2-2 \
         iproute2 \
         libpq5
+    # The upstream Perl base image ships a C header toolchain (libc6-dev and
+    # friends) so that XS modules can be compiled inside the container. This
+    # image carries no C compiler, so those headers can never be used -- but
+    # they keep dragging kernel and OpenSSL CVEs (linux-libc-dev, libssl-dev)
+    # into every image scan. The base tag is pinned to an end-of-life Perl
+    # release, so no rebuilt upstream tag will ever ship fixed versions of
+    # them. Drop the headers here; the matching runtime libraries (libc6,
+    # libssl3, zlib1g, libarchive13) stay installed.
+    # Their auto-installed companions (libc-dev-bin, libnsl-dev, libtirpc-dev,
+    # rpcsvc-proto) are taken by the autoremove below.
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get purge -qqy \
+        linux-libc-dev \
+        libc6-dev \
+        libcrypt-dev \
+        libssl-dev \
+        zlib1g-dev
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
 EOF
 
 COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
@@ -240,7 +279,7 @@ ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
 ARG L_TITLE="fhem-${TARGETPLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye Perl image."
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian bookworm Perl image."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
 ARG L_URL_FHEM="https://fhem.de/"
@@ -298,6 +337,7 @@ ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
 # Add extended system layer
 RUN <<EOF
+    set -x;
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libsox-fmt-all \
@@ -317,7 +357,7 @@ RUN <<EOF
       vorbis-tools \
       gstreamer1.0-tools
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
 EOF
 
 COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib/perl5
@@ -332,7 +372,6 @@ RUN <<EOF
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       python3 \
-      python3-dev \
       python3-pip \
       python3-setuptools \
       python3-wheel \
@@ -341,7 +380,7 @@ RUN <<EOF
       youtube-dl
     ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli 
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/* 
 EOF
 
 #
@@ -352,9 +391,9 @@ FROM with-fhem-extended-python AS with-fhem-extended-python-nodejs
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
 RUN <<EOF
-    mkdir -p /tmp/keyrings 
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
-    echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+    # mkdir -p /tmp/keyrings 
+    #curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
+    #echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends nodejs 
     npm install -g npm@latest
@@ -368,7 +407,7 @@ RUN <<EOF
             tradfri-fhem \
     ; fi 
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
 EOF
 
 #
@@ -377,7 +416,7 @@ EOF
 #
 #
 FROM with-fhem AS with-fhem-bats
-
+# renovate: datasource=github-tags depName=bats-core packageName=bats-core/bats-core
 ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
 RUN <<EOF
     /tmp/bats/install.sh /opt/bats 
@@ -385,7 +424,9 @@ RUN <<EOF
     rm -r /tmp/bats
 EOF
 
+# renovate: datasource=github-tags depName=bats-support packageName=bats-core/bats-support
 ADD https://github.com/bats-core/bats-support.git#v0.3.0 /opt/bats/test_helper/bats-support
+# renovate: datasource=github-tags depName=bats-assert packageName=bats-core/bats-assert
 ADD https://github.com/bats-core/bats-assert.git#v2.1.0 /opt/bats/test_helper/bats-assert
 ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
 ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock

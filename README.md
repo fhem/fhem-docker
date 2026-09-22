@@ -10,80 +10,47 @@ A Docker image for [FHEM](https://fhem.de/) house automation system, based on De
 
 ## Installation
 Pre-build images are available on [Docker Hub](https://hub.docker.com/r/fhem/fhem) 
-Reccomended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
-
-### From Docker Hub
-
-    docker pull fhem/fhem:latest
+Recommended pulling from [Github Container Registry](https://github.com/orgs/fhem/packages) to allow automatic image for your system.
+Use fixed tags instead of `latest`. Update image tags explicitly in Compose or in `FROM` lines so Renovate can track and review the change.
+For normal FHEM-SVN-based setups, the minimal image is the recommended default and already contains the required Perl/FHEM runtime environment, but not Python or NodeJS. The regular `fhem-docker` image bundles several runtime environments in one container and should be treated as a compatibility option rather than the preferred pattern for new setups.
 
 ### From Github container registry
 
-#### Image with serval services installed
+#### Minimal image (recommended)
 
-Updated versions based on 
-- debian bullseye 
-- Perl 5.36.3 (optional threaded)
-- NodeJS 18 LTS
-- Python 3.9.2
-- Python 2.7.18
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+For normal FHEM-SVN setups and slim, controlled deployments, use the minimal image:
 
-        docker pull ghcr.io/fhem/fhem-docker:4-bullseye
-        docker pull ghcr.io/fhem/fhem-docker:4-threaded-bullseye
+    docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+    docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
 
-If you are using 3rd Party modules which are not available on the FHEM svn repository, you may need this image, because it has more perl modules preinstalled.
+This is the recommended default for new setups. It contains the required FHEM Perl runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm and Perl 5.38.5. Python and NodeJS are not part of the minimal image; add them explicitly when your setup needs them. Supported platforms are `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
 
-To let this image work correctly, you need as least a FHEM revision 25680 or newer.
+#### Standard image
 
-##### Not updated anymore since Jan 2024
+Use the regular image only when you intentionally need the compatibility image with multiple bundled runtime environments:
 
-- debian buster
-- Perl 5.28.1
-- NodeJS 16 LTS
-- Python 3
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64
-- NOTE: alexa-fhem, alexa-cookie, gassistant-fhem, homebridge, homebridge-fhem, tradfri-fhem  are not installed per default!
+    docker pull ghcr.io/fhem/fhem-docker:5-bookworm
+    docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
 
-        docker pull ghcr.io/fhem/fhem-docker:3-buster
+This image bundles additional runtime environments in the FHEM container. That is useful for compatibility with existing deployments, but it is an anti-pattern for new setups when the same functionality can run as sidecars or explicit image extensions. Some bundled runtime versions can also age independently of the FHEM runtime.
 
- are available.
+### From Docker Hub
 
+You can pull the same standard image from Docker Hub:
 
+    docker pull fhem/fhem:5-bookworm
 
-#### Image with perl core services installed
-
-- debian bullseye 
-- Perl 5.36.3 (optional threaded)
-- Python 3.9.2
-- Python 2.7.18
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
-
-        docker pull ghcr.io/fhem/fhem-minimal-docker:4-bullseye
-        docker pull ghcr.io/fhem/fhem-minimal-docker:4-threaded-bullseye
-
-If you are using only modules which are provided via FHEM svn repository, you mostly can use this smaller image.
-
-##### Not updated anymore since Jan 2024
-
-- debian buster
-- Perl 5.28.1
-- Supported Plattforms: linux/amd64, linux/arm/v7, linux/arm64, linux/i386, 
-
-        docker pull ghcr.io/fhem/fhem-minimal-docker:3-buster
-
- are available.
-
+Legacy v3/v4 tags and details are documented in [docs/legacy-images.md](docs/legacy-images.md).
 
 #### To start your container right away:
 
-        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 ghcr.io/fhem/fhem-minimal-docker:5-bookworm
 
 #### Storage
 Usually you want to keep your FHEM setup after a container was destroyed (or re-build) so it is a good idea to provide an external directory on your Docker host to keep that data:
 
 
-        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-docker:4-bullseye
+        docker run -d --name fhem -p 8083:8083 -v /some/host/directory:/opt/fhem ghcr.io/fhem/fhem-minimal-docker:5-bookworm
 
 You will find more general information about using volumes from the Docker documentation for [Use volumes](https://docs.docker.com/storage/volumes/) and [Bind mounts](https://docs.docker.com/storage/bind-mounts/).
 
@@ -100,6 +67,13 @@ You may want to have a look to the [FHEM documentation sources](https://fhem.de/
 
 Note that any existing FHEM installation you are mounting into the container will _not_ be updated automatically, it is just the container and its system environment that can be updated by pulling a new FHEM Docker image. This is because the existing update philosophy is incompatible with the new and state-of-the-art approach of containerized application updates. That being said, consider the FHEM Docker image as a runtime environment for FHEM which is also capable to install FHEM for any new setup from scratch.
 
+### Developer information
+
+Build, CI and CPAN inventory details for contributors are documented in [docs/developer-notes.md](docs/developer-notes.md).
+
+### Tag strategy
+
+Use fixed image tags such as `5-bookworm` or `5-threaded-bookworm` in Compose files and `FROM` statements. Avoid `latest`, because it hides version drift and makes updates harder to review. Renovate-friendly updates should happen by changing the tag in the Compose file or the Dockerfile, not by relying on mutable tags.
 
 ## Customize your container configuration
 
@@ -111,64 +85,68 @@ For that reason, the default value of the global attribute `logfile` is differen
 It is highly recommended to keep this setting. Please note that FileLog are only patched if fhem is fresh installed. 
 Devices might still need to be checked and adjusted manually if you would like to properly watch the log file from within FHEM.
 
-### Add custom packages 
+### Extending the image
 
-#### Since version 4
+Build your own image when you need extra packages. Keep the base image pinned to a fixed tag. The minimal image does not include Python or NodeJS, so install those runtimes explicitly before using `pip` or `npm`.
 
-To extand the image wirh a custom package for example, you have to use standard docker tools.
+Debian packages:
 
-If you are defining a docker-compose.yml file describing your configuration, then you can add a build definition instead of starting the image from the registry:
-
-With this, you will create a new image, and install any tool which you additional need:
-
-```
-    build:
-      context: .
-      dockerfile_inline: |
-        FROM ghcr.io/fhem/fhem-docker:4-bullseye 
-        RUN <<EOF
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-          LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME>
-          LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-        EOF
-
-        RUN <<EOF
-          pip install --no-cache-dir <PIP PACKAGENAME>
-        EOF
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends <DEBIAN PACKAGENAME> \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 ```
 
-See more examples in our docker-compose.yml file.
+Perl CPAN modules:
 
-Important: If you need additional Perl CPAN Modules, you must install them directly from CPAN and not via apt!
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+# renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
+ARG CPAN_CPM_VERSION=v1.1.4
+RUN cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz" \
+    && cpm install --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained /usr/src/app/3rdparty/ <CPAN PACKAGE>
+```
 
-#### till version 3 (deprecated)
+Python packages:
 
-Don't do this unless you really know what this does!
-You may define several different types of packages to be installed automatically during initial start of the container by adding one of the following parameters to your container run command:
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends python3 python3-pip \
+    && pip install --no-cache-dir <PIP PACKAGE> \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+```
 
-* Debian APT packages:
+Node.js packages:
 
-    ```shell
-    -e APT_PKGS="package1 package2"
-    ```
+```dockerfile
+FROM ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+RUN apt-get update \
+    && apt-get install -qqy --no-install-recommends nodejs \
+    && npm install -g --unsafe-perm --production <NPM PACKAGE> \
+    && npm cache clean --force \
+    && apt-get autoremove -qqy \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+```
 
-* Perl CPAN modules:
+Use `ghcr.io/fhem/fhem-docker:5-bookworm` as the base image only when you intentionally need the compatibility image with multiple bundled runtime environments.
 
-    ```shell
-    -e CPAN_PKGS="App::Name1 App::Name2"
-    ```
+Important: If you need additional Perl CPAN modules, install them directly from CPAN and not via apt.
 
-* Python PIP packages:
+For Alexa integrations, prefer sidecar containers instead of adding the helpers to the FHEM image:
 
-    ```shell
-    -e PIP_PKGS="package1 package2"
-    ```
+* `alexa-fhem` Docker: https://github.com/fhem/alexa-fhem-docker, image `ghcr.io/fhem/alexa-fhem:5.1.6`
+* `alexa-cookie-service`: https://github.com/fhem/alexa-cookie-service, image `ghcr.io/fhem/alexa-cookie-service:0.3.1`
 
-* Node.js NPM packages:
+Keep those services separate from the FHEM image and add the local configuration, credentials and FHEM definitions that your setup needs.
 
-    ```shell
-    -e NPM_PKGS="package1 package2"
-    ```
+Legacy package-installation variables from image versions 3 and older are documented in [docs/legacy-images.md](docs/legacy-images.md). Prefer extending the image as shown above.
 
 ### Directory and file permissions
 
@@ -221,6 +199,8 @@ It is enough for the `telnet` device to only listen on the loopback device (aka 
 
 The image comes with a built-in script to check availability, which communicates with the DockerImageInfo Definition.
 
+DockerImageInfo also reports the detected runtime in `container.runtime` and combines runtime and image metadata in the `model` reading, for example `runtime=kubernetes; image.version=5-bookworm; image.revision=...`. Runtime detection supports Kubernetes, Docker, container runtimes such as containerd, CRI-O and Podman, and `host` as fallback.
+
 If for whatever reason you want to disable checking a specific FHEMWEB instance, you may set the user attribute `DockerHealthCheck` to 0 on that particular FHEMWEB device.
 
 Note that the health check itself cannot be entirely disabled as it will ensure to notify you in case of failures, hindering proper shutdown of FHEM when triggered by Docker or OS shutdown procedure.
@@ -240,6 +220,57 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     ```
 
 ### Tweak container settings using environment variables
+
+The container entrypoint supports the following environment variables. Values that are shown as paths may be absolute paths or paths relative to `/opt/fhem` unless stated otherwise.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TZ` | `Europe/Berlin` | Container timezone. |
+| `CONFIGTYPE` | `fhem.cfg` | FHEM configuration source, for example `fhem.cfg`, `fhem.cfg.demo`, or `configDB`. |
+| `LOGFILE` | `./log/fhem-%Y-%m-%d.log` | FHEM logfile path and date format. |
+| `PIDFILE` | `./log/fhem.pid` | FHEM PID file path. |
+| `TELNETPORT` | `7072` | Local FHEM Telnet port. Deprecated since v4. |
+| `RESTART` | `1` | Restart FHEM after unexpected termination. Set to `0` to disable automatic restart. |
+| `UMASK` | `0037` | Umask used when FHEM is started. |
+| `FHEM_UID` | `6061` | UID for the `fhem` user. |
+| `FHEM_GID` | `6061` | GID for the `fhem` group. |
+| `FHEM_PERM_DIR` | `0750` | Permissions enforced for directories below `/opt/fhem`. |
+| `FHEM_PERM_FILE` | `0640` | Permissions enforced for files below `/opt/fhem`. |
+| `BLUETOOTH_GID` | `6001` | GID for the `bluetooth` group. |
+| `GPIO_GID` | `6002` | GID for the `gpio` group. |
+| `I2C_GID` | `6003` | GID for the `i2c` group. |
+| `TIMEOUT_STOPPING` | `30` | Seconds to wait for FHEM to stop gracefully before sending `SIGKILL`. |
+| `TIMEOUT_STARTING` | `60` | Seconds to wait for FHEM to report that the server has started. |
+| `TIMEOUT_REAPPEAR` | `15` | Seconds to wait for a terminated FHEM process to reappear before handling it as failed. |
+| `APT_PKGS` | empty | Deprecated: Debian packages to install during initial container setup. Prefer extending the image instead. |
+| `CPAN_PKGS` | empty | Deprecated: CPAN modules to install during initial container setup. Prefer extending the image instead. |
+| `PIP_PKGS` | empty | Deprecated: Python packages to install during initial container setup. Prefer extending the image instead. |
+| `NPM_PKGS` | empty | Deprecated: Node.js packages to install during initial container setup. Prefer extending the image instead. |
+| `FHEM_GLOBALATTR` | generated from `LOGFILE` and `PIDFILE` | Global attributes passed to FHEM at startup. Overrides the generated value when set. |
+| `PERL_JSON_BACKEND` | `Cpanel::JSON::XS,JSON::XS,JSON::PP,JSON::backportPP` | Perl JSON backend preference order. |
+| `LANG` | `en_US.UTF-8` | Locale setting. |
+| `LANGUAGE` | `en_US:en` | Locale language preference. |
+| `LC_ADDRESS` | `de_DE.UTF-8` | Locale setting. |
+| `LC_MEASUREMENT` | `de_DE.UTF-8` | Locale setting. |
+| `LC_MESSAGES` | `en_DK.UTF-8` | Locale setting. |
+| `LC_MONETARY` | `de_DE.UTF-8` | Locale setting. |
+| `LC_NAME` | `de_DE.UTF-8` | Locale setting. |
+| `LC_NUMERIC` | `de_DE.UTF-8` | Locale setting. |
+| `LC_PAPER` | `de_DE.UTF-8` | Locale setting. |
+| `LC_TELEPHONE` | `de_DE.UTF-8` | Locale setting. |
+| `LC_TIME` | `en_DK.UTF-8` | Locale setting. |
+| `LC_CTYPE` | unset | Passed through to FHEM when set. |
+| `LC_COLLATE` | unset | Passed through to FHEM when set. |
+| `LC_ALL` | unset | Passed through to FHEM when set. |
+| `DOCKER_HOST` | auto-detected | IPv4 address for `host.docker.internal`. |
+| `DOCKER_GW` | auto-detected | IPv4 address for `gateway.docker.internal`. |
+| `DOCKER_ENV_FILE` | `/.dockerenv` | Override path used for Docker runtime detection. |
+| `KUBERNETES_TOKEN_FILE` | `/var/run/secrets/kubernetes.io/serviceaccount/token` | Override path used for Kubernetes runtime detection. |
+| `KUBERNETES_SERVICE_HOST` | unset | Kubernetes runtime detection hint. Usually provided by Kubernetes. |
+| `CONTAINER_CGROUP_FILE` | `/proc/1/cgroup` | Override path used for container runtime detection. |
+| `CONTAINER_MOUNTINFO_FILE` | `/proc/self/mountinfo` | Override path used for container runtime detection. |
+
+In addition, environment variables whose names start with `PERL`, `NODE`, or `PYTHON` are exported to the FHEM user environment so they are available to `fhem.pl` and its child processes.
 
 * Change FHEM logfile format:
     To set a different logfile path and format (default is ./log/fhem-%Y-%m-%d.log):
@@ -289,7 +320,8 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     To set a different umask for `FHEM_UID` (default is 0037):
 
     ```shell
-        -e UMASK=0037
+    -e UMASK=0037
+    ```
 
 * Change Bluetooth group ID:
     To set a different GID for the group `bluetooth` (default is 6001):
@@ -316,7 +348,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     To set a different setting for the timer during FHEM shutdown handling, you may add this environment variable:
 
     ```shell
-    -e TIMEOUT=10
+    -e TIMEOUT_STOPPING=30
     ```
 
 * Set locale:
@@ -333,7 +365,7 @@ Note that the health check itself cannot be entirely disabled as it will ensure 
     -e LC_NUMERIC=de_DE.UTF-8
     -e LC_PAPER=de_DE.UTF-8
     -e LC_TELEPHONE=de_DE.UTF-8
-    -e LC_TIME=de_DE.UTF-8
+    -e LC_TIME=en_DK.UTF-8
     ```
 
 * Set timezone:
@@ -415,16 +447,16 @@ Also, for host.docker.internal, the SSH host key will automatically be added and
 
 If for some reason the host details are not detected correctly, you may overwrite the IP addresses using environment variables (see `DOCKER_HOST` and `DOCKER_GW` above).
 
-## Adding Git for version control of your Home Automation Docker containers
+## Using Docker Compose
 
 Prerequisites on your Docker host:
 
-1. Ensure docker-compose is installed: See [Install Docker Compose](https://docs.docker.com/compose/install/)
+1. Ensure the Docker Compose plugin is installed: See [Install Docker Compose](https://docs.docker.com/compose/install/)
 2. Ensure Git command is installed, e.g. run `sudo apt install git`
 
 Follow initial setup steps:
 
-1. Put docker-compose.yml and .gitignore into an empty sub-folder, e.g. /docker/home
+1. Put `docker-compose.yml` and `.gitignore` into an empty sub-folder, e.g. `/docker/home`
 
     ```console
     sudo mkdir -p /docker/home
@@ -432,17 +464,59 @@ Follow initial setup steps:
     sudo curl -fsSL -o /docker/home/.gitignore https://github.com/fhem/fhem-docker/raw/master/.gitignore
     ```
 
-    Note that the sub-directory "home" will be the base prefix name for all    your Docker containers (e.g. resulting in home_SERVICE_1). This will also help to run multiple instances of your Stack on the same host, e.g. to separate production environment in /docker/home from development in /docker/home-dev.
+    `docker-compose.yml` is intended to be used directly, not as a sample catalog. The sub-directory name becomes the project prefix for your containers, which helps when you run multiple stacks on the same host.
+    The Compose file already ships with a few important FHEM environment variables and defaults; override them locally through `.env` when needed.
 
-2. Being in /docker/home, run command to start your Docker stack:
+2. Start the stack with `docker compose`:
 
     ```console
-    cd /docker/home; sudo docker-compose up -d
+    cd /docker/home
+    sudo docker compose up -d
     ```
 
     All FHEM files including your individual configuration and changes will be stored in ./fhem/ .
     You may also put an existing FHEM installation into ./fhem/ before the initial start, it will be automatically updated for compatibility with fhem-docker.
     Note that if you are using configDB already, you need to ensure Docker compatibility before starting the container for the very first time (see `DOCKER_*` environment variables above).
+
+    Optional services in the provided Compose file are enabled through profiles:
+
+    * `db` starts a PostgreSQL container that can be used for configDB or other database-backed FHEM modules.
+    * `mail` starts a Postfix relay based on `boky/postfix`.
+    * `alexa` starts `alexa-fhem` and `alexa-cookie-service` sidecars on the internal backend network.
+
+    ```console
+    sudo docker compose --profile db up -d
+    sudo docker compose --profile mail up -d
+    sudo docker compose --profile alexa up -d
+    ```
+
+    USB devices, host networking and privileged mode need local device paths and host-specific security decisions. Keep those as local Compose changes instead of enabling them in the default stack.
+
+    For local additions, create a `compose.override.yml` next to `docker-compose.yml`. Docker Compose reads that file automatically:
+
+    ```yaml
+    services:
+      fhem:
+        devices:
+          - "/dev/ttyUSB0:/dev/ttyUSB0"
+        # Use only when a device really needs broad host access.
+        # privileged: true
+    ```
+
+    Host networking is a separate local variant because it conflicts with the default `ports` mapping. Use an explicit override file when you need it:
+
+    ```yaml
+    services:
+      fhem:
+        network_mode: host
+        ports: !reset []
+    ```
+
+    Start it with:
+
+    ```console
+    sudo docker compose -f docker-compose.yml -f compose.host.yml up -d
+    ```
 
 3. Create a local Git repository and add all files as an initial commit:
 
@@ -480,10 +554,8 @@ Follow initial setup steps:
     ```console
     sudo mkdir -p /docker
     cd /docker; sudo git clone git@github.com:user/repo.git
-    cd /docker/home; sudo docker-compose up -d
+    cd /docker/home; sudo docker compose up -d
     ```
-
-
 ## Testing the Image itself in a container
 
 Basic testing of the image is done in the pipeline. The pipeline will start a container and verify that the health check reports the container is alive.
@@ -508,5 +580,3 @@ If you are running a 3rd party module, advice the maintainer to this description
 
     Add the topic 'fhem' and 'perl' and provide an instruction in your readme.md with 
     instruction how to use update add / update all to install your module.
-
-

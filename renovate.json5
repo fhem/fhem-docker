@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:pinDigests",
+    ":separateMultipleMajorReleases",
+    "customManagers:dockerfileVersions",
+    "customManagers:githubActionsVersions"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["docker-compose"],
+      "pinDigests": false
+    },
+    {
+      "groupName": "perlImagesMajor",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "automerge": false,
+      "minimumReleaseAge": "14 days",
+      "allowedVersions": "/^5\\.([1-9][02468])(\\.\\d)?(.*)/",
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
+      "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$"
+    },
+    {
+      "groupName": "perlImagesMinor38",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "minimumReleaseAge": "3 days",
+      "automerge": true,
+      "allowedVersions": "/^(5\\.)(38)(\\.\\d)?(.*)/",
+      "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
+      "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$",
+    },
+    {
+      "groupName": "Docker Digest",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["perl"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMinor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
+      "minimumReleaseAge": "1 days",
+    }
+  ]
+}

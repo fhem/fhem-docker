@@ -1,0 +1,6 @@
+# Keep shell and bats sources on LF regardless of the contributor's platform.
+# src/tests/bats/*.bats used to be checked in with CRLF while the shell scripts
+# they test use LF, so edits from different machines produced diffs that mixed
+# both endings inside a single file.
+*.sh   text eol=lf
+*.bats text eol=lf

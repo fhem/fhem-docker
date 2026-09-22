@@ -86,6 +86,7 @@ function waitForPidToTerminate() {
 
 # Searches for a text being newly appended to a file, optionally limited by a timeout.
 # Robust against truncation and (initial) non-existance of the file.
+# Follow the file name so the search continues after FHEM deletes/recreates it.
 #
 # Usage: waitForTextInFile file searchText [timeout]
 # Parameters:  file         File to search in
@@ -99,13 +100,14 @@ function waitForTextInFile() {
   local    inFile="$1"
   local    inSearchText="$2"
   local -i inTimeout=${3:-0}  # Wait indefinitely is default
-  local    bashCmd="tail -n0 --retry -f '$inFile' 2>/dev/null | sed -e '/$inSearchText/ q' > /dev/null"
+  local    bashCmd="tail -n0 --retry -F '$inFile' 2>/dev/null | sed -e '/$inSearchText/ q' > /dev/null"
   timeout $inTimeout bash -c "$bashCmd"
 }
 
 
 # Prints content added to a file to stdout while running in the background.
 # Robust against truncation and (initial) non-existance of the file.
+# Follow the file name so logging continues after FHEM deletes/recreates it.
 #
 # Usage: tailFileToConsoleStart file [-b]
 # Parameters:  file   File to print
@@ -118,9 +120,9 @@ function tailFileToConsoleStart() {
   local inFlag="${2:-}"
   tailFileToConsoleStop
   if [ "$inFlag" == "-b" ]; then
-    { tail -n +0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n +0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   else
-    { tail -n0 --retry -s 0.1 -f "$inLogFile" 2>/dev/null | grep --line-buffered '^.*$' & } 2>/dev/null # grep is used for line buffering as tail lost this option.
+    { tail -n0 --retry -s 0.1 -F "$inLogFile" 2>/dev/null & } 2>/dev/null
   fi
   gCurrentTailFile="$inLogFile"
   gCurrentTailPid=$!
@@ -245,15 +247,59 @@ function getGlobalAttr() {
 
 
 
-# Collect information about the docker environment
+# Detect the container runtime without relying on Docker-specific marker files.
+#
+# Usage: detectContainerRuntime
+# Global vars: CONTAINER_RUNTIME
+#              CONTAINERIZED
+#
+function detectContainerRuntime() {
+  local dockerEnvFile="${DOCKER_ENV_FILE:-/.dockerenv}"
+  local kubernetesTokenFile="${KUBERNETES_TOKEN_FILE:-/var/run/secrets/kubernetes.io/serviceaccount/token}"
+  local cgroupFile="${CONTAINER_CGROUP_FILE:-/proc/1/cgroup}"
+  local mountInfoFile="${CONTAINER_MOUNTINFO_FILE:-/proc/self/mountinfo}"
+  local runtimeSource=""
+
+  [ -r "$cgroupFile" ] && runtimeSource="$(cat "$cgroupFile")"
+  [ -r "$mountInfoFile" ] && runtimeSource="${runtimeSource}
+$(cat "$mountInfoFile")"
+
+  if [ -f "$kubernetesTokenFile" ] || [ -n "${KUBERNETES_SERVICE_HOST-}" ] || grep -qaE 'kubepods' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=kubernetes
+    export CONTAINERIZED=1
+  elif [ -f "$dockerEnvFile" ] || grep -qaE 'docker' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=docker
+    export CONTAINERIZED=1
+  elif grep -qaE 'containerd' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=containerd
+    export CONTAINERIZED=1
+  elif grep -qaE 'cri-o|crio' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=cri-o
+    export CONTAINERIZED=1
+  elif grep -qaE 'libpod|podman' <<< "$runtimeSource"; then
+    export CONTAINER_RUNTIME=podman
+    export CONTAINERIZED=1
+  else
+    export CONTAINER_RUNTIME=host
+    export CONTAINERIZED=0
+  fi
+}
+
+
+# Collect information about the container environment
 #
 # Usage: collectDockerInfo
 # Global vars: DOCKER_PRIVILEGED
 #              DOCKER_GW
 #              DOCKER_HOST
 #              DOCKER_HOSTNETWORK
+#              CONTAINER_RUNTIME
+#              CONTAINERIZED
 #
 function collectDockerInfo() {
+  detectContainerRuntime
+  echo $CONTAINER_RUNTIME > /container.runtime
+  echo $CONTAINERIZED > /containerized
   if ip link add dummy0 type dummy >/dev/null 2>&1 ; then
     ip link delete dummy0 >/dev/null 2>&1
     export DOCKER_PRIVILEGED=1
@@ -262,7 +308,7 @@ function collectDockerInfo() {
   fi
   echo $DOCKER_PRIVILEGED > /docker.privileged
 
-  cat /proc/self/cgroup | grep "memory:" | cut -d "/" -f 3 > /docker.container.id
+  awk -F/ 'NF > 1 { print $NF; exit }' "${CONTAINER_CGROUP_FILE:-/proc/self/cgroup}" > /docker.container.id
   captest --text | grep -P "^Effective:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.e
   captest --text | grep -P "^Permitted:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.p
   captest --text | grep -P "^Inheritable:" | cut -d " " -f 2- | sed "s/, /\n/g" | sort | sed ':a;N;$!ba;s/\n/,/g' > /docker.container.cap.i
@@ -637,10 +683,10 @@ function prepareFhemUser() {
   find ${FHEM_DIR}/ -path '*/*script*/*' -type f -exec chmod --quiet u+x {} \;
 
   printfInfo "Correcting group ownership for /dev/tty* \n"
-  find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference .tty {} \; 2>/dev/null
-  find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
-  find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
-  find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+  find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chown --recursive --quiet --no-dereference :tty {} \; 2>/dev/null
+  find /dev/ -name "ttyS*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
+  find /dev/ -name "ttyACM*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
+  find /dev/ -name "ttyUSB*" -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
   find /dev/ -regextype sed -regex ".*/tty[0-9]*" -exec chmod --recursive --quiet g+w {} \; 2>/dev/null
   find /dev/ -name "ttyS*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
   find /dev/ -name "ttyACM*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
@@ -648,7 +694,7 @@ function prepareFhemUser() {
 
   if [[ -d /dev/serial/by-id ]]; then
     printfInfo "Correcting group ownership for /dev/serial/* \n"
-    find /dev/serial/by-id/ -exec chown --recursive --quiet --no-dereference .dialout {} \; 2>/dev/null
+    find /dev/serial/by-id/ -exec chown --recursive --quiet --no-dereference :dialout {} \; 2>/dev/null
     find /dev/serial/by-id/ -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
   fi
 
@@ -660,11 +706,11 @@ function prepareFhemUser() {
       groupadd --force --gid ${GPIO_GID} --non-unique gpio 2>&1>/dev/null
     fi
     adduser --quiet fhem gpio 2>&1>/dev/null
-    find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference .gpio {} \; 2>/dev/null
+    find /dev/ -name "gpio*" -exec chown --recursive --quiet --no-dereference :gpio {} \; 2>/dev/null
     find /dev/ -name "gpio*" -exec chmod --recursive --quiet g+rw {} \; 2>/dev/null
-    [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/virtual/gpio/*
-    [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/platform/gpio-sunxi/gpio/*
-    [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference .gpio /sys/class/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/class/gpio/*
+    [ -d /sys/devices/virtual/gpio ] && chown --recursive --quiet --no-dereference :gpio /sys/devices/virtual/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/virtual/gpio/*
+    [ -d /sys/devices/platform/gpio-sunxi/gpio ] && chown --recursive --quiet --no-dereference :gpio /sys/devices/platform/gpio-sunxi/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/devices/platform/gpio-sunxi/gpio/*
+    [ -d /sys/class/gpio ] && chown --recursive --quiet --no-dereference :gpio /sys/class/gpio/* 2>&1>/dev/null && chmod --recursive --quiet g+w /sys/class/gpio/*
   fi
 
   if [ -n "$(grep ^i2c: /etc/group)" ]; then
@@ -675,7 +721,7 @@ function prepareFhemUser() {
       groupadd --force --gid ${I2C_GID} --non-unique i2c 2>&1>/dev/null
     fi
     adduser --quiet fhem i2c 2>&1>/dev/null
-    find /dev/ -name "i2c-*" -exec chown --recursive --quiet --no-dereference .i2c {} \;
+    find /dev/ -name "i2c-*" -exec chown --recursive --quiet --no-dereference :i2c {} \;
   fi
 
   printfInfo "Updating /etc/sudoers.d/fhem-docker\n"
@@ -742,7 +788,7 @@ END_OF_INLINE
   printfInfo "Updating SSH key pinning and SSH client permissions for user 'fhem' \n"
   cat ${FHEM_DIR}/.ssh/known_hosts /ssh_known_hosts.txt | grep -v ^# | sort -u -k1,2 > ${FHEM_DIR}/.ssh/known_hosts.tmp
   mv -f ${FHEM_DIR}/.ssh/known_hosts.tmp ${FHEM_DIR}/.ssh/known_hosts
-  chown -R fhem.fhem ${FHEM_DIR}/.ssh/
+  chown -R fhem:fhem ${FHEM_DIR}/.ssh/
   chmod 640 ${FHEM_DIR}/.ssh/known_hosts
   chmod 600 ${FHEM_DIR}/.ssh/id_ed25519 ${FHEM_DIR}/.ssh/id_rsa
   chmod 640 ${FHEM_DIR}/.ssh/id_ed25519.pub ${FHEM_DIR}/.ssh/id_rsa.pub

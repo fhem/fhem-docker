@@ -1,8 +1,8 @@
-# syntax=docker/dockerfile:1@sha256:93bfd3b68c109427185cd78b4779fc82b484b0b7618e36d0f104d4d801e66d25
+# syntax=docker/dockerfile:1@sha256:ecfaec9ed6d810b56388c508f4121597bfbba70d41a6dfeee4d8cad5f295fc32
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.36.3-slim-threaded-bullseye@sha256:51d5c5c317a508676d6e0790a1a8b9fc2d17c1def80e67b297b3ae91bd19ba89 AS base
+FROM perl:5.38.5-slim-threaded-bullseye@sha256:5bd84d0c244f394e1ffb0d37e2fb2d176c89422659045c56a01235b9e09dcd71 AS base
 
 ARG TARGETPLATFORM
 
@@ -46,9 +46,12 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.36.3-threaded-bullseye@sha256:b975af4332429b522c3b848bcf2a1c99b2b1b7355a796359810313956b3a7e5d AS build-cpan 
+FROM perl:5.38.5-threaded-bullseye@sha256:d70e3b0372488ab55e429eec8d8a678f90a095b1842f59ee14cedd8027087ae9 AS build-cpan 
 
 COPY cpanfile /usr/src/app/core/cpanfile
+COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
+COPY scripts/verify-cpan-requirements.pl /usr/local/bin/verify-cpan-requirements.pl
+COPY scripts/cpm-install-with-retry.sh /usr/local/bin/cpm-install-with-retry
 
 # Install Packages used for building cpan modules:
 RUN <<EOF
@@ -57,7 +60,15 @@ RUN <<EOF
       libusb-dev \
       graphviz \
       libgd-dev \
+      libfann-dev \
+      pkg-config \
+      libotr5-dev \
       python3-dev  
+  cat <<'SCRIPT' > /usr/local/bin/imlib2-config
+#!/bin/sh
+exec pkg-config imlib2 "$@"
+SCRIPT
+  chmod +x /usr/local/bin/imlib2-config
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
@@ -70,10 +81,25 @@ EOF
 # JSON::XS isn't marked as compatible with Perl 5.36, we prevent some output
 ENV PERL_CANARY_STABILITY_NOPROMPT=1 
 RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+  mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
   fi
-  cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained core/
+  # Math::Pari/Crypt::Random are unstable on linux/386 and linux/arm/v7.
+  if [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
+    sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
+    sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
+  fi
+  # HiPi pulls in Image::Imlib2 and currently only builds reliably on amd64.
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
+    sed -i '/HiPi/d' /usr/src/app/core/cpanfile
+  fi
+  cpm_workers=1
+  core_status=0
+  cpm-install-with-retry /usr/src/app/cpan-logs/core-install.log cpm install --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ || core_status=$?
+  cat /usr/src/app/cpan-logs/core-install.log
+  printf 'exit_code=%s\n' "$core_status" > /usr/src/app/cpan-verify/core/core-install-status.txt
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
   
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm/
@@ -90,7 +116,8 @@ RUN <<EOF
       libgd-dev \
       libdbus-1-dev \
       libimlib2-dev \
-      libsodium-dev 
+      libsodium-dev \
+      libsnmp-dev
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[^.] ~/.??* ~/*
 EOF
@@ -100,11 +127,26 @@ EOF
 COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
 # Fixup modules which do not work on all platforms and install afterwards
 RUN <<EOF
-  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/i386" ]; then 
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
     sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
   fi
+  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
+    sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
+  fi
+  cpm_workers=1
   
-  cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --workers=$(nproc) --local-lib-contained 3rdparty/ 
+  thirdparty_status=0
+  cpm-install-with-retry /usr/src/app/cpan-logs/3rdparty-install.log cpm install --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained 3rdparty/ || thirdparty_status=$?
+  cat /usr/src/app/cpan-logs/3rdparty-install.log
+  printf 'exit_code=%s\n' "$thirdparty_status" > /usr/src/app/cpan-verify/3rdparty/3rdparty-install-status.txt
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/all --label all
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
+  core_status=$(sed -n 's/^exit_code=//p' /usr/src/app/cpan-verify/core/core-install-status.txt | tail -n 1)
+  core_status=${core_status:-0}
+  printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
   rm -rf /root/.cpanm 
   rm -rf /root/.perl-cpm
 EOF
@@ -365,3 +407,9 @@ RUN ln -s /opt/bats/bin/bats /usr/local/bin/bats
 WORKDIR /code/
 
 ENTRYPOINT [ "/usr/local/bin/bats" ]
+
+FROM scratch AS cpan-inventory
+
+COPY --from=build-cpan /usr/src/app/cpan-inventory/ /
+COPY --from=build-cpan /usr/src/app/cpan-verify/ /verify/
+COPY --from=build-cpan /usr/src/app/cpan-logs/ /logs/

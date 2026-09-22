@@ -126,6 +126,22 @@ teardown() {
     run bash -c 'tailFileToConsoleStart ${realLogFile}; sleep 1; echo "again" >> $realLogFile; sleep 1; tailFileToConsoleStop'
     assert_output "again"
     refute_output "hello"
+
+    run bash -c 'tailFileToConsoleStart ${realLogFile}; sleep 1; rm $realLogFile; echo "recreated" > $realLogFile; sleep 1; tailFileToConsoleStop'
+    assert_output "recreated"
+}
+
+# bats test_tags=unitTest
+@test "check waitForTextInFile() after logfile recreation" {
+    export searchLogFile="${BATS_TEST_TMPDIR}/waitfor.log"
+    echo "some old content" > $searchLogFile
+
+    # FHEM can delete and recreate its logfile, the awaited text then only
+    # shows up in the newly created file.
+    ( sleep 1; rm -f $searchLogFile; echo "Server started" > $searchLogFile ) >/dev/null 2>&1 &
+
+    run waitForTextInFile $searchLogFile "Server started" 10
+    assert_success
 }
 
 # bats test_tags=integrationTest
