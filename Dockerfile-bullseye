@@ -202,7 +202,7 @@ COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
 #
 # Standard FHEM Layer
 #
-FROM base-cpan AS with-fhem
+FROM base-cpan AS fhem-core
 
 ENV PERL5LIB=/usr/src/app/core/lib/perl5
 
@@ -224,57 +224,13 @@ ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
    TIMEOUT=10 \
    CONFIGTYPE=fhem.cfg
 
-# Moved AGS to the end, because it changes every run and invalidates the cache for all following steps  https://github.com/moby/moby/issues/20136
-# Arguments to instantiate AS variables
-ARG PLATFORM="linux"
-ARG TAG=""
-ARG IMAGE_VCS_REF=""
-ARG IMAGE_VERSION=""
-ARG BUILD_DATE=""
+# Image metadata lives in the final stages below, not here.
+# BUILD_DATE, IMAGE_VERSION, IMAGE_VCS_REF and L_USAGE get a new value on every
+# single build, and every layer above the one consuming them is invalidated with
+# them (https://github.com/moby/moby/issues/20136). The expensive apt layers
+# therefore build on this stage, while the metadata is applied afterwards.
 
-# Re-usable variables during build
-ARG L_AUTHORS=""
-ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
-ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
-ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
-ARG L_VENDOR="FHEM"
-ARG L_LICENSES="MIT"
-ARG L_TITLE="fhem-${TARGETPLATFORM}"
-ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye Perl image."
-
-ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
-ARG L_URL_FHEM="https://fhem.de/"
-ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
-ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
-ARG L_VENDOR_FHEM="FHEM e.V."
-ARG L_LICENSES_FHEM="GPL-2.0"
-ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
-
-# non-standard labels
-LABEL org.fhem.authors=${L_AUTHORS_FHEM}
-LABEL org.fhem.url=${L_URL_FHEM}
-LABEL org.fhem.documentation=${L_USAGE_FHEM}
-LABEL org.fhem.source=${L_VCS_URL_FHEM}
-LABEL org.fhem.vendor=${L_VENDOR_FHEM}
-LABEL org.fhem.licenses=${L_LICENSES_FHEM}
-LABEL org.fhem.description=${L_DESCR_FHEM}
-
-# annotation labels according to
-# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
-LABEL org.opencontainers.image.created=${BUILD_DATE}
-LABEL org.opencontainers.image.authors=${L_AUTHORS}
-LABEL org.opencontainers.image.url=${L_URL}
-LABEL org.opencontainers.image.documentation=${L_USAGE}
-LABEL org.opencontainers.image.source=${L_VCS_URL}
-LABEL org.opencontainers.image.version=${IMAGE_VERSION}
-LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
-LABEL org.opencontainers.image.vendor=${L_VENDOR}
-LABEL org.opencontainers.image.licenses=${L_LICENSES}
-LABEL org.opencontainers.image.title=${L_TITLE} 
-LABEL org.opencontainers.image.description=${L_DESCR}
-
-RUN chmod 755 /*.sh /usr/local/bin/* \ 
-    && echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+RUN chmod 755 /*.sh /usr/local/bin/*
 
 VOLUME [ "/opt/fhem" ]
 
@@ -292,7 +248,7 @@ CMD [ "start" ]
 # Add additional Perl and System layers
 #
 
-FROM with-fhem AS with-fhem-extended
+FROM fhem-core AS fhem-extended
 
 ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 
@@ -326,7 +282,7 @@ COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib
 # Add additional Python layer
 #
 
-FROM with-fhem-extended AS with-fhem-extended-python
+FROM fhem-extended AS fhem-extended-python
 
 RUN <<EOF 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
@@ -347,7 +303,7 @@ EOF
 #
 # Add nodejs app layer
 #
-FROM with-fhem-extended-python AS with-fhem-extended-python-nodejs
+FROM fhem-extended-python AS fhem-extended-python-nodejs
 
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
@@ -376,6 +332,119 @@ EOF
 # Layer only for bash unit testing
 #
 #
+#
+# Final images: the volatile metadata is applied as the very last layer,
+# so a new build date cannot invalidate anything underneath it.
+#
+
+FROM fhem-core AS with-fhem
+
+# Arguments to instantiate AS variables
+ARG PLATFORM="linux"
+ARG TAG=""
+ARG IMAGE_VCS_REF=""
+ARG IMAGE_VERSION=""
+ARG BUILD_DATE=""
+
+# Re-usable variables during build
+ARG L_AUTHORS=""
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-minimal"
+ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
+ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
+ARG L_VENDOR="FHEM"
+ARG L_LICENSES="MIT"
+ARG L_TITLE="fhem-minimal"
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye Perl image."
+
+ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
+ARG L_URL_FHEM="https://fhem.de/"
+ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
+ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
+ARG L_VENDOR_FHEM="FHEM e.V."
+ARG L_LICENSES_FHEM="GPL-2.0"
+ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
+
+# non-standard labels
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
+
+# annotation labels according to
+# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.authors=${L_AUTHORS}
+LABEL org.opencontainers.image.url=${L_URL}
+LABEL org.opencontainers.image.documentation=${L_USAGE}
+LABEL org.opencontainers.image.source=${L_VCS_URL}
+LABEL org.opencontainers.image.version=${IMAGE_VERSION}
+LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
+LABEL org.opencontainers.image.vendor=${L_VENDOR}
+LABEL org.opencontainers.image.licenses=${L_LICENSES}
+LABEL org.opencontainers.image.title=${L_TITLE} 
+LABEL org.opencontainers.image.description=${L_DESCR}
+
+RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+
+FROM fhem-extended-python-nodejs AS with-fhem-extended-python-nodejs
+
+# Arguments to instantiate AS variables
+ARG PLATFORM="linux"
+ARG TAG=""
+ARG IMAGE_VCS_REF=""
+ARG IMAGE_VERSION=""
+ARG BUILD_DATE=""
+
+# Re-usable variables during build
+ARG L_AUTHORS=""
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem"
+ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
+ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
+ARG L_VENDOR="FHEM"
+ARG L_LICENSES="MIT"
+ARG L_TITLE="fhem"
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian Bullseye Perl image."
+
+ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
+ARG L_URL_FHEM="https://fhem.de/"
+ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
+ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
+ARG L_VENDOR_FHEM="FHEM e.V."
+ARG L_LICENSES_FHEM="GPL-2.0"
+ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
+
+# non-standard labels
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
+
+# annotation labels according to
+# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.authors=${L_AUTHORS}
+LABEL org.opencontainers.image.url=${L_URL}
+LABEL org.opencontainers.image.documentation=${L_USAGE}
+LABEL org.opencontainers.image.source=${L_VCS_URL}
+LABEL org.opencontainers.image.version=${IMAGE_VERSION}
+LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
+LABEL org.opencontainers.image.vendor=${L_VENDOR}
+LABEL org.opencontainers.image.licenses=${L_LICENSES}
+LABEL org.opencontainers.image.title=${L_TITLE} 
+LABEL org.opencontainers.image.description=${L_DESCR}
+
+RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+
 FROM with-fhem AS with-fhem-bats
 
 ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
