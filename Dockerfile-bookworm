@@ -387,12 +387,14 @@ ARG BUILD_DATE=""
 
 # Re-usable variables during build
 ARG L_AUTHORS=""
-ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-minimal"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
-ARG L_TITLE="fhem-${TARGETPLATFORM}"
+ARG L_TITLE="fhem-minimal"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian bookworm Perl image."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
@@ -439,12 +441,14 @@ ARG BUILD_DATE=""
 
 # Re-usable variables during build
 ARG L_AUTHORS=""
-ARG L_URL="https://hub.docker.com/r/fhem/fhem-${TARGETPLATFORM}"
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem"
 ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
 ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
 ARG L_VENDOR="FHEM"
 ARG L_LICENSES="MIT"
-ARG L_TITLE="fhem-${TARGETPLATFORM}"
+ARG L_TITLE="fhem"
 ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian bookworm Perl image."
 
 ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
