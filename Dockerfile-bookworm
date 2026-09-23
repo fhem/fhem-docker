@@ -65,6 +65,8 @@ COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules
 COPY scripts/verify-cpan-requirements.pl /usr/local/bin/verify-cpan-requirements.pl
 COPY scripts/cpm-install-with-retry.sh /usr/local/bin/cpm-install-with-retry
 
+# HiPi is part of the core cpanfile and pulls in Image::Imlib2, so libimlib2-dev
+# and libi2c-dev have to be installed before the core CPAN run, not after it.
 # Install Packages used for building cpan modules:
 RUN <<EOF
   set -ex;
@@ -75,6 +77,8 @@ RUN <<EOF
     libfann-dev \
     pkg-config \
     graphviz \
+    libimlib2-dev \
+    libi2c-dev \
     python3-dev
   cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
   cpm --version
@@ -132,10 +136,8 @@ RUN <<EOF
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
   LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libbluetooth-dev \
-      libi2c-dev \
       libgd-dev \
       libdbus-1-dev \
-      libimlib2-dev \
       libsodium-dev \
       libsnmp-dev
   LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
