@@ -2,7 +2,7 @@
 # 
 # base layer with perl and some general preparations
 #
-FROM perl:5.38.5-slim-threaded-bookworm@sha256:3cdc1c605ef5d0d13c16c2be3d26c9700eee6c1895d9854434c9a9fd3abf7975 AS base
+FROM perl:5.40.5-slim-threaded-bookworm@sha256:34be6d901998c2a8d06be8359a6dae6eba8375fb935abe6110d7e706b2174804 AS base
 
 ARG TARGETPLATFORM
 
@@ -50,7 +50,7 @@ EOF
 # Install all CPAN Modules, needed from FHEM and standard modules
 #
 
-FROM perl:5.38.5-threaded-bookworm@sha256:15b80cbcbf0883842002b9b85ae365313066d358b1869ef0562d73adb3bef345 AS build-cpan 
+FROM perl:5.40.5-threaded-bookworm@sha256:fdd1c4587e6203854a5d356ebda175733c09f8c259dc12d093fee4064db5115f AS build-cpan 
 
 ARG TARGETPLATFORM
 ARG TARGETARCH
@@ -220,10 +220,10 @@ RUN <<EOF
     # friends) so that XS modules can be compiled inside the container. This
     # image carries no C compiler, so those headers can never be used -- but
     # they keep dragging kernel and OpenSSL CVEs (linux-libc-dev, libssl-dev)
-    # into every image scan. The base tag is pinned to an end-of-life Perl
-    # release, so no rebuilt upstream tag will ever ship fixed versions of
-    # them. Drop the headers here; the matching runtime libraries (libc6,
-    # libssl3, zlib1g, libarchive13) stay installed.
+    # into every image scan, and a rebuilt upstream tag only picks up their
+    # fixes once the base image is repinned here. Drop the headers; the
+    # matching runtime libraries (libc6, libssl3, zlib1g, libarchive13) stay
+    # installed.
     # Their auto-installed companions (libc-dev-bin, libnsl-dev, libtirpc-dev,
     # rpcsvc-proto) are taken by the autoremove below.
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get purge -qqy \
