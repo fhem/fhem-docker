@@ -74,7 +74,6 @@ RUN <<EOF
     libgd-dev \
     libfann-dev \
     pkg-config \
-    libotr5-dev \
     graphviz \
     python3-dev    
   cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
