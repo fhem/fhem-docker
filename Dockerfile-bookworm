@@ -216,7 +216,8 @@ RUN <<EOF
         libgd3 \
         librsvg2-2 \
         iproute2 \
-        libpq5
+        libpq5 \
+        libfann2
     # The upstream Perl base image ships a C header toolchain (libc6-dev and
     # friends) so that XS modules can be compiled inside the container. This
     # image carries no C compiler, so those headers can never be used -- but
