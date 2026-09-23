@@ -57,7 +57,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   alexa-fhem:
-    image: ghcr.io/fhem/alexa-fhem:5.1.14
+    image: ghcr.io/fhem/alexa-fhem:5.1.15
     restart: unless-stopped
     profiles:
       - alexa
