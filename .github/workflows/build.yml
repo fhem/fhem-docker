@@ -83,7 +83,7 @@ jobs:
 
       - uses: shogo82148/actions-setup-perl@v1
         with:
-          perl-version: "5.38"
+          perl-version: "5.40"
           install-modules-with: cpanm
           install-modules-args: --notest
           install-modules: PPI Perl::PrereqScanner::NotQuiteLite File::Path File::Find::Rule List::MoreUtils CPAN::Meta Module::CPANfile CPAN::Meta::Merge Scalar::Util Module::CoreList

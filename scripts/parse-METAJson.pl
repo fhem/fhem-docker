@@ -81,7 +81,14 @@ sub filter_nested_hashref {
         } elsif ( !is_valid_prereq_name($key) ) {
             warn "Skipping invalid prereq key '$key'\n";
             delete $hashref->{$key};
-        } elsif ( $key =~ $filter_value || Module::CoreList->is_core( $key,undef,5.36) )
+        # Perl version of the image these modules get installed into, written
+        # in $]-notation on purpose. A short literal is numified first and
+        # Module::CoreList then reads it as a far-future release: 5.40 becomes
+        # 5.4 and is read as perl 5.400, just as the previous 5.36 was read as
+        # perl 5.360. That marks modules such as Test2::V1 as core although
+        # 5.40 does not ship them, so they would be dropped from the cpanfile
+        # and end up missing in the image.
+        } elsif ( $key =~ $filter_value || Module::CoreList->is_core( $key,undef,5.040000) )
         {
             #print "\n Deleting $key";
             delete $hashref->{$key};
