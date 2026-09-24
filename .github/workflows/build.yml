@@ -283,7 +283,7 @@ jobs:
         id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}
-          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
           restore-keys: |
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-${{ env.CPM_CACHE_ARCH }}-${{ env.CPAN_CPM_CACHE_VERSION }}-
@@ -624,7 +624,7 @@ jobs:
         id: cache-cpm-restore
         with:
           path: .cache/cpm${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}
-          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}
           restore-keys: |
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-${{ hashFiles('cpanfile', '3rdParty/cpanfile') }}-
             cpm-${{ runner.os }}${{ matrix.dockerfile }}-amd64-${{ env.CPAN_CPM_CACHE_VERSION }}-
