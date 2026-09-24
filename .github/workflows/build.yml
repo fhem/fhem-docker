@@ -1173,7 +1173,7 @@ jobs:
           context: .
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/arm/v7
+          platforms: linux/arm64
           push: false
           target: with-fhem-extended-python-nodejs
           cache-from: | 
