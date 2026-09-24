@@ -344,28 +344,41 @@ EOF
 #
 # Add nodejs app layer
 #
+# Node.js comes from the official image instead of apt: Debian bookworm ships
+# Node 18, which reached end-of-life in April 2025 and will never be updated
+# there. Only the node paths are copied -- never all of /usr/local, because the
+# perl base image keeps its own installation (perl, cpanm, cpm) in that prefix.
+FROM node:22-bookworm-slim@sha256:43ac6c60b8f89723f746e8a92ce91abd5017e627ce1ddfe4238355d3a30b772c AS nodejs-source
+
 FROM fhem-extended-python AS fhem-extended-python-nodejs
 
 ARG IMAGE_LAYER_NODEJS_EXT="0"
 
+COPY --from=nodejs-source /usr/local/bin/node /usr/local/bin/node
+COPY --from=nodejs-source /usr/local/lib/node_modules /usr/local/lib/node_modules
+
 RUN <<EOF
-    # mkdir -p /tmp/keyrings 
-    #curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /tmp/keyrings/nodesource.gpg 
-    #echo "deb [signed-by=/tmp/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
-    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends nodejs 
-    npm install -g npm@latest
-    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then 
+    set -e
+    # node links against libatomic on 32-bit arm. Installing the deb would have
+    # pulled that in as a package dependency; a COPY resolves no dependencies,
+    # so it has to be named here.
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends libatomic1
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean
+    ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
+    ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+    node --version
+    npm --version
+    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then
            npm install -g --unsafe-perm --production \
             alexa-cookie2 \
             alexa-fhem \
             gassistant-fhem \
             homebridge \
             homebridge-fhem \
-            tradfri-fhem \
-    ; fi 
-    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/* /etc/apt/sources.list.d/nodesource.list 
+            tradfri-fhem
+    fi
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.npm
 EOF
 
 #
