@@ -296,6 +296,11 @@ ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
 # Add extended system layer
 RUN <<EOF
     set -x;
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       libsox-fmt-all \
@@ -327,6 +332,11 @@ COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib
 FROM fhem-extended AS fhem-extended-python
 
 RUN <<EOF 
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
       python3 \
@@ -362,6 +372,11 @@ RUN <<EOF
     # node links against libatomic on 32-bit arm. Installing the deb would have
     # pulled that in as a package dependency; a COPY resolves no dependencies,
     # so it has to be named here.
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update
     LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends libatomic1
     LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean
