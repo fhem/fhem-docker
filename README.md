@@ -32,7 +32,7 @@ Use the regular image only when you intentionally need the compatibility image w
     docker pull ghcr.io/fhem/fhem-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
 
-This image bundles additional runtime environments in the FHEM container. That is useful for compatibility with existing deployments, but it is an anti-pattern for new setups when the same functionality can run as sidecars or explicit image extensions. Some bundled runtime versions can also age independently of the FHEM runtime.
+This image bundles additional runtime environments in the FHEM container. That is useful for compatibility with existing deployments, but it is an anti-pattern for new setups when the same functionality can run as sidecars or explicit image extensions. Some bundled runtime versions can also age independently of the FHEM runtime. Supported platforms are `linux/amd64`, `linux/arm/v7` and `linux/arm64`. `linux/i386` is available for the minimal image only, because the bundled Node.js runtime is not published for that platform.
 
 ### From Docker Hub
 

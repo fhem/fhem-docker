@@ -1139,7 +1139,7 @@ jobs:
           context: .
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64,linux/386
+          platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem-extended-python-nodejs
           cache-from: | 
