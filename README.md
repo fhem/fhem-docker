@@ -242,7 +242,7 @@ The container entrypoint supports the following environment variables. Values th
 | `TIMEOUT_STOPPING` | `30` | Seconds to wait for FHEM to stop gracefully before sending `SIGKILL`. |
 | `TIMEOUT_STARTING` | `60` | Seconds to wait for FHEM to report that the server has started. |
 | `TIMEOUT_REAPPEAR` | `15` | Seconds to wait for a terminated FHEM process to reappear before handling it as failed. |
-| `APT_PKGS` | empty | Deprecated: Debian packages to install during initial container setup. Prefer extending the image instead. |
+| `APT_PKGS` | empty | Removed: no longer installs anything. Setting it only prints a notice. Extend the image instead. |
 | `CPAN_PKGS` | empty | Deprecated: CPAN modules to install during initial container setup. Prefer extending the image instead. |
 | `PIP_PKGS` | empty | Deprecated: Python packages to install during initial container setup. Prefer extending the image instead. |
 | `NPM_PKGS` | empty | Deprecated: Node.js packages to install during initial container setup. Prefer extending the image instead. |
