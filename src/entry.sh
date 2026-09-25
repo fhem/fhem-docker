@@ -496,9 +496,12 @@ function aptInstall() {
 #              NPM_PKGS
 #
 function initialPackageSetup() {
-  
+
   if [ -n "${APT_PKGS}" ]; then
-    aptInstall "Adding custom APT packages to container" "/pkgs.apt" ${APT_PKGS}
+    printfInfo "**********************************************************************\n"
+    printfInfo " APT_PKGS no longer installs packages in the running container.\n"
+    printfInfo " Extend the image instead, see the README.\n"
+    printfInfo "**********************************************************************\n"
   fi 
 
   if [ -n "${CPAN_PKGS}" ]; then
