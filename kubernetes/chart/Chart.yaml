@@ -1,0 +1,19 @@
+apiVersion: v2
+name: fhem
+description: A Helm chart for FHEM (fhem-docker), the open-source Perl-based home automation system
+type: application
+version: 1.0.2
+appVersion: "5-bookworm"
+keywords:
+  - fhem
+  - home-automation
+  - smarthome
+  - iot
+  - fhem-docker
+home: https://fhem.de/
+sources:
+  - https://github.com/fhem/fhem-docker/tree/master/kubernetes/chart/
+maintainers:
+  - name: Marko Oldenburg
+    email: fhemdevelopment@cooltux.net
+icon: https://fhem.de/www/images/fhem.png

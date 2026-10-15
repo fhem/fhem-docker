@@ -1,0 +1,61 @@
+1. Get the application URL by running these commands:
+{{- if .Values.httpRoute.enabled }}
+  FHEM is exposed via Gateway API HTTPRoute:
+  {{- if .Values.httpRoute.hostnames }}
+  {{- range .Values.httpRoute.hostnames }}
+  echo "http://{{ . }}/fhem"
+  {{- end }}
+  {{- else if .Values.gateway.enabled }}
+  export GATEWAY_IP=$(kubectl get gateway {{ include "fhem.fullname" . }} --namespace {{ .Release.Namespace }} -o jsonpath='{.status.addresses[0].value}')
+  echo "http://$GATEWAY_IP/fhem"
+  {{- else }}
+  echo "Inspect your Gateway address to access FHEM (HTTPRoute: {{ include "fhem.fullname" . }}):"
+  kubectl get httproute {{ include "fhem.fullname" . }} --namespace {{ .Release.Namespace }}
+  {{- end }}
+{{- else if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "fhem.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT/fhem
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "fhem.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "fhem.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}/fhem
+{{- else if contains "ClusterIP" .Values.service.type }}
+  echo "FHEM Web UI is accessible inside the cluster or via port-forwarding:"
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fhem.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  echo "Visit: http://127.0.0.1:{{ .Values.service.port }}/fhem"
+{{- end }}
+
+2. FHEM Telnet & Layer 4 Interfaces:
+{{- if and .Values.httpRoute.enabled .Values.tcpRoute.enabled }}
+  - TCP traffic is routed via Gateway API TCPRoute (Port: {{ .Values.tcpRoute.port | default .Values.service.telnetPort }}).
+{{- end }}
+{{- if and .Values.httpRoute.enabled .Values.udpRoute.enabled }}
+  - UDP traffic is routed via Gateway API UDPRoute (Port: {{ .Values.udpRoute.port | default 3671 }}).
+{{- end }}
+  Port-forward the telnet port:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fhem.fullname" . }} {{ .Values.service.telnetPort }}:{{ .Values.service.telnetPort }}
+  Connect using:
+  telnet 127.0.0.1 {{ .Values.service.telnetPort }}  (or: nc 127.0.0.1 {{ .Values.service.telnetPort }})
+
+3. Configuration & Environment Variables:
+  - Environment variables are supplied via the ConfigMap '{{ include "fhem.fullname" . }}-config'.
+  - Any changes made in 'values.yaml' under 'env:' will automatically roll out to the pod via ConfigMap checksum tracking.
+{{- if include "fhem.configDBEnabled" . }}
+  - FHEM is running in database mode (configDB).
+  - Database configuration is mounted from Secret '{{ include "fhem.configDBSecretName" . }}' to '{{ and .Values.configDB .Values.configDB.mountPath | default (printf "%s/configDB.conf" (.Values.persistence.mountPath | default "/opt/fhem")) }}'.
+{{- end }}
+
+4. Persistence:
+{{- if .Values.persistence.enabled }}
+  - Persistent volume claim '{{ .Values.persistence.existingClaim | default (include "fhem.fullname" .) }}' is mounted at '{{ .Values.persistence.mountPath | default "/opt/fhem" }}'.
+{{- else }}
+  - Persistence is DISABLED. All data under /opt/fhem will be lost when the pod restarts!
+{{- end }}

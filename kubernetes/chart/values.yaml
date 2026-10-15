@@ -1,0 +1,568 @@
+# Default values for fhem Helm chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# ------------------------------------------------------------------------------
+# Replica and Deployment Strategy
+# ------------------------------------------------------------------------------
+# FHEM is fundamentally a single-master home automation server that maintains state
+# and locks its SQLite/file database in /opt/fhem. Therefore, replicaCount should
+# remain 1 to prevent split-brain and file corruption.
+replicaCount: 1
+
+strategy:
+  # Using 'Recreate' ensures the terminating pod completely releases the PersistentVolumeClaim
+  # before a new pod is spawned, avoiding Multi-Attach volume conflicts.
+  type: Recreate
+
+# ------------------------------------------------------------------------------
+# Image Configuration
+# ------------------------------------------------------------------------------
+image:
+  # Container repository for FHEM.
+  # Recommended official images:
+  #   - ghcr.io/fhem/fhem-docker (Standard compatibility image with Python/Node bundled)
+  #   - ghcr.io/fhem/fhem-minimal-docker (Minimal slim image for modern setups)
+  #   - fhem/fhem (Docker Hub mirror)
+  repository: ghcr.io/fhem/fhem-docker
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  # Use fixed tags such as "5-bookworm" or "5-threaded-bookworm".
+  tag: "5-bookworm"
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Overrides for Helm naming
+nameOverride: ""
+fullnameOverride: ""
+
+# ------------------------------------------------------------------------------
+# Service Account
+# ------------------------------------------------------------------------------
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+  # Whether to automount the API token into the pod
+  automountServiceAccountToken: true
+
+# ------------------------------------------------------------------------------
+# Pod Networking and Security Configuration
+# ------------------------------------------------------------------------------
+# Enable hostNetwork if your FHEM modules need raw network layer access,
+# such as mDNS/multicast auto-discovery, SSDP, Sonos, or direct IP binding.
+hostNetwork: false
+
+# DNS policy when hostNetwork is toggled. Defaults to ClusterFirst (or ClusterFirstWithHostNet when hostNetwork is true).
+dnsPolicy: ""
+
+# Pod security context (applied at pod level)
+podSecurityContext: {}
+  # fsGroup: 6061
+
+# Container security context.
+# Note: The entrypoint script starts as root to perform dynamic chown/chmod
+# on /opt/fhem and device nodes, then drops privileges to user 'fhem' (UID 6061).
+# If passing USB dongles (e.g. CUL, Zigbee, Z-Wave), you may set 'privileged: true'
+# or add necessary Linux capabilities here.
+securityContext: {}
+  # privileged: false
+  # capabilities:
+  #   add:
+  #     - SYS_ADMIN
+
+# Annotations and labels to be added to pods
+podAnnotations: {}
+podLabels: {}
+
+# ------------------------------------------------------------------------------
+# Environment Variables (Managed via ConfigMap)
+# ------------------------------------------------------------------------------
+# All key-value pairs defined under `env` are loaded into a dedicated Kubernetes
+# ConfigMap and injected into the container via `envFrom.configMapRef`.
+# Changes to these values automatically roll out to the pod via ConfigMap checksum tracking.
+env:
+  # ============================================================================
+  # 1. System, Localization & FHEM Runtime
+  # ============================================================================
+  # Container timezone (e.g., "Europe/Berlin", "UTC", "America/New_York")
+  TZ: "Europe/Berlin"
+
+  # FHEM configuration mode or file name.
+  # Common options:
+  #   - "fhem.cfg"      : Standard file-based configuration (default)
+  #   - "fhem.cfg.demo" : Demo configuration
+  #   - "configDB"      : Database-driven configuration using SQL database
+  CONFIGTYPE: "fhem.cfg"
+
+  # Automatic restart of FHEM process on unexpected termination ("1" = enabled, "0" = disabled)
+  RESTART: "1"
+
+  # File creation umask applied when FHEM process starts (default: 0037)
+  UMASK: "0037"
+
+  # Internal Telnet port where FHEM listens for CLI management (default: 7072)
+  TELNETPORT: "7072"
+
+  # ============================================================================
+  # 2. Startup & Shutdown Timeouts (in seconds)
+  # ============================================================================
+  # Maximum time in seconds to wait for FHEM to finish starting up before container aborts
+  TIMEOUT_STARTING: "60"
+
+  # Maximum time in seconds to wait for FHEM process to terminate gracefully on shutdown
+  TIMEOUT_STOPPING: "30"
+
+  # Time in seconds to wait for a terminated FHEM process to reappear before declaring failure
+  TIMEOUT_REAPPEAR: "15"
+
+  # ============================================================================
+  # 3. User, Group & File Permissions
+  # ============================================================================
+  # User ID (UID) of the internal fhem user (default: 6061)
+  FHEM_UID: "6061"
+
+  # Group ID (GID) of the internal fhem group (default: 6061)
+  FHEM_GID: "6061"
+
+  # Permission mask enforced for directories created recursively under /opt/fhem (default: 0750)
+  FHEM_PERM_DIR: "0750"
+
+  # Permission mask enforced for files created recursively under /opt/fhem (default: 0640)
+  FHEM_PERM_FILE: "0640"
+
+  # ============================================================================
+  # 4. Hardware Access Group IDs (for USB / GPIO / I2C / Bluetooth passthrough)
+  # ============================================================================
+  # GID for Bluetooth device subsystem access (default: 6001)
+  BLUETOOTH_GID: "6001"
+
+  # GID for GPIO device subsystem access, e.g., on Raspberry Pi (default: 6002)
+  GPIO_GID: "6002"
+
+  # GID for I2C bus device subsystem access (default: 6003)
+  I2C_GID: "6003"
+
+  # ============================================================================
+  # 5. Network & Host Resolution Overrides
+  # ============================================================================
+  # Explicit host IPv4 address for host.docker.internal (auto-detected if empty)
+  DOCKER_HOST: ""
+
+  # Explicit gateway IPv4 address for gateway.docker.internal (auto-detected if empty)
+  DOCKER_GW: ""
+
+  # ============================================================================
+  # 6. Dynamic Package Installation on Container Startup (Optional / Legacy)
+  # ============================================================================
+  # Space-separated list of Debian packages to install during container initialization
+  APT_PKGS: ""
+
+  # Space-separated list of Perl CPAN modules to install during container initialization
+  CPAN_PKGS: ""
+
+  # Space-separated list of Python packages to install during container initialization
+  PIP_PKGS: ""
+
+  # Space-separated list of Node.js NPM packages to install during container initialization
+  NPM_PKGS: ""
+
+  # ============================================================================
+  # 7. Interpreter Environment Passthrough & Custom Variables
+  # ============================================================================
+  # The FHEM container entrypoint automatically propagates any environment variable
+  # starting with "PERL", "PYTHON", or "NODE" to the FHEM child process runtime.
+  # You can specify additional variables here:
+  # PERL_LWP_SSL_VERIFY_HOSTNAME: "0"
+  # PYTHONUNBUFFERED: "1"
+  # NODE_ENV: "production"
+
+# Annotations to attach to the generated ConfigMap
+configMapAnnotations: {}
+
+# ------------------------------------------------------------------------------
+# Database Configuration (configDB)
+# ------------------------------------------------------------------------------
+# Database configuration for FHEM when using database mode (CONFIGTYPE: "configDB").
+# When enabled (or when env.CONFIGTYPE is set to "configDB"), a Kubernetes Secret
+# containing configDB.conf is automatically generated and mounted into /opt/fhem/configDB.conf.
+configDB:
+  # Enable automatic generation and mounting of the configDB Secret.
+  # When true, env.CONFIGTYPE is automatically set to "configDB".
+  enabled: false
+
+  # Database connection string (Perl DBI syntax).
+  # Examples:
+  #   - MySQL/MariaDB: "mysql:database=fhem;host=db-server;port=3306"
+  #   - PostgreSQL:    "Pg:dbname=fhem;host=db-server;port=5432"
+  #   - SQLite:        "SQLite:dbname=/opt/fhem/configDB.db"
+  connection: ""
+
+  # Database user
+  user: ""
+
+  # Database password
+  password: ""
+
+  # Mount path for configDB.conf inside the container.
+  # Defaults to '<persistence.mountPath>/configDB.conf' (default: /opt/fhem/configDB.conf).
+  mountPath: ""
+
+  # Permission mode for the mounted secret file (e.g. 0440, 0400).
+  # If omitted, Kubernetes default applies.
+  defaultMode: null
+
+  # Name of an existing Secret containing 'configDB.conf' to use instead of generating one.
+  existingSecret: ""
+
+  # Annotations to attach to the generated Secret.
+  secretAnnotations: {}
+
+# ------------------------------------------------------------------------------
+# Sensitive & Direct Environment Variables (Secrets / Downward API)
+# ------------------------------------------------------------------------------
+# Additional environment variables passed directly to the container (e.g., from Secrets)
+extraEnv: []
+  # - name: DB_PASSWORD
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: fhem-db-credentials
+  #       key: password
+
+# Additional existing ConfigMaps or Secrets to mount as environment variables
+extraEnvFrom: []
+  # - secretRef:
+  #     name: fhem-sensitive-secrets
+  # - configMapRef:
+  #     name: custom-external-config
+
+# ------------------------------------------------------------------------------
+# Service Configuration
+# ------------------------------------------------------------------------------
+service:
+  # Service type: ClusterIP, NodePort, or LoadBalancer
+  type: ClusterIP
+
+  # HTTP port for the FHEMWEB interface (default: 8083)
+  port: 8083
+
+  # Telnet management port for FHEM (default: 7072)
+  telnetPort: 7072
+
+  # Specific static NodePorts when service.type is NodePort or LoadBalancer
+  nodePorts:
+    http: ""
+    telnet: ""
+
+  # Annotations to add to the Service
+  annotations: {}
+
+  # Extra ports to expose on the service (e.g. MQTT broker on 1883, HomeKit on 51826)
+  extraPorts: []
+    # - name: mqtt
+    #   port: 1883
+    #   targetPort: 1883
+    #   protocol: TCP
+    # - name: homekit
+    #   port: 51826
+    #   targetPort: 51826
+    #   protocol: TCP
+
+# ------------------------------------------------------------------------------
+# Ingress Configuration
+# ------------------------------------------------------------------------------
+ingress:
+  # Enable Ingress resource for external web access
+  enabled: false
+
+  # Ingress class name (e.g. "nginx", "traefik")
+  className: ""
+
+  # Ingress annotations (e.g., for cert-manager or proxy buffering)
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+  # Host rules
+  hosts:
+    - host: fhem.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+  # TLS configuration
+  tls: []
+    # - secretName: fhem-tls
+    #   hosts:
+    #     - fhem.local
+
+# ------------------------------------------------------------------------------
+# Gateway API Configuration (HTTPRoute & Gateway)
+# ------------------------------------------------------------------------------
+# The Kubernetes Gateway API (gateway.networking.k8s.io) is the modern, expressive
+# successor to Ingress. Enable httpRoute to expose FHEM using an HTTPRoute resource.
+httpRoute:
+  # Enable HTTPRoute resource instead of or alongside Ingress
+  enabled: false
+
+  # Annotations to attach to the HTTPRoute
+  annotations: {}
+
+  # Hostnames that this HTTPRoute will match against (e.g. ["fhem.example.com"])
+  hostnames: []
+
+  # Gateways to which this HTTPRoute attaches.
+  # If left empty and `gateway.enabled` is true, it automatically attaches to the Gateway created by this chart.
+  parentRefs: []
+    # - name: external-gateway
+    #   namespace: gateway-system
+    #   sectionName: http
+    #   port: 80
+
+  # Custom routing rules. If omitted, a default rule routing all prefix path ('/')
+  # traffic to the FHEM HTTP service port is automatically generated.
+  rules: []
+    # - matches:
+    #     - path:
+    #         type: PathPrefix
+    #         value: /
+    #   backendRefs:
+    #     - group: ''
+    #       kind: Service
+    #       name: "" # defaults to service fullname
+    #       port: 8083 # defaults to service.port
+    #       weight: 1
+    #   filters: []
+
+# ------------------------------------------------------------------------------
+# Gateway API L4 Routes (TCPRoute & UDPRoute)
+# ------------------------------------------------------------------------------
+# NOTE: TCPRoute and UDPRoute can ONLY be enabled if httpRoute.enabled is set to true.
+
+tcpRoute:
+  # Enable TCPRoute resource (e.g. for FHEM Telnet on port 7072, MQTT on 1883).
+  # Enforced condition: Requires httpRoute.enabled to be true.
+  enabled: false
+
+  # API version override (defaults to gateway.networking.k8s.io/v1alpha2)
+  apiVersion: ""
+
+  # Annotations to attach to the TCPRoute
+  annotations: {}
+
+  # Gateways to which this TCPRoute attaches.
+  # Defaults to httpRoute.parentRefs or the chart's Gateway if left empty.
+  parentRefs: []
+    # - name: external-gateway
+    #   sectionName: telnet
+
+  # Section name on the Gateway listener if attaching to chart's Gateway
+  sectionName: "telnet"
+
+  # Target TCP service port (defaults to service.telnetPort: 7072)
+  port: 7072
+
+  # Custom routing rules. If omitted, routes to the specified port on FHEM service.
+  rules: []
+    # - backendRefs:
+    #     - name: "" # defaults to service fullname
+    #       port: 7072
+
+udpRoute:
+  # Enable UDPRoute resource (e.g. for KNX/IP on port 3671, or smart home UDP broadcasts).
+  # Enforced condition: Requires httpRoute.enabled to be true.
+  enabled: false
+
+  # API version override (defaults to gateway.networking.k8s.io/v1alpha2)
+  apiVersion: ""
+
+  # Annotations to attach to the UDPRoute
+  annotations: {}
+
+  # Gateways to which this UDPRoute attaches.
+  # Defaults to httpRoute.parentRefs or the chart's Gateway if left empty.
+  parentRefs: []
+    # - name: external-gateway
+    #   sectionName: udp
+
+  # Section name on the Gateway listener if attaching to chart's Gateway
+  sectionName: "udp"
+
+  # Target UDP service port (e.g. 3671 for KNX)
+  port: 3671
+
+  # Custom routing rules. If omitted, routes to the specified port on FHEM service.
+  rules: []
+    # - backendRefs:
+    #     - name: "" # defaults to service fullname
+    #       port: 3671
+
+# Optional Gateway resource to create in combination with the HTTPRoute
+gateway:
+  # Whether to provision a dedicated Gateway object
+  enabled: false
+
+  # Annotations to attach to the Gateway
+  annotations: {}
+
+  # GatewayClass name managing this Gateway (required if gateway.enabled is true).
+  # Common examples: "cilium", "envoy-gateway", "istio", "nginx"
+  gatewayClassName: ""
+
+  # Listeners configured on the Gateway
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    # Example TCP listener for Telnet (used with tcpRoute):
+    # - name: telnet
+    #   port: 7072
+    #   protocol: TCP
+    #   allowedRoutes:
+    #     namespaces:
+    #       from: Same
+    # Example UDP listener (used with udpRoute):
+    # - name: udp
+    #   port: 3671
+    #   protocol: UDP
+    #   allowedRoutes:
+    #     namespaces:
+    #       from: Same
+
+  # Optional IP addresses or hostnames requested for the Gateway
+  addresses: []
+    # - type: IPAddress
+    #   value: 192.168.1.100
+
+# ------------------------------------------------------------------------------
+# Resource Requests and Limits
+# ------------------------------------------------------------------------------
+resources:
+  # Recommended baseline requests and limits for FHEM
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# ------------------------------------------------------------------------------
+# Health Checks & Probes
+# ------------------------------------------------------------------------------
+# Startup probe allows slow-starting FHEM instances up to initialDelay + (period * failureThreshold) seconds
+# to finish loading configurations and modules before liveness probe begins.
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /fhem
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# Liveness probe checks if the FHEM web server process is actively responding.
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /fhem
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe checks if FHEM is ready to accept incoming user traffic.
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /fhem
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 2
+
+# ------------------------------------------------------------------------------
+# Persistence Storage
+# ------------------------------------------------------------------------------
+# FHEM stores state, configurations (fhem.cfg), custom modules, and log files in /opt/fhem.
+# Enabling persistence ensures that your smart home configuration survives pod restarts.
+persistence:
+  # Enable persistent volume claim
+  enabled: true
+
+  # Storage class to use. Leave empty to use the cluster default storage class.
+  # Use "-" to explicitly disable dynamic provisioning.
+  storageClass: ""
+
+  # Access mode for the PVC. ReadWriteOnce is standard for single-pod FHEM.
+  accessMode: ReadWriteOnce
+
+  # Size of the persistent volume
+  size: 3Gi
+
+  # Use an existing PVC instead of creating a new one
+  existingClaim: ""
+
+  # Target mount path inside the container (default: /opt/fhem)
+  mountPath: /opt/fhem
+
+  # Subdirectory inside the volume to mount
+  subPath: ""
+
+  # PVC annotations
+  annotations: {}
+
+# ------------------------------------------------------------------------------
+# Hardware Pass-Through & Custom Volumes
+# ------------------------------------------------------------------------------
+# Extra volumes to mount into the pod (e.g., hostPath for USB devices like /dev/ttyUSB0,
+# /dev/serial/by-id, or custom pre-init / pre-start scripts).
+extraVolumes: []
+  # - name: serial-dongle
+  #   hostPath:
+  #     path: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A1234567-if00-port0
+  # - name: custom-init-script
+  #   configMap:
+  #     name: fhem-custom-init
+
+# Extra volume mounts inside the container
+extraVolumeMounts: []
+  # - name: serial-dongle
+  #   mountPath: /dev/ttyUSB0
+  # - name: custom-init-script
+  #   mountPath: /docker/pre-start.sh
+  #   subPath: pre-start.sh
+
+# ------------------------------------------------------------------------------
+# Pod Scheduling & Node Placement
+# ------------------------------------------------------------------------------
+# Node selector for pinning FHEM to a specific node (vital when physical USB dongles are connected)
+nodeSelector: {}
+  # kubernetes.io/hostname: smarthome-node-01
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity rules for pod assignment
+affinity: {}
+
+# ------------------------------------------------------------------------------
+# Additional Containers & Init Containers
+# ------------------------------------------------------------------------------
+# Init containers to run before FHEM starts (e.g. database schema checks, permission setup)
+initContainers: []
+
+# Sidecar containers running alongside FHEM (e.g., alexa-fhem, alexa-cookie-service, homebridge)
+extraContainers: []

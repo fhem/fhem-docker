@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fhem.fullname" . }}-config
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.configMapAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  {{- range $key, $val := .Values.env }}
+  {{- if and (ne (toString $val) "") (not (kindIs "invalid" $val)) }}
+  {{- if and (eq $key "CONFIGTYPE") (include "fhem.configDBEnabled" $) }}
+  {{ $key }}: "configDB"
+  {{- else }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}

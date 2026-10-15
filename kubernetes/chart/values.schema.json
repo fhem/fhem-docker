@@ -1,0 +1,584 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "FHEM Helm Chart Values",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1,
+      "description": "Number of FHEM replicas. Should remain 1 to avoid state corruption."
+    },
+    "strategy": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "Recreate",
+            "RollingUpdate"
+          ],
+          "default": "Recreate"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "repository",
+        "pullPolicy"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "default": "ghcr.io/fhem/fhem-docker"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "Never",
+            "IfNotPresent"
+          ],
+          "default": "IfNotPresent"
+        },
+        "tag": {
+          "type": "string"
+        }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        },
+        "automountServiceAccountToken": {
+          "type": "boolean"
+        }
+      }
+    },
+    "hostNetwork": {
+      "type": "boolean",
+      "default": false
+    },
+    "dnsPolicy": {
+      "type": "string"
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "securityContext": {
+      "type": "object"
+    },
+    "podAnnotations": {
+      "type": "object"
+    },
+    "podLabels": {
+      "type": "object"
+    },
+    "env": {
+      "type": "object",
+      "description": "Environment variables converted to a ConfigMap and mounted into FHEM",
+      "properties": {
+        "TZ": {
+          "type": "string",
+          "description": "Container timezone"
+        },
+        "CONFIGTYPE": {
+          "type": "string",
+          "description": "FHEM config type (fhem.cfg, fhem.cfg.demo, configDB)"
+        },
+        "RESTART": {
+          "type": "string",
+          "description": "Auto-restart FHEM on unexpected exit ('1' or '0')"
+        },
+        "UMASK": {
+          "type": "string",
+          "description": "Process umask (e.g. 0037)"
+        },
+        "TELNETPORT": {
+          "type": "string",
+          "description": "Telnet port"
+        },
+        "TIMEOUT_STARTING": {
+          "type": "string",
+          "description": "Startup timeout in seconds"
+        },
+        "TIMEOUT_STOPPING": {
+          "type": "string",
+          "description": "Shutdown timeout in seconds"
+        },
+        "TIMEOUT_REAPPEAR": {
+          "type": "string",
+          "description": "Reappear timeout in seconds"
+        },
+        "FHEM_UID": {
+          "type": "string",
+          "description": "Process UID"
+        },
+        "FHEM_GID": {
+          "type": "string",
+          "description": "Process GID"
+        },
+        "FHEM_PERM_DIR": {
+          "type": "string",
+          "description": "Directory permission mask"
+        },
+        "FHEM_PERM_FILE": {
+          "type": "string",
+          "description": "File permission mask"
+        },
+        "BLUETOOTH_GID": {
+          "type": "string",
+          "description": "Bluetooth group ID"
+        },
+        "GPIO_GID": {
+          "type": "string",
+          "description": "GPIO group ID"
+        },
+        "I2C_GID": {
+          "type": "string",
+          "description": "I2C group ID"
+        },
+        "DOCKER_HOST": {
+          "type": "string",
+          "description": "Docker host IPv4"
+        },
+        "DOCKER_GW": {
+          "type": "string",
+          "description": "Docker gateway IPv4"
+        },
+        "APT_PKGS": {
+          "type": "string",
+          "description": "Debian packages to install on startup"
+        },
+        "CPAN_PKGS": {
+          "type": "string",
+          "description": "Perl CPAN modules to install on startup"
+        },
+        "PIP_PKGS": {
+          "type": "string",
+          "description": "Python packages to install on startup"
+        },
+        "NPM_PKGS": {
+          "type": "string",
+          "description": "Node.js NPM packages to install on startup"
+        }
+      },
+      "additionalProperties": true
+    },
+    "configMapAnnotations": {
+      "type": "object"
+    },
+    "configDB": {
+      "type": "object",
+      "description": "Database configuration when using configDB mode",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable automatic generation and mounting of configDB Secret"
+        },
+        "connection": {
+          "type": "string",
+          "description": "Database connection string in Perl DBI syntax (e.g. mysql:database=fhem;host=db;port=3306)"
+        },
+        "user": {
+          "type": "string",
+          "description": "Database user name"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database user password"
+        },
+        "mountPath": {
+          "type": "string",
+          "description": "Custom mount path for configDB.conf inside the container"
+        },
+        "defaultMode": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Permission mask for the mounted Secret file"
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Name of an existing Secret containing configDB.conf"
+        },
+        "secretAnnotations": {
+          "type": "object",
+          "description": "Annotations to attach to the generated Secret"
+        }
+      }
+    },
+    "extraEnv": {
+      "type": "array"
+    },
+    "extraEnvFrom": {
+      "type": "array"
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "type",
+        "port",
+        "telnetPort"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "port": {
+          "type": "integer",
+          "default": 8083
+        },
+        "telnetPort": {
+          "type": "integer",
+          "default": 7072
+        },
+        "nodePorts": {
+          "type": "object",
+          "properties": {
+            "http": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "telnet": {
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "extraPorts": {
+          "type": "array"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "hosts": {
+          "type": "array"
+        },
+        "tls": {
+          "type": "array"
+        }
+      }
+    },
+    "httpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "hostnames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "tcpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "sectionName": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "udpRoute": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "apiVersion": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "parentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "sectionName": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "gatewayClassName": {
+          "type": "string"
+        },
+        "listeners": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object"
+    },
+    "startupProbe": {
+      "type": "object"
+    },
+    "livenessProbe": {
+      "type": "object"
+    },
+    "readinessProbe": {
+      "type": "object"
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "accessMode": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "existingClaim": {
+          "type": "string"
+        },
+        "mountPath": {
+          "type": "string"
+        },
+        "subPath": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        }
+      }
+    },
+    "extraVolumes": {
+      "type": "array"
+    },
+    "extraVolumeMounts": {
+      "type": "array"
+    },
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "affinity": {
+      "type": "object"
+    },
+    "initContainers": {
+      "type": "array"
+    },
+    "extraContainers": {
+      "type": "array"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "configDB": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "configDB": {
+            "anyOf": [
+              {
+                "properties": {
+                  "connection": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "connection"
+                ]
+              },
+              {
+                "properties": {
+                  "existingSecret": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "existingSecret"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "env": {
+            "properties": {
+              "CONFIGTYPE": {
+                "const": "configDB"
+              }
+            },
+            "required": [
+              "CONFIGTYPE"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "configDB": {
+            "anyOf": [
+              {
+                "properties": {
+                  "connection": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "connection"
+                ]
+              },
+              {
+                "properties": {
+                  "existingSecret": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "existingSecret"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

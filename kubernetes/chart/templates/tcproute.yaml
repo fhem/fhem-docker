@@ -1,0 +1,38 @@
+{{- if .Values.tcpRoute.enabled -}}
+{{- if not .Values.httpRoute.enabled -}}
+{{- fail "TCPRoute can only be enabled when HTTPRoute is also enabled (.Values.httpRoute.enabled=true)" -}}
+{{- end -}}
+{{- $fullName := include "fhem.fullname" . -}}
+apiVersion: {{ .Values.tcpRoute.apiVersion | default "gateway.networking.k8s.io/v1alpha2" }}
+kind: TCPRoute
+metadata:
+  name: {{ $fullName }}-tcp
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.tcpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.tcpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.tcpRoute.parentRefs | nindent 4 }}
+  {{- else if .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.httpRoute.parentRefs | nindent 4 }}
+  {{- else if .Values.gateway.enabled }}
+  parentRefs:
+    - name: {{ $fullName }}
+      {{- if .Values.tcpRoute.sectionName }}
+      sectionName: {{ .Values.tcpRoute.sectionName }}
+      {{- end }}
+  {{- end }}
+  rules:
+    {{- if .Values.tcpRoute.rules }}
+    {{- toYaml .Values.tcpRoute.rules | nindent 4 }}
+    {{- else }}
+    - backendRefs:
+        - name: {{ $fullName }}
+          port: {{ .Values.tcpRoute.port | default .Values.service.telnetPort }}
+    {{- end }}
+{{- end }}

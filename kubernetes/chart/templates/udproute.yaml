@@ -1,0 +1,38 @@
+{{- if .Values.udpRoute.enabled -}}
+{{- if not .Values.httpRoute.enabled -}}
+{{- fail "UDPRoute can only be enabled when HTTPRoute is also enabled (.Values.httpRoute.enabled=true)" -}}
+{{- end -}}
+{{- $fullName := include "fhem.fullname" . -}}
+apiVersion: {{ .Values.udpRoute.apiVersion | default "gateway.networking.k8s.io/v1alpha2" }}
+kind: UDPRoute
+metadata:
+  name: {{ $fullName }}-udp
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.udpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.udpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.udpRoute.parentRefs | nindent 4 }}
+  {{- else if .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.httpRoute.parentRefs | nindent 4 }}
+  {{- else if .Values.gateway.enabled }}
+  parentRefs:
+    - name: {{ $fullName }}
+      {{- if .Values.udpRoute.sectionName }}
+      sectionName: {{ .Values.udpRoute.sectionName }}
+      {{- end }}
+  {{- end }}
+  rules:
+    {{- if .Values.udpRoute.rules }}
+    {{- toYaml .Values.udpRoute.rules | nindent 4 }}
+    {{- else }}
+    - backendRefs:
+        - name: {{ $fullName }}
+          port: {{ .Values.udpRoute.port | default 3671 }}
+    {{- end }}
+{{- end }}
