@@ -94,7 +94,7 @@ This Helm chart packages the official multi-architecture `fhem-docker` container
 ## Prerequisites
 
 - Kubernetes cluster 1.19+ (or 1.25+ with Gateway API v1.6+ CRDs installed when using `httpRoute`/`gateway`, and a Gateway controller supporting `TCPRoute`/`UDPRoute` when L4 routes are enabled)
-- Helm 3.2.0+
+- Helm 3.8.0+ (required for OCI registries)
 - A Kubernetes `StorageClass` supporting dynamic volume provisioning (or pre-provisioned PersistentVolumes) for persistent storage
 
 ---
@@ -103,23 +103,18 @@ This Helm chart packages the official multi-architecture `fhem-docker` container
 
 ### Installing the Chart
 
-Before installing the chart, add the `git.cooltux.net` Helm repository and update your local repository cache:
-
-```bash
-helm repo add git.cooltux.net https://git.cooltux.net/api/packages/FHEM/helm
-helm repo update
-```
+The chart is published as an OCI artifact to the GitHub Container Registry at `oci://ghcr.io/fhem/charts/fhem`. No `helm repo add` is needed. Available versions are listed under [GitHub Packages](https://github.com/orgs/fhem/packages); pin one with `--version`, otherwise the latest version is used.
 
 Install the chart with release name `my-fhem`:
 
 ```bash
-helm install my-fhem git.cooltux.net/fhem
+helm install my-fhem oci://ghcr.io/fhem/charts/fhem
 ```
 
 To install with traditional **Ingress** enabled:
 
 ```bash
-helm install my-fhem git.cooltux.net/fhem \
+helm install my-fhem oci://ghcr.io/fhem/charts/fhem \
   --set env.TZ="Europe/Vienna" \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host="fhem.home.arpa"
@@ -128,21 +123,21 @@ helm install my-fhem git.cooltux.net/fhem \
 To install using modern **Gateway API (`HTTPRoute` + `Gateway`)**:
 
 ```bash
-helm install my-fhem git.cooltux.net/fhem \
+helm install my-fhem oci://ghcr.io/fhem/charts/fhem \
   --set httpRoute.enabled=true \
   --set "httpRoute.hostnames[0]=fhem.home.arpa" \
   --set gateway.enabled=true \
   --set gateway.gatewayClassName="cilium"
 ```
 
-> **Tip**: If you are installing directly from a local git checkout, you can replace `git.cooltux.net/fhem` with `.`.
+> **Tip**: If you are installing directly from a local git checkout, you can replace `oci://ghcr.io/fhem/charts/fhem` with `.`.
 
 ### Upgrading the Chart
 
 To upgrade an existing installation:
 
 ```bash
-helm upgrade my-fhem git.cooltux.net/fhem -f my-values.yaml
+helm upgrade my-fhem oci://ghcr.io/fhem/charts/fhem -f my-values.yaml
 ```
 
 ### Uninstalling the Chart
