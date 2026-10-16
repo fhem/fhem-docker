@@ -79,12 +79,19 @@ jobs:
         env:
           CHART_REF: ${{ env.CHART_REPO }}/${{ steps.meta.outputs.name }}
           CHART_VERSION: ${{ steps.meta.outputs.version }}
+        # Only an explicit "not found" allows a push. Any other error (auth,
+        # rate limit, network) must fail the job, because helm push silently
+        # replaces an existing tag.
         run: |
-          if helm show chart "$CHART_REF" --version "$CHART_VERSION" > /dev/null 2>&1; then
+          if output=$(helm show chart "$CHART_REF" --version "$CHART_VERSION" 2>&1); then
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Chart $CHART_VERSION is already published to $CHART_REF - push skipped. Bump version in Chart.yaml to publish a new package."
-          else
+          elif grep -qF "${CHART_REF#oci://}:${CHART_VERSION}: not found" <<< "$output"; then
             echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$output"
+            echo "::error::Could not determine whether chart $CHART_VERSION is already published to $CHART_REF."
+            exit 1
           fi
 
       - name: Push chart to ghcr.io
