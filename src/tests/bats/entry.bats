@@ -86,6 +86,47 @@ teardown() {
 }
 
 # bats test_tags=unitTest
+@test "check setDockerImageInfo_DEFINITION() adds missing definition once" {
+    export FHEM_DIR=${BATS_TEST_TMPDIR}"/dockerImageInfo"
+    mkdir -p ${FHEM_DIR}
+    echo "attr global logfile ./log/fhem-%Y-%m.log" > ${FHEM_DIR}/fhem.cfg
+
+    run bash -c 'CONFIGTYPE=fhem.cfg setDockerImageInfo_DEFINITION'
+    assert_output --partial "Adding DockerImageInfo definition"
+    assert_file_contains ${FHEM_DIR}/fhem.cfg "^define DockerImageInfo DockerImageInfo$"
+    assert_file_contains ${FHEM_DIR}/fhem.cfg "^attr DockerImageInfo room System$"
+
+    run bash -c 'CONFIGTYPE=fhem.cfg setDockerImageInfo_DEFINITION'
+    assert_output ""
+    assert_equal "$(grep -c 'DockerImageInfo DockerImageInfo' ${FHEM_DIR}/fhem.cfg)" "1"
+}
+
+# bats test_tags=unitTest
+@test "check setDockerImageInfo_DEFINITION() keeps existing definition" {
+    export FHEM_DIR=${BATS_TEST_TMPDIR}"/dockerImageInfo"
+    mkdir -p ${FHEM_DIR}
+    printf "define myInfo DockerImageInfo\nattr myInfo room Docker\n" > ${FHEM_DIR}/fhem.cfg
+    cp ${FHEM_DIR}/fhem.cfg ${BATS_TEST_TMPDIR}/fhem.cfg.orig
+
+    run bash -c 'CONFIGTYPE=fhem.cfg setDockerImageInfo_DEFINITION'
+    assert_output ""
+    assert_files_equal ${FHEM_DIR}/fhem.cfg ${BATS_TEST_TMPDIR}/fhem.cfg.orig
+}
+
+# bats test_tags=unitTest
+@test "check setDockerImageInfo_DEFINITION() skips configDB" {
+    export FHEM_DIR=${BATS_TEST_TMPDIR}"/dockerImageInfo"
+    mkdir -p ${FHEM_DIR}
+    echo "attr global logfile ./log/fhem-%Y-%m.log" > ${FHEM_DIR}/fhem.cfg
+    cp ${FHEM_DIR}/fhem.cfg ${BATS_TEST_TMPDIR}/fhem.cfg.orig
+
+    run bash -c 'CONFIGTYPE=configDB setDockerImageInfo_DEFINITION'
+    assert_output --partial "HINT"
+    assert_files_equal ${FHEM_DIR}/fhem.cfg ${BATS_TEST_TMPDIR}/fhem.cfg.orig
+    assert_file_not_exists ${FHEM_DIR}/configDB
+}
+
+# bats test_tags=unitTest
 @test "ceck tailFileToConsoleStop() Logfile monitoring" {
     # mock some functions
     LOGFILE="fhem-%Y-%m-%d.log"
@@ -199,6 +240,7 @@ teardown() {
     assert_output --partial "Preparing initial container setup"
     assert_output --partial "Initial container setup done"
     refute_output --partial 'ERROR'
+    assert_file_contains ${FHEM_DIR}/fhem.cfg "^define DockerImageInfo DockerImageInfo$"
 }
 
 # bats test_tags=unitTest

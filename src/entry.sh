@@ -414,6 +414,37 @@ function setLogfile_DEFINITION()
 }
 
 
+# Create a DockerImageInfo definition if none exists, it is required by the health check
+#
+# Usage: setDockerImageInfo_DEFINITION
+# Global vars: CONFIGTYPE
+#              FHEM_DIR
+#
+function setDockerImageInfo_DEFINITION()
+{
+  [ "${CONFIGTYPE}" == "configDB" ] &&  {
+      echo ' HINT: Make sure to have a DockerImageInfo definition in your configDB, it is required by the health check !';
+      return;
+  }   # config is done inside DB => abort
+
+  local cfgFile="$(prependFhemDirPath "${CONFIGTYPE}")"
+
+  [ -r "$cfgFile" ] || return                                                     # no configfile => nothing to patch
+  grep -qP '^define\s+\S+\s+DockerImageInfo\b' "$cfgFile" && return               # definition exists (name does not matter, module allows only one)
+
+  printfInfo "  Adding DockerImageInfo definition to ${cfgFile}\n"
+  cat >> "$cfgFile" <<- END_OF_INLINE
+
+define DockerImageInfo DockerImageInfo
+attr DockerImageInfo alias Docker Image Info
+attr DockerImageInfo devStateIcon ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red
+attr DockerImageInfo group System
+attr DockerImageInfo icon docker
+attr DockerImageInfo room System
+END_OF_INLINE
+}
+
+
 # Determine PID file
 #
 # Usage: setGlobal_PIDFILE
@@ -565,18 +596,6 @@ function fhemCleanInstall() {
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "commandref" >/dev/null || echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "mseclog"    >/dev/null || echo "attr global mseclog 1"          >> ${FHEM_DIR}/fhem.cfg
 
-  printfInfo  "  Adding pre-defined devices to fhem.cfg\n"
-
-  cat >> $fhemCfgFile <<- END_OF_INLINE
-
-define DockerImageInfo DockerImageInfo
-attr DockerImageInfo alias Docker Image Info
-attr DockerImageInfo devStateIcon ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red
-attr DockerImageInfo group System
-attr DockerImageInfo icon docker
-attr DockerImageInfo room System
-END_OF_INLINE
-
   printfInfo "Installing FHEM done\n"
 }
 
@@ -624,6 +643,9 @@ function initialContainerSetup() {
   printfInfo "  Patching fhem.cfg Logfile configuration\n"
   setGlobal_LOGFILE
   setLogfile_DEFINITION
+
+  printfInfo "  Patching fhem.cfg DockerImageInfo configuration\n"
+  setDockerImageInfo_DEFINITION
 
   runScript "/post-init.sh"
   runScript "/docker/post-init.sh"
