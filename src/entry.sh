@@ -52,6 +52,8 @@ declare -r  CPAN_PKGS="${CPAN_PKGS:-}"
 declare -r  PIP_PKGS="${PIP_PKGS:-}"
 declare -r  NPM_PKGS="${NPM_PKGS:-}"
 
+declare -rx DOCKER_IMAGEINFO_AUTODEFINE="${DOCKER_IMAGEINFO_AUTODEFINE:-1}"   # read by 99_DockerImageInfo.pm
+
 
 #--- Internal global -------------------------------------------------------------------------------------------------
 
@@ -565,17 +567,7 @@ function fhemCleanInstall() {
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "commandref" >/dev/null || echo "attr global commandref modular" >> ${FHEM_DIR}/fhem.cfg
   getGlobalAttr "${FHEM_DIR}/fhem.cfg" "mseclog"    >/dev/null || echo "attr global mseclog 1"          >> ${FHEM_DIR}/fhem.cfg
 
-  printfInfo  "  Adding pre-defined devices to fhem.cfg\n"
-
-  cat >> $fhemCfgFile <<- END_OF_INLINE
-
-define DockerImageInfo DockerImageInfo
-attr DockerImageInfo alias Docker Image Info
-attr DockerImageInfo devStateIcon ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red
-attr DockerImageInfo group System
-attr DockerImageInfo icon docker
-attr DockerImageInfo room System
-END_OF_INLINE
+  # DockerImageInfo is defined by the module itself when missing (see 99_DockerImageInfo.pm)
 
   printfInfo "Installing FHEM done\n"
 }

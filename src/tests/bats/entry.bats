@@ -152,6 +152,8 @@ teardown() {
     assert_file_exists ${FHEM_DIR}/fhem.pl
     assert_file_exists ${FHEM_DIR}/fhem.cfg.default
     assert_file_exists ${FHEM_DIR}/FHEM/99_DockerImageInfo.pm
+    # DockerImageInfo is defined by the module at runtime, not by entry.sh
+    assert_file_not_contains ${FHEM_DIR}/fhem.cfg "DockerImageInfo"
     
     #assert_file_contains /opt/fhem/fhem.cfg attr global mseclog 1 grep
 
