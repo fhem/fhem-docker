@@ -23,7 +23,7 @@ For normal FHEM-SVN setups and slim, controlled deployments, use the minimal ima
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-minimal-docker:5-threaded-bookworm
 
-This is the recommended default for new setups. It contains the required FHEM Perl runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm and Perl 5.38.5. Python and NodeJS are not part of the minimal image; add them explicitly when your setup needs them. Supported platforms are `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
+This is the recommended default for new setups. It contains the required FHEM Perl runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm and Perl 5.40.5. Python and NodeJS are not part of the minimal image; add them explicitly when your setup needs them. Supported platforms are `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
 
 #### Standard image
 

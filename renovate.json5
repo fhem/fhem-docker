@@ -23,12 +23,12 @@
       "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$"
     },
     {
-      "groupName": "perlImagesMinor38",
+      "groupName": "perlImagesMinor40",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["perl"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
-      "allowedVersions": "/^(5\\.)(38)(\\.\\d)?(.*)/",
+      "allowedVersions": "/^(5\\.)(40)(\\.\\d)?(.*)/",
       "versioning": "regex:^5\\.(?<major>[1-9][02468])\\.(?<minor>\\d+)",
       "versionCompatibility": "^(?<version>[^-]+)(?<compatibility>-.*)?$",
     },
