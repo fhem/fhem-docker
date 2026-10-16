@@ -12,6 +12,7 @@ keywords:
   - fhem-docker
 home: https://fhem.de/
 sources:
+  - https://github.com/fhem/fhem-docker
   - https://git.cooltux.net/FHEM/fhem-docker_helm-chart
 maintainers:
   - name: Marko Oldenburg
