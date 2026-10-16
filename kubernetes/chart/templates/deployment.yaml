@@ -56,11 +56,19 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            {{- if or .Values.service.telnetEnabled (and .Values.httpRoute.enabled .Values.tcpRoute.enabled) }}
             - name: telnet
               containerPort: {{ .Values.service.telnetPort }}
               protocol: TCP
-            {{- with .Values.service.extraPorts }}
-            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- range .Values.service.extraPorts }}
+            {{- if .name }}
+            - name: {{ .name }}
+              containerPort: {{ if .containerPort }}{{ .containerPort }}{{ else if and .targetPort (not (kindIs "string" .targetPort)) }}{{ .targetPort }}{{ else }}{{ .port }}{{ end }}
+            {{- else }}
+            - containerPort: {{ if .containerPort }}{{ .containerPort }}{{ else if and .targetPort (not (kindIs "string" .targetPort)) }}{{ .targetPort }}{{ else }}{{ .port }}{{ end }}
+            {{- end }}
+              protocol: {{ .protocol | default "TCP" }}
             {{- end }}
           envFrom:
             - configMapRef:

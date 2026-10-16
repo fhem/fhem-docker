@@ -24,7 +24,7 @@ image:
   #   - ghcr.io/fhem/fhem-docker (Standard compatibility image with Python/Node bundled)
   #   - ghcr.io/fhem/fhem-minimal-docker (Minimal slim image for modern setups)
   #   - fhem/fhem (Docker Hub mirror)
-  repository: ghcr.io/fhem/fhem-docker
+  repository: ghcr.io/fhem/fhem-minimal-docker
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   # Use fixed tags such as "5-bookworm" or "5-threaded-bookworm".
@@ -158,22 +158,7 @@ env:
   DOCKER_GW: ""
 
   # ============================================================================
-  # 6. Dynamic Package Installation on Container Startup (Optional / Legacy)
-  # ============================================================================
-  # Space-separated list of Debian packages to install during container initialization
-  APT_PKGS: ""
-
-  # Space-separated list of Perl CPAN modules to install during container initialization
-  CPAN_PKGS: ""
-
-  # Space-separated list of Python packages to install during container initialization
-  PIP_PKGS: ""
-
-  # Space-separated list of Node.js NPM packages to install during container initialization
-  NPM_PKGS: ""
-
-  # ============================================================================
-  # 7. Interpreter Environment Passthrough & Custom Variables
+  # 6. Interpreter Environment Passthrough & Custom Variables
   # ============================================================================
   # The FHEM container entrypoint automatically propagates any environment variable
   # starting with "PERL", "PYTHON", or "NODE" to the FHEM child process runtime.
@@ -250,6 +235,10 @@ service:
 
   # HTTP port for the FHEMWEB interface (default: 8083)
   port: 8083
+
+  # Expose Telnet management port on the Service and Container.
+  # Disabled by default for security as FHEM Telnet is unauthenticated out-of-the-box.
+  telnetEnabled: false
 
   # Telnet management port for FHEM (default: 7072)
   telnetPort: 7072
@@ -445,6 +434,74 @@ gateway:
     #   value: 192.168.1.100
 
 # ------------------------------------------------------------------------------
+# Network Policy Configuration
+# ------------------------------------------------------------------------------
+# NetworkPolicy controls traffic flow to and from the FHEM pod.
+# This resource is always created. By default, it allows all ingress and egress traffic.
+# You can customize the ingress and egress rules below to restrict traffic as needed.
+networkPolicy:
+  # Annotations to attach to the NetworkPolicy
+  annotations: {}
+
+  # List of policy types to apply (defaults to Ingress and Egress)
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules for incoming traffic to FHEM.
+  # By default, allows all incoming traffic (wildcard rule `{}`).
+  # Example to restrict ingress to the HTTP port from specific namespace/pods:
+  #   - from:
+  #       - namespaceSelector:
+  #           matchLabels:
+  #             kubernetes.io/metadata.name: ingress-nginx
+  #     ports:
+  #       - protocol: TCP
+  #         port: 8083
+  ingress:
+    - {}
+
+  # Egress rules for outgoing traffic from FHEM.
+  # By default, allows all outgoing traffic (wildcard rule `{}`).
+  # Example to restrict egress to DNS and specific endpoints:
+  #   - to:
+  #       - namespaceSelector: {}
+  #     ports:
+  #       - protocol: UDP
+  #         port: 53
+  #   - to:
+  #       - ipBlock:
+  #           cidr: 192.168.1.0/24
+  egress:
+    - {}
+
+# ------------------------------------------------------------------------------
+# Pod Disruption Budget Configuration
+# ------------------------------------------------------------------------------
+# PodDisruptionBudget (PDB) limits the number of pods that can be voluntarily
+# disrupted (e.g. during node drains, maintenance, or cluster upgrades).
+# Note: minAvailable and maxUnavailable are mutually exclusive.
+podDisruptionBudget:
+  # Enable PodDisruptionBudget resource
+  enabled: false
+
+  # Annotations to attach to the PodDisruptionBudget
+  annotations: {}
+
+  # Minimum number or percentage of pods that must remain available after eviction.
+  # Mutually exclusive with maxUnavailable.
+  # Example: 1 or "50%"
+  minAvailable: ""
+
+  # Maximum number or percentage of pods that can be unavailable after eviction.
+  # Mutually exclusive with minAvailable.
+  # Example: 0 or "10%"
+  maxUnavailable: ""
+
+  # Unhealthy pod eviction policy (Kubernetes 1.27+): IfHealthyBudget or AlwaysAllow
+  unhealthyPodEvictionPolicy: ""
+
+# ------------------------------------------------------------------------------
 # Resource Requests and Limits
 # ------------------------------------------------------------------------------
 resources:
@@ -463,20 +520,20 @@ resources:
 # to finish loading configurations and modules before liveness probe begins.
 startupProbe:
   enabled: true
-  httpGet:
-    path: /fhem
-    port: http
+  exec:
+    command:
+      - /health-check.sh
   initialDelaySeconds: 10
   periodSeconds: 5
-  timeoutSeconds: 3
+  timeoutSeconds: 5
   failureThreshold: 30
 
-# Liveness probe checks if the FHEM web server process is actively responding.
+# Liveness probe checks if the FHEM instance is healthy using the image's built-in health-check.sh script.
 livenessProbe:
   enabled: true
-  httpGet:
-    path: /fhem
-    port: http
+  exec:
+    command:
+      - /health-check.sh
   initialDelaySeconds: 30
   periodSeconds: 15
   timeoutSeconds: 5
@@ -485,9 +542,9 @@ livenessProbe:
 # Readiness probe checks if FHEM is ready to accept incoming user traffic.
 readinessProbe:
   enabled: true
-  httpGet:
-    path: /fhem
-    port: http
+  exec:
+    command:
+      - /health-check.sh
   initialDelaySeconds: 15
   periodSeconds: 10
   timeoutSeconds: 5
@@ -522,7 +579,8 @@ persistence:
   subPath: ""
 
   # PVC annotations
-  annotations: {}
+  annotations:
+    "helm.sh/resource-policy": keep
 
 # ------------------------------------------------------------------------------
 # Hardware Pass-Through & Custom Volumes

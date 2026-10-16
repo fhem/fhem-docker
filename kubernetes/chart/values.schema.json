@@ -240,8 +240,7 @@
       "type": "object",
       "required": [
         "type",
-        "port",
-        "telnetPort"
+        "port"
       ],
       "properties": {
         "type": {
@@ -255,6 +254,10 @@
         "port": {
           "type": "integer",
           "default": 8083
+        },
+        "telnetEnabled": {
+          "type": "boolean",
+          "default": false
         },
         "telnetPort": {
           "type": "integer",
@@ -281,7 +284,43 @@
           "type": "object"
         },
         "extraPorts": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "port"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "port": {
+                "type": "integer"
+              },
+              "targetPort": {
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "containerPort": {
+                "type": "integer"
+              },
+              "nodePort": {
+                "type": "integer"
+              },
+              "protocol": {
+                "type": "string",
+                "enum": [
+                  "TCP",
+                  "UDP",
+                  "SCTP"
+                ],
+                "default": "TCP"
+              }
+            }
+          }
         }
       }
     },
@@ -421,6 +460,68 @@
           "items": {
             "type": "object"
           }
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "description": "NetworkPolicy configuration for FHEM pods",
+      "properties": {
+        "annotations": {
+          "type": "object"
+        },
+        "podSelector": {
+          "type": "object"
+        },
+        "policyTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ingress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "podDisruptionBudget": {
+      "type": "object",
+      "description": "PodDisruptionBudget configuration for FHEM pods",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "minAvailable": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "maxUnavailable": {
+          "type": [
+            "integer",
+            "string",
+            "null"
+          ]
+        },
+        "unhealthyPodEvictionPolicy": {
+          "type": "string"
+        },
+        "selector": {
+          "type": "object"
         }
       }
     },

@@ -10,26 +10,56 @@ A production-ready [Helm](https://helm.sh) chart for deploying the [FHEM](https:
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Architecture & Design](#architecture--design)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-  - [Installing the Chart](#installing-the-chart)
-  - [Upgrading the Chart](#upgrading-the-chart)
-  - [Uninstalling the Chart](#uninstalling-the-chart)
-- [Configuration via ConfigMap & Environment Variables](#configuration-via-configmap--environment-variables)
-  - [ConfigMap Mechanism](#configmap-mechanism)
-  - [Supported Environment Variables Reference](#supported-environment-variables-reference)
-- [Chart Configuration Values](#chart-configuration-values)
-- [Advanced Guides & Recipes](#advanced-guides--recipes)
-  - [1. USB Hardware Dongle Pass-Through (Zigbee, CUL, Z-Wave, EnOcean)](#1-usb-hardware-dongle-pass-through-zigbee-cul-z-wave-enocean)
-  - [2. Host Networking for Local Discovery (mDNS, SSDP, Sonos, Cast)](#2-host-networking-for-local-discovery-mdns-ssdp-sonos-cast)
-  - [3. Injecting Database Credentials & Secrets](#3-injecting-database-credentials--secrets)
-  - [4. Custom Pre-Start and Pre-Init Scripts](#4-custom-pre-start-and-pre-init-scripts)
-  - [5. Sidecar Services (alexa-fhem, homebridge)](#5-sidecar-services-alexa-fhem-homebridge)
-  - [6. Gateway API (HTTPRoute & Gateway) Deployment](#6-gateway-api-httproute--gateway-deployment)
-- [Persistence, Backups & Recovery](#persistence-backups--recovery)
-- [Troubleshooting & FAQs](#troubleshooting--faqs)
+- [FHEM Helm Chart](#fhem-helm-chart)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Architecture \& Design](#architecture--design)
+  - [Prerequisites](#prerequisites)
+  - [Quick Start](#quick-start)
+    - [Installing the Chart](#installing-the-chart)
+    - [Upgrading the Chart](#upgrading-the-chart)
+    - [Uninstalling the Chart](#uninstalling-the-chart)
+  - [Configuration via ConfigMap \& Environment Variables](#configuration-via-configmap--environment-variables)
+    - [ConfigMap Mechanism](#configmap-mechanism)
+    - [Supported Environment Variables Reference](#supported-environment-variables-reference)
+  - [Chart Configuration Values](#chart-configuration-values)
+    - [Controller \& Core Settings](#controller--core-settings)
+    - [Image Parameters](#image-parameters)
+    - [Metadata \& Service Account](#metadata--service-account)
+    - [Networking \& Security](#networking--security)
+    - [Environment Variables \& Secrets](#environment-variables--secrets)
+    - [Networking \& Exposure (Service \& Ingress)](#networking--exposure-service--ingress)
+    - [Gateway API (HTTPRoute, TCPRoute, UDPRoute \& Gateway)](#gateway-api-httproute-tcproute-udproute--gateway)
+    - [Network Policy](#network-policy)
+    - [Pod Disruption Budget](#pod-disruption-budget)
+    - [Resources \& Probes](#resources--probes)
+    - [Persistence \& Hardware Storage](#persistence--hardware-storage)
+    - [Scheduling \& Extensibility](#scheduling--extensibility)
+  - [Advanced Guides \& Recipes](#advanced-guides--recipes)
+    - [1. USB Hardware Dongle Pass-Through (Zigbee, CUL, Z-Wave, EnOcean)](#1-usb-hardware-dongle-pass-through-zigbee-cul-z-wave-enocean)
+    - [2. Host Networking for Local Discovery (mDNS, SSDP, Sonos, Cast)](#2-host-networking-for-local-discovery-mdns-ssdp-sonos-cast)
+    - [3. Database Configuration (`configDB` \& Secrets)](#3-database-configuration-configdb--secrets)
+      - [Using an Existing Secret](#using-an-existing-secret)
+      - [Injecting Additional Database Credentials (e.g. for DbLog)](#injecting-additional-database-credentials-eg-for-dblog)
+    - [4. Custom Pre-Start and Pre-Init Scripts](#4-custom-pre-start-and-pre-init-scripts)
+    - [5. Sidecar Services (alexa-fhem, homebridge)](#5-sidecar-services-alexa-fhem-homebridge)
+    - [6. Gateway API (HTTPRoute \& Gateway) Deployment](#6-gateway-api-httproute--gateway-deployment)
+      - [Option A: Attaching HTTPRoute to an Existing Cluster Gateway](#option-a-attaching-httproute-to-an-existing-cluster-gateway)
+      - [Option B: Creating a Dedicated Gateway with HTTPRoute](#option-b-creating-a-dedicated-gateway-with-httproute)
+      - [Option C: Enabling Layer 4 Routes (`TCPRoute` and `UDPRoute`)](#option-c-enabling-layer-4-routes-tcproute-and-udproute)
+    - [7. Network Policy Recipes](#7-network-policy-recipes)
+      - [Restricting Ingress Traffic](#restricting-ingress-traffic)
+      - [Restricting Egress Traffic (DNS, Database \& Smart Home LAN)](#restricting-egress-traffic-dns-database--smart-home-lan)
+    - [8. Pod Disruption Budget (PDB) Configurations](#8-pod-disruption-budget-pdb-configurations)
+      - [Preventing Disruptions During Node Drains (Zero-Downtime Guard)](#preventing-disruptions-during-node-drains-zero-downtime-guard)
+      - [Allowing Automated Node Upgrades](#allowing-automated-node-upgrades)
+  - [Persistence, Backups \& Recovery](#persistence-backups--recovery)
+  - [Troubleshooting \& FAQs](#troubleshooting--faqs)
+    - [Pod gets killed during startup](#pod-gets-killed-during-startup)
+    - [Permission Denied inside `/opt/fhem`](#permission-denied-inside-optfhem)
+    - [Viewing Realtime Logs](#viewing-realtime-logs)
+    - [Connecting to the Telnet CLI](#connecting-to-the-telnet-cli)
+  - [License](#license)
 
 ---
 
@@ -62,7 +92,7 @@ This Helm chart packages the official multi-architecture `fhem-docker` container
 
 ## Prerequisites
 
-- Kubernetes cluster 1.19+ (or 1.25+ with Gateway API CRDs installed when using `httpRoute`/`gateway`)
+- Kubernetes cluster 1.19+ (or 1.25+ with Gateway API v1.6+ CRDs installed when using `httpRoute`/`gateway`, and a Gateway controller supporting `TCPRoute`/`UDPRoute` when L4 routes are enabled)
 - Helm 3.2.0+
 - A Kubernetes `StorageClass` supporting dynamic volume provisioning (or pre-provisioned PersistentVolumes) for persistent storage
 
@@ -72,16 +102,23 @@ This Helm chart packages the official multi-architecture `fhem-docker` container
 
 ### Installing the Chart
 
+Before installing the chart, add the `git.cooltux.net` Helm repository and update your local repository cache:
+
+```bash
+helm repo add git.cooltux.net https://git.cooltux.net/api/packages/FHEM/helm
+helm repo update
+```
+
 Install the chart with release name `my-fhem`:
 
 ```bash
-helm install my-fhem .
+helm install my-fhem git.cooltux.net/fhem
 ```
 
 To install with traditional **Ingress** enabled:
 
 ```bash
-helm install my-fhem . \
+helm install my-fhem git.cooltux.net/fhem \
   --set env.TZ="Europe/Vienna" \
   --set ingress.enabled=true \
   --set ingress.hosts[0].host="fhem.home.arpa"
@@ -90,19 +127,21 @@ helm install my-fhem . \
 To install using modern **Gateway API (`HTTPRoute` + `Gateway`)**:
 
 ```bash
-helm install my-fhem . \
+helm install my-fhem git.cooltux.net/fhem \
   --set httpRoute.enabled=true \
   --set "httpRoute.hostnames[0]=fhem.home.arpa" \
   --set gateway.enabled=true \
   --set gateway.gatewayClassName="cilium"
 ```
 
+> **Tip**: If you are installing directly from a local git checkout, you can replace `git.cooltux.net/fhem` with `.`.
+
 ### Upgrading the Chart
 
 To upgrade an existing installation:
 
 ```bash
-helm upgrade my-fhem . -f my-values.yaml
+helm upgrade my-fhem git.cooltux.net/fhem -f my-values.yaml
 ```
 
 ### Uninstalling the Chart
@@ -186,12 +225,12 @@ Below is the complete reference of parameters configurable in `values.yaml`:
 
 ### Image Parameters
 
-| Parameter          | Description                                                                          | Default                    |
-| :----------------- | :----------------------------------------------------------------------------------- | :------------------------- |
-| `image.repository` | Image repository (`ghcr.io/fhem/fhem-docker` or `ghcr.io/fhem/fhem-minimal-docker`). | `ghcr.io/fhem/fhem-docker` |
-| `image.tag`        | Image tag (defaults to `Chart.appVersion`).                                          | `"5-bookworm"`             |
-| `image.pullPolicy` | Image pull policy.                                                                   | `IfNotPresent`             |
-| `imagePullSecrets` | Secrets for private registry access.                                                 | `[]`                       |
+| Parameter          | Description                                                                          | Default                            |
+| :----------------- | :----------------------------------------------------------------------------------- | :--------------------------------- |
+| `image.repository` | Image repository (`ghcr.io/fhem/fhem-minimal-docker` or `ghcr.io/fhem/fhem-docker`). | `ghcr.io/fhem/fhem-minimal-docker` |
+| `image.tag`        | Image tag (defaults to `Chart.appVersion`).                                          | `"5-bookworm"`                     |
+| `image.pullPolicy` | Image pull policy.                                                                   | `IfNotPresent`                     |
+| `imagePullSecrets` | Secrets for private registry access.                                                 | `[]`                               |
 
 ### Metadata & Service Account
 
@@ -238,6 +277,7 @@ Below is the complete reference of parameters configurable in `values.yaml`:
 | :------------------------- | :----------------------------------------------------------------- | :------------- |
 | `service.type`             | Kubernetes service type (`ClusterIP`, `NodePort`, `LoadBalancer`). | `ClusterIP`    |
 | `service.port`             | FHEMWEB HTTP port.                                                 | `8083`         |
+| `service.telnetEnabled`    | Expose FHEM Telnet port on the Service and Container.              | `false`        |
 | `service.telnetPort`       | FHEM Telnet port.                                                  | `7072`         |
 | `service.nodePorts.http`   | Explicit NodePort for HTTP when type is `NodePort`.                | `""`           |
 | `service.nodePorts.telnet` | Explicit NodePort for Telnet when type is `NodePort`.              | `""`           |
@@ -250,6 +290,8 @@ Below is the complete reference of parameters configurable in `values.yaml`:
 | `ingress.tls`              | TLS secrets configuration.                                         | `[]`           |
 
 ### Gateway API (HTTPRoute, TCPRoute, UDPRoute & Gateway)
+
+> **Note**: Requires **Gateway API v1.6+** (experimental channel CRDs when using `TCPRoute`/`UDPRoute`). Ensure that your deployed Gateway controller explicitly supports `TCPRoute` and `UDPRoute` resources.
 
 | Parameter                  | Description                                                                                     | Default     |
 | :------------------------- | :---------------------------------------------------------------------------------------------- | :---------- |
@@ -278,32 +320,51 @@ Below is the complete reference of parameters configurable in `values.yaml`:
 | `gateway.listeners`        | List of listener definitions for the Gateway.                                                   | `[HTTP:80]` |
 | `gateway.addresses`        | Specific IP/hostname addresses requested for the Gateway.                                       | `[]`        |
 
+### Network Policy
+
+| Parameter                   | Description                                                                             | Default             |
+| :-------------------------- | :-------------------------------------------------------------------------------------- | :------------------ |
+| `networkPolicy.annotations` | Annotations to attach to the NetworkPolicy.                                             | `{}`                |
+| `networkPolicy.policyTypes` | List of policy types to enforce (`Ingress`, `Egress`).                                  | `[Ingress, Egress]` |
+| `networkPolicy.ingress`     | Ingress rules for incoming traffic (by default allows all incoming traffic via `[{}]`). | `[{}]`              |
+| `networkPolicy.egress`      | Egress rules for outgoing traffic (by default allows all outgoing traffic via `[{}]`).  | `[{}]`              |
+
+### Pod Disruption Budget
+
+| Parameter                                        | Description                                                                                                 | Default |
+| :----------------------------------------------- | :---------------------------------------------------------------------------------------------------------- | :------ |
+| `podDisruptionBudget.enabled`                    | Enable PodDisruptionBudget resource.                                                                        | `false` |
+| `podDisruptionBudget.annotations`                | Annotations to attach to the PodDisruptionBudget.                                                           | `{}`    |
+| `podDisruptionBudget.minAvailable`               | Minimum number or percentage of pods that must remain available (mutually exclusive with `maxUnavailable`). | `""`    |
+| `podDisruptionBudget.maxUnavailable`             | Maximum number or percentage of pods that can be unavailable (mutually exclusive with `minAvailable`).      | `""`    |
+| `podDisruptionBudget.unhealthyPodEvictionPolicy` | Unhealthy pod eviction policy for Kubernetes 1.27+ (`IfHealthyBudget` or `AlwaysAllow`).                    | `""`    |
+
 ### Resources & Probes
 
-| Parameter                   | Description                                                 | Default                          |
-| :-------------------------- | :---------------------------------------------------------- | :------------------------------- |
-| `resources.limits.cpu`      | Container CPU limit.                                        | `1000m`                          |
-| `resources.limits.memory`   | Container Memory limit.                                     | `1024Mi`                         |
-| `resources.requests.cpu`    | Container CPU request.                                      | `100m`                           |
-| `resources.requests.memory` | Container Memory request.                                   | `256Mi`                          |
-| `startupProbe`              | Probe allowing startup grace period before liveness checks. | Enabled (HTTP `/fhem` port 8083) |
-| `livenessProbe`             | Periodic check confirming FHEM process is healthy.          | Enabled (HTTP `/fhem` port 8083) |
-| `readinessProbe`            | Periodic check confirming FHEM is ready for traffic.        | Enabled (HTTP `/fhem` port 8083) |
+| Parameter                   | Description                                                 | Default                             |
+| :-------------------------- | :---------------------------------------------------------- | :---------------------------------- |
+| `resources.limits.cpu`      | Container CPU limit.                                        | `300m`                              |
+| `resources.limits.memory`   | Container Memory limit.                                     | `256Mi`                             |
+| `resources.requests.cpu`    | Container CPU request.                                      | `100m`                              |
+| `resources.requests.memory` | Container Memory request.                                   | `128Mi`                             |
+| `startupProbe`              | Probe allowing startup grace period before liveness checks. | Enabled (`exec` `/health-check.sh`) |
+| `livenessProbe`             | Periodic check confirming FHEM process is healthy.          | Enabled (`exec` `/health-check.sh`) |
+| `readinessProbe`            | Periodic check confirming FHEM is ready for traffic.        | Enabled (`exec` `/health-check.sh`) |
 
 ### Persistence & Hardware Storage
 
-| Parameter                   | Description                                                            | Default         |
-| :-------------------------- | :--------------------------------------------------------------------- | :-------------- |
-| `persistence.enabled`       | Enable PersistentVolumeClaim for `/opt/fhem`.                          | `true`          |
-| `persistence.storageClass`  | StorageClass name (`""` uses cluster default, `"-"` disables dynamic). | `""`            |
-| `persistence.accessMode`    | Access mode for PVC (`ReadWriteOnce`).                                 | `ReadWriteOnce` |
-| `persistence.size`          | PVC disk size.                                                         | `10Gi`          |
-| `persistence.existingClaim` | Name of an existing PVC to use instead of creating one.                | `""`            |
-| `persistence.mountPath`     | Target mount point inside the container.                               | `/opt/fhem`     |
-| `persistence.subPath`       | Subpath inside the volume to mount.                                    | `""`            |
-| `persistence.annotations`   | Custom annotations for the PVC.                                        | `{}`            |
-| `extraVolumes`              | Additional volumes to mount into the pod (e.g. host USB devices).      | `[]`            |
-| `extraVolumeMounts`         | Mounts for `extraVolumes`.                                             | `[]`            |
+| Parameter                   | Description                                                            | Default                               |
+| :-------------------------- | :--------------------------------------------------------------------- | :------------------------------------ |
+| `persistence.enabled`       | Enable PersistentVolumeClaim for `/opt/fhem`.                          | `true`                                |
+| `persistence.storageClass`  | StorageClass name (`""` uses cluster default, `"-"` disables dynamic). | `""`                                  |
+| `persistence.accessMode`    | Access mode for PVC (`ReadWriteOnce`).                                 | `ReadWriteOnce`                       |
+| `persistence.size`          | PVC disk size.                                                         | `10Gi`                                |
+| `persistence.existingClaim` | Name of an existing PVC to use instead of creating one.                | `""`                                  |
+| `persistence.mountPath`     | Target mount point inside the container.                               | `/opt/fhem`                           |
+| `persistence.subPath`       | Subpath inside the volume to mount.                                    | `""`                                  |
+| `persistence.annotations`   | Custom annotations for the PVC.                                        | `{"helm.sh/resource-policy": "keep"}` |
+| `extraVolumes`              | Additional volumes to mount into the pod (e.g. host USB devices).      | `[]`                                  |
+| `extraVolumeMounts`         | Mounts for `extraVolumes`.                                             | `[]`                                  |
 
 ### Scheduling & Extensibility
 
@@ -460,6 +521,8 @@ extraContainers:
 
 The Kubernetes Gateway API provides cleaner role separation and more expressive routing than Ingress.
 
+> **Requirements**: A minimum of **Gateway API v1.6+** is expected. Additionally, if you use Layer 4 routes (`TCPRoute` and `UDPRoute`), the deployed Gateway controller (e.g. Cilium, Envoy Gateway, Istio, NGINX Gateway Fabric) must explicitly support `TCPRoute` and `UDPRoute` (including the experimental channel CRDs).
+
 #### Option A: Attaching HTTPRoute to an Existing Cluster Gateway
 If your cluster already has a shared Gateway managed by platform administrators (e.g. Envoy Gateway, Cilium, Istio, Traefik):
 
@@ -504,7 +567,7 @@ gateway:
 When `gateway.enabled: true` and `httpRoute.parentRefs` is omitted, the `HTTPRoute` automatically binds to the newly created `Gateway`.
 
 #### Option C: Enabling Layer 4 Routes (`TCPRoute` and `UDPRoute`)
-> **Important Constraint**: By design, `TCPRoute` and `UDPRoute` can **only be enabled if `httpRoute.enabled: true`** is also set.
+> **Important Constraint**: By design, `TCPRoute` and `UDPRoute` can **only be enabled if `httpRoute.enabled: true`** is also set. Furthermore, Gateway API **v1.6+** is required and the used Gateway controller must support `TCPRoute` and `UDPRoute`.
 
 To expose the FHEM Telnet command interface via a `TCPRoute` (port 7072) and a UDP home automation service (e.g., KNX/IP on port 3671) via `UDPRoute`:
 
@@ -549,6 +612,116 @@ gateway:
       allowedRoutes:
         namespaces:
           from: Same
+```
+
+### 7. Network Policy Recipes
+
+The chart always provisions a Kubernetes `NetworkPolicy` targeting FHEM pods. By default, it allows all incoming and outgoing connections (`ingress: [{}]`, `egress: [{}]`), ensuring that out-of-the-box local network discovery, MQTT brokers, databases, and ingress controllers function without disruption.
+
+In production clusters enforcing strict zero-trust network isolation, you can customize the ingress and egress rules in `values.yaml`.
+
+#### Restricting Ingress Traffic
+
+To lock down access so that only an Ingress controller (e.g., in namespace `ingress-nginx`) can access the FHEMWEB interface (port 8083), while allowing administrative Telnet access (port 7072) only from a trusted management CIDR:
+
+```yaml
+networkPolicy:
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow FHEMWEB traffic only from the ingress controller namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8083
+    # Allow Telnet CLI management only from a trusted management subnet
+    - from:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+      ports:
+        - protocol: TCP
+          port: 7072
+  # Keep egress open or restrict as shown below
+  egress:
+    - {}
+```
+
+#### Restricting Egress Traffic (DNS, Database & Smart Home LAN)
+
+If you enforce egress isolation, FHEM typically requires egress access for cluster DNS resolution, the internal database (e.g. MariaDB or PostgreSQL for `configDB` / `DbLog`), an MQTT broker, and local LAN devices:
+
+```yaml
+networkPolicy:
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    # 1. Allow cluster DNS lookups (CoreDNS in kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # 2. Allow connection to MySQL/MariaDB database in the database namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: database
+      ports:
+        - protocol: TCP
+          port: 3306
+
+    # 3. Allow outbound connections to local smart home hardware and MQTT broker
+    - to:
+        - ipBlock:
+            cidr: 192.168.1.0/24
+      ports:
+        - protocol: TCP
+          port: 1883    # MQTT broker
+        - protocol: TCP
+          port: 80      # Tasmota / Shelly HTTP web hooks
+        - protocol: TCP
+          port: 443     # External HTTPS APIs (weather, push notifications)
+```
+
+### 8. Pod Disruption Budget (PDB) Configurations
+
+FHEM operates as a single-master home automation server (`replicaCount: 1`) bound to persistent storage and state files. Enabling a `PodDisruptionBudget` helps manage how voluntary disruptions (such as `kubectl drain`, node maintenance, or cluster autoscaler scale-downs) affect FHEM.
+
+#### Preventing Disruptions During Node Drains (Zero-Downtime Guard)
+
+To prevent automated node evictions from terminating FHEM during node maintenance, enable the PDB with `minAvailable: 1` (or `maxUnavailable: 0`). Any `kubectl drain` operation on the node hosting FHEM will be blocked until the eviction is manually forced (`kubectl drain --disable-eviction=true` / `--force`):
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+```
+
+> **Note**: Because FHEM has only 1 replica, `minAvailable: 1` ensures the pod cannot be voluntarily evicted by the eviction API. Use this in mission-critical environments where home automation downtime must be scheduled intentionally.
+
+#### Allowing Automated Node Upgrades
+
+In managed Kubernetes clusters (such as k3s, GKE, or EKS) with automated rolling node upgrades, blocking node drains might cause node upgrades to time out. To allow the node drain process to proceed and evict FHEM (triggering a recreate on another node):
+
+```yaml
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+  # For Kubernetes 1.27+, allow eviction immediately if pod is unhealthy:
+  unhealthyPodEvictionPolicy: AlwaysAllow
 ```
 
 ---

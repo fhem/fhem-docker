@@ -81,3 +81,13 @@ Create the name of the configDB secret to use
 {{- end -}}
 {{- end }}
 
+{{/*
+Return the appropriate apiVersion for PodDisruptionBudget.
+*/}}
+{{- define "fhem.pdb.apiVersion" -}}
+{{- if .Capabilities.APIVersions.Has "policy/v1" -}}
+policy/v1
+{{- else -}}
+policy/v1beta1
+{{- end -}}
+{{- end }}

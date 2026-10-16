@@ -40,8 +40,13 @@
 {{- if and .Values.httpRoute.enabled .Values.udpRoute.enabled }}
   - UDP traffic is routed via Gateway API UDPRoute (Port: {{ .Values.udpRoute.port | default 3671 }}).
 {{- end }}
-  Port-forward the telnet port:
+  {{- if or .Values.service.telnetEnabled (and .Values.httpRoute.enabled .Values.tcpRoute.enabled) }}
+  Port-forward the telnet service port:
   kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "fhem.fullname" . }} {{ .Values.service.telnetPort }}:{{ .Values.service.telnetPort }}
+  {{- else }}
+  Port-forward the telnet port directly from the deployment (Telnet is disabled on the Service by default):
+  kubectl --namespace {{ .Release.Namespace }} port-forward deploy/{{ include "fhem.fullname" . }} {{ .Values.service.telnetPort }}:{{ .Values.service.telnetPort }}
+  {{- end }}
   Connect using:
   telnet 127.0.0.1 {{ .Values.service.telnetPort }}  (or: nc 127.0.0.1 {{ .Values.service.telnetPort }})
 

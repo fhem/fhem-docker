@@ -1,0 +1,26 @@
+{{- if .Values.podDisruptionBudget.enabled -}}
+apiVersion: {{ include "fhem.pdb.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "fhem.fullname" . }}
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.podDisruptionBudget.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if ne (.Values.podDisruptionBudget.minAvailable | toString) "" }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- else if ne (.Values.podDisruptionBudget.maxUnavailable | toString) "" }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: 1
+  {{- end }}
+  {{- if .Values.podDisruptionBudget.unhealthyPodEvictionPolicy }}
+  unhealthyPodEvictionPolicy: {{ .Values.podDisruptionBudget.unhealthyPodEvictionPolicy }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "fhem.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -18,6 +18,7 @@ spec:
       {{- if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) .Values.service.nodePorts.http }}
       nodePort: {{ .Values.service.nodePorts.http }}
       {{- end }}
+    {{- if or .Values.service.telnetEnabled (and .Values.httpRoute.enabled .Values.tcpRoute.enabled) }}
     - port: {{ .Values.service.telnetPort }}
       targetPort: telnet
       protocol: TCP
@@ -25,8 +26,17 @@ spec:
       {{- if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) .Values.service.nodePorts.telnet }}
       nodePort: {{ .Values.service.nodePorts.telnet }}
       {{- end }}
-    {{- with .Values.service.extraPorts }}
-    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- range .Values.service.extraPorts }}
+    - port: {{ .port }}
+      targetPort: {{ .targetPort | default .containerPort | default .port }}
+      protocol: {{ .protocol | default "TCP" }}
+      {{- if .name }}
+      name: {{ .name }}
+      {{- end }}
+      {{- if and (or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer")) .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
     {{- end }}
   selector:
     {{- include "fhem.selectorLabels" . | nindent 4 }}
