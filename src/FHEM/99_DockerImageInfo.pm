@@ -32,7 +32,7 @@ sub DockerImageInfo_AutoDefine {
     return if ( !DockerImageInfo_IsContainerized() );
     return if ( ( $ENV{DOCKER_IMAGEINFO_AUTODEFINE} // q[1] ) eq q[0] );
 
-    Log3 undef, 3, q[DockerImageInfo: no definition found, creating DockerImageInfo (not saved, disable with DOCKER_IMAGEINFO_AUTODEFINE=0)];
+    Log3 undef, 3, q[DockerImageInfo: no definition found, creating DockerImageInfo (run save to keep it, disable with DOCKER_IMAGEINFO_AUTODEFINE=0)];
     my $ret = CommandDefine( undef, q[DockerImageInfo DockerImageInfo] );
     Log3 undef, 1, qq[DockerImageInfo: automatic definition failed: $ret] if ( $ret );
 
@@ -317,11 +317,24 @@ sub DockerImageInfo_GetImageInfo {
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> or <code>host</code>.
     <br><br>
 
-    The definition is required by the health check of the container. If no definition exists
-    after FHEM has started (e.g. migrated <code>fhem.cfg</code> or <code>configDB</code>), the module
-    creates <code>DockerImageInfo</code> automatically. The definition is not saved, use
-    <code>save</code> to keep it in your configuration. The automatic definition can be disabled
-    with the container environment variable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code>.
+    The definition is required by the health check of the container. Without it the health
+    check fails (Docker marks the container unhealthy, Kubernetes restarts it).
+    Shortly after FHEM has started, the module creates <code>DockerImageInfo</code> automatically,
+    but only if no definition of this type exists yet (its name does not matter), e.g. with a
+    migrated <code>fhem.cfg</code> or with <code>configDB</code>.
+    <ul>
+      <li>The module does not save the definition itself. FHEMWEB then shows unsaved changes;
+          run <code>save</code> once to keep the definition in your configuration (with
+          <code>configDB</code> it is stored in the database). Afterwards nothing is created
+          automatically anymore.</li>
+      <li>Any later <code>save</code> stores the definition, including the automatic save of
+          <code>autosave</code>.</li>
+      <li>A definition deleted on purpose is created again on the next start. Set the container
+          environment variable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code> to disable the
+          automatic definition.</li>
+      <li>After <code>rereadcfg</code> with a configuration without this definition, it is only
+          created again on the next restart of FHEM.</li>
+    </ul>
   </ul>
   <br>
 
@@ -378,11 +391,24 @@ sub DockerImageInfo_GetImageInfo {
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> oder <code>host</code>.
     <br><br>
 
-    Die Definition wird f&uuml;r den Healthcheck des Containers ben&ouml;tigt. Existiert nach dem
-    Start von FHEM keine Definition (z. B. bei mitgebrachter <code>fhem.cfg</code> oder <code>configDB</code>),
-    legt das Modul <code>DockerImageInfo</code> automatisch an. Die Definition wird nicht gespeichert,
-    mit <code>save</code> wird sie in die Konfiguration &uuml;bernommen. Die automatische Anlage kann
-    &uuml;ber die Umgebungsvariable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code> des Containers abgeschaltet werden.
+    Die Definition wird f&uuml;r den Healthcheck des Containers ben&ouml;tigt. Ohne sie schl&auml;gt
+    der Healthcheck fehl (Docker meldet den Container als unhealthy, Kubernetes startet ihn neu).
+    Kurz nach dem Start von FHEM legt das Modul <code>DockerImageInfo</code> automatisch an,
+    aber nur, wenn noch keine Definition dieses Typs existiert (der Name spielt keine Rolle),
+    z. B. bei mitgebrachter <code>fhem.cfg</code> oder bei <code>configDB</code>.
+    <ul>
+      <li>Das Modul speichert die Definition nicht selbst. FHEMWEB zeigt danach ungespeicherte
+          &Auml;nderungen an; einmal <code>save</code> ausf&uuml;hren, um die Definition in die
+          Konfiguration zu &uuml;bernehmen (bei <code>configDB</code> landet sie in der Datenbank).
+          Danach wird nichts mehr automatisch angelegt.</li>
+      <li>Jedes sp&auml;tere <code>save</code> speichert die Definition mit, auch das automatische
+          Speichern durch <code>autosave</code>.</li>
+      <li>Eine bewusst gel&ouml;schte Definition wird beim n&auml;chsten Start erneut angelegt. Mit der
+          Umgebungsvariable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code> des Containers l&auml;sst sich
+          die automatische Anlage abschalten.</li>
+      <li>Nach <code>rereadcfg</code> mit einer Konfiguration ohne diese Definition wird sie erst beim
+          n&auml;chsten Neustart von FHEM wieder angelegt.</li>
+    </ul>
   </ul>
 
   <a name="DockerImageInfoattr"></a>

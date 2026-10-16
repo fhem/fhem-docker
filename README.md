@@ -199,7 +199,14 @@ It is enough for the `telnet` device to only listen on the loopback device (aka 
 
 The image comes with a built-in script to check availability, which communicates with the DockerImageInfo Definition.
 
-If no DockerImageInfo definition exists after FHEM has started, for example with a migrated `fhem.cfg` or with `configDB`, the module creates `DockerImageInfo` automatically. This definition is not saved; run `save` in FHEM if you want to keep it in your configuration. Set `DOCKER_IMAGEINFO_AUTODEFINE=0` to disable the automatic definition.
+The health check needs a DockerImageInfo definition. Without it, `/tmp/health-check.urls` is never written and the health check fails; Docker marks the container `unhealthy`, Kubernetes restarts it over and over.
+
+The module therefore creates the definition by itself shortly after FHEM has started, but only if no DockerImageInfo definition exists yet (its name does not matter). This covers a migrated `fhem.cfg` as well as `configDB`, and it also creates the definition on a fresh installation.
+
+- The module does not save the definition itself. After it has been created, FHEMWEB shows unsaved changes (red save icon). Run `save` once to keep the definition in your configuration; with `configDB` it is stored in the database. From then on nothing is created automatically anymore.
+- Any later `save` stores the definition, including the automatic save done by `autosave` (enabled by default in FHEM).
+- If you deleted the definition on purpose, it is created again on the next start. Set `DOCKER_IMAGEINFO_AUTODEFINE=0` if you do not want the definition at all; the health check will fail then.
+- Known limitation: after `rereadcfg` with a configuration that has no DockerImageInfo definition, the definition is only created again on the next restart of FHEM.
 
 DockerImageInfo also reports the detected runtime in `container.runtime` and combines runtime and image metadata in the `model` reading, for example `runtime=kubernetes; image.version=5-bookworm; image.revision=...`. Runtime detection supports Kubernetes, Docker, container runtimes such as containerd, CRI-O and Podman, and `host` as fallback.
 
@@ -267,7 +274,7 @@ The container entrypoint supports the following environment variables. Values th
 | `DOCKER_HOST` | auto-detected | IPv4 address for `host.docker.internal`. |
 | `DOCKER_GW` | auto-detected | IPv4 address for `gateway.docker.internal`. |
 | `DOCKER_ENV_FILE` | `/.dockerenv` | Override path used for Docker runtime detection. |
-| `DOCKER_IMAGEINFO_AUTODEFINE` | `1` | Create the `DockerImageInfo` definition required by the health check when it is missing. Set to `0` to disable. |
+| `DOCKER_IMAGEINFO_AUTODEFINE` | `1` | Create the `DockerImageInfo` definition required by the health check after FHEM has started, if none exists. The definition is not saved by the module; run `save` once to keep it. Set to `0` to disable. |
 | `KUBERNETES_TOKEN_FILE` | `/var/run/secrets/kubernetes.io/serviceaccount/token` | Override path used for Kubernetes runtime detection. |
 | `KUBERNETES_SERVICE_HOST` | unset | Kubernetes runtime detection hint. Usually provided by Kubernetes. |
 | `CONTAINER_CGROUP_FILE` | `/proc/1/cgroup` | Override path used for container runtime detection. |
