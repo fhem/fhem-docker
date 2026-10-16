@@ -14,7 +14,29 @@ sub DockerImageInfo_Initialize {
     $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
     $hash->{AttrList}  = $readingFnAttributes;
 
+    # 99_ modules are always loaded by FHEM, even without a definition (fhem.cfg or configDB).
+    # Create the definition after startup if it is missing, it is required by the health check.
+    RemoveInternalTimer( q[DockerImageInfo_AutoDefine] );    # avoid multiple timers on reload
+    InternalTimer( gettimeofday() + 1, \&DockerImageInfo_AutoDefine, q[DockerImageInfo_AutoDefine] );
+
     return FHEM::Meta::InitMod( __FILE__, $hash );
+}
+
+sub DockerImageInfo_AutoDefine {
+    if ( !$init_done ) {
+        InternalTimer( gettimeofday() + 1, \&DockerImageInfo_AutoDefine, q[DockerImageInfo_AutoDefine] );
+        return;
+    }
+
+    return if ( defined( $modules{DockerImageInfo}{defptr} ) );
+    return if ( !DockerImageInfo_IsContainerized() );
+    return if ( ( $ENV{DOCKER_IMAGEINFO_AUTODEFINE} // q[1] ) eq q[0] );
+
+    Log3 undef, 3, q[DockerImageInfo: no definition found, creating DockerImageInfo (not saved, disable with DOCKER_IMAGEINFO_AUTODEFINE=0)];
+    my $ret = CommandDefine( undef, q[DockerImageInfo DockerImageInfo] );
+    Log3 undef, 1, qq[DockerImageInfo: automatic definition failed: $ret] if ( $ret );
+
+    return undef;
 }
 
 sub DockerImageInfo_ReadFirstLine {
@@ -75,7 +97,7 @@ sub DockerImageInfo_Define {
         # presets for FHEMWEB
         $attr{$name}{alias} = 'Docker Image Info';
         $attr{$name}{devStateIcon} = q[^ok.*:security@green Initialized:system_fhem_reboot@orange .*:message_attention@red];
-        $attr{$name}{group} = 'Update';
+        $attr{$name}{group} = 'System';
         $attr{$name}{icon}  = 'docker';
         $attr{$name}{room}  = 'System';
     }
@@ -89,6 +111,9 @@ sub DockerImageInfo_Define {
         $hash->{STATE} = q[ERROR: Host is not a container];
     }
 
+    # INITIALIZED was already sent when defined at runtime, so create the url file now
+    DockerImageInfo_UpdateHealthCheck( $hash ) if ( $init_done );
+
     return undef;
 }
 
@@ -101,38 +126,48 @@ sub DockerImageInfo_Notify
 
   my $events = deviceEvents($dev,1);
   if( defined first { $events->[$_] =~ /^INITIALIZED|REREADCFG$/ || $events->[$_] =~ /^ATTR\s.*\s(?:HTTPS|webname|DockerHealthCheck)\s.+/ } 0..$#{$events} ) {
-    RemoveInternalTimer($hash);    # Stop Timer because we start one  again
-    
     # Update available infos
     DockerImageInfo_GetImageInfo( $hash);
 
-
-    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1]) ) {
-      # add userattr to FHEMWEB devices to control healthcheck
-      addToDevAttrList( $_, q[DockerHealthCheck:0,1] );
-    }  
-
-    my $urlFile = $hash->{URL_FILE};
-    my $urlFileHdl;
-    if(!open($urlFileHdl, ">$urlFile")) {
-      my $msg = q[WriteStatefile: Cannot open $urlFile: $!];
-      Log3 $hash->{NAME}, 1, $msg;
-      return $msg;
-    }
-    binmode($urlFileHdl, ':encoding(UTF-8)') if($unicodeEncoding);
-    foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0]) ) {
-      # build url and write it to healthcheck file
-      my $webHash   = $defs{$_};
-      my $port      = $webHash->{PORT};
-      my $webname   = AttrVal( $_, 'webname', 'fhem');
-      my $https     = AttrVal( $_, 'HTTPS', '0');
-      my $proto     = ($https) ? 'https' : 'http';
-      print $urlFileHdl qq[$proto://localhost:$port/$webname/healthcheck\n];
-    }
-    close($urlFileHdl);
-
-    InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
+    return DockerImageInfo_UpdateHealthCheck( $hash);
   }
+
+  return undef;
+}
+
+
+# Write the FHEMWEB urls used by health-check.sh and (re)start the status timer
+sub DockerImageInfo_UpdateHealthCheck
+{
+  my ($hash) = @_;
+
+  RemoveInternalTimer($hash);    # Stop Timer because we start one  again
+
+  foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1]) ) {
+    # add userattr to FHEMWEB devices to control healthcheck
+    addToDevAttrList( $_, q[DockerHealthCheck:0,1] );
+  }
+
+  my $urlFile = $hash->{URL_FILE};
+  my $urlFileHdl;
+  if(!open($urlFileHdl, ">$urlFile")) {
+    my $msg = q[WriteStatefile: Cannot open $urlFile: $!];
+    Log3 $hash->{NAME}, 1, $msg;
+    return $msg;
+  }
+  binmode($urlFileHdl, ':encoding(UTF-8)') if($unicodeEncoding);
+  foreach ( devspec2array(q[TYPE=FHEMWEB:FILTER=TEMPORARY!=1:FILTER=DockerHealthCheck!=0]) ) {
+    # build url and write it to healthcheck file
+    my $webHash   = $defs{$_};
+    my $port      = $webHash->{PORT};
+    my $webname   = AttrVal( $_, 'webname', 'fhem');
+    my $https     = AttrVal( $_, 'HTTPS', '0');
+    my $proto     = ($https) ? 'https' : 'http';
+    print $urlFileHdl qq[$proto://localhost:$port/$webname/healthcheck\n];
+  }
+  close($urlFileHdl);
+
+  InternalTimer(gettimeofday()+30, \&DockerImageInfo_GetStatus, $hash);
 
   return undef;
 }
@@ -280,6 +315,13 @@ sub DockerImageInfo_GetImageInfo {
     stays stable across builds of the same image version.
     The reading <code>container.runtime</code> contains <code>kubernetes</code>,
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> or <code>host</code>.
+    <br><br>
+
+    The definition is required by the health check of the container. If no definition exists
+    after FHEM has started (e.g. migrated <code>fhem.cfg</code> or <code>configDB</code>), the module
+    creates <code>DockerImageInfo</code> automatically. The definition is not saved, use
+    <code>save</code> to keep it in your configuration. The automatic definition can be disabled
+    with the container environment variable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code>.
   </ul>
   <br>
 
@@ -334,6 +376,13 @@ sub DockerImageInfo_GetImageInfo {
     <code>model</code> über Builds derselben Image-Version hinweg stabil bleibt.
     Das Reading <code>container.runtime</code> enth&auml;lt <code>kubernetes</code>,
     <code>docker</code>, <code>containerd</code>, <code>cri-o</code>, <code>podman</code> oder <code>host</code>.
+    <br><br>
+
+    Die Definition wird f&uuml;r den Healthcheck des Containers ben&ouml;tigt. Existiert nach dem
+    Start von FHEM keine Definition (z. B. bei mitgebrachter <code>fhem.cfg</code> oder <code>configDB</code>),
+    legt das Modul <code>DockerImageInfo</code> automatisch an. Die Definition wird nicht gespeichert,
+    mit <code>save</code> wird sie in die Konfiguration &uuml;bernommen. Die automatische Anlage kann
+    &uuml;ber die Umgebungsvariable <code>DOCKER_IMAGEINFO_AUTODEFINE=0</code> des Containers abgeschaltet werden.
   </ul>
 
   <a name="DockerImageInfoattr"></a>

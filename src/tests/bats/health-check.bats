@@ -65,11 +65,41 @@ teardown() {
     sleep 5
     #cat $FHEM_CFG_FILE
     cat ${LOG_FILE}
+    # fhem.cfg has no DockerImageInfo definition, the module defines it at runtime
+    assert_file_not_contains ${FHEM_CFG_FILE} "DockerImageInfo"
+    assert_file_contains ${LOG_FILE} "creating DockerImageInfo"
     assert_file_contains /tmp/health-check.urls "http://localhost:8083"
 
     run timeout 15 /health-check.sh
     assert_output --partial "http://localhost:8083/fhem/"
     assert_output --partial "OK"
+
+    kill $ENTRY_PID # fail it the process already finished due to error!
+}
+
+# bats test_tags=integrationTest
+@test "healthcheck with running fhem and disabled DockerImageInfo autodefine" {
+    bats_require_minimum_version 1.5.0
+
+    # restore initial container state, a previous test may have consumed it
+    mkdir -p /fhem/FHEM
+    cp /tmp/fhem/FHEM/* /fhem/FHEM/
+    rm -f /tmp/health-check.urls
+    cd ${FHEM_DIR} && DOCKER_IMAGEINFO_AUTODEFINE=0 /entry.sh start &> ${LOG_FILE} &
+    export ENTRY_PID=$!
+    sleep 6
+
+    while ! nc -vz localhost 8083 > /dev/null 2>&1 ; do
+        sleep 0.5
+        ((c++)) && ((c==50)) && echo "# fhem did not start" && break
+    done
+    sleep 5
+    cat ${LOG_FILE}
+    assert_file_not_contains ${LOG_FILE} "creating DockerImageInfo"
+    assert_file_not_exists /tmp/health-check.urls
+
+    run -1 timeout 15 /health-check.sh
+    assert_output --partial "Cannot read url file"
 
     kill $ENTRY_PID # fail it the process already finished due to error!
 }
