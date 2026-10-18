@@ -27,8 +27,9 @@ image:
   repository: ghcr.io/fhem/fhem-minimal-docker
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  # Use fixed tags such as "5-bookworm" or "5-threaded-bookworm".
-  tag: "5-bookworm"
+  # Use exact version tags such as "5.4.0-bookworm" or "5.4.0-threaded-bookworm"
+  # so every image update is an explicit helm upgrade (see pullPolicy above).
+  tag: "5.4.0-bookworm"
 
 # Image pull secrets for private registries
 imagePullSecrets: []
