@@ -3,7 +3,7 @@ name: fhem
 description: A Helm chart for FHEM (fhem-docker), the open-source Perl-based home automation system
 type: application
 version: 1.1.0
-appVersion: "5-bookworm"
+appVersion: "5.4.0-bookworm"
 keywords:
   - fhem
   - home-automation

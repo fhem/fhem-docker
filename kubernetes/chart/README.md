@@ -4,7 +4,7 @@ A production-ready [Helm](https://helm.sh) chart for deploying the [FHEM](https:
 
 [![Artifact Hub](https://img.shields.io/badge/Artifact%20Hub-FHEM-blue)](https://artifacthub.io/)
 [![Helm Version](https://img.shields.io/badge/Helm-v3.x-blue.svg)](https://helm.sh/)
-[![FHEM Image](https://img.shields.io/badge/fhem--docker-5--bookworm-orange.svg)](https://github.com/fhem/fhem-docker)
+[![FHEM Image](https://img.shields.io/badge/fhem--docker-5.4.0--bookworm-orange.svg)](https://github.com/fhem/fhem-docker)
 
 ---
 
@@ -224,7 +224,7 @@ Below is the complete reference of parameters configurable in `values.yaml`:
 | Parameter          | Description                                                                          | Default                            |
 | :----------------- | :----------------------------------------------------------------------------------- | :--------------------------------- |
 | `image.repository` | Image repository (`ghcr.io/fhem/fhem-minimal-docker` or `ghcr.io/fhem/fhem-docker`). | `ghcr.io/fhem/fhem-minimal-docker` |
-| `image.tag`        | Image tag (defaults to `Chart.appVersion`).                                          | `"5-bookworm"`                     |
+| `image.tag`        | Image tag (defaults to `Chart.appVersion`).                                          | `"5.4.0-bookworm"`                 |
 | `image.pullPolicy` | Image pull policy.                                                                   | `IfNotPresent`                     |
 | `imagePullSecrets` | Secrets for private registry access.                                                 | `[]`                               |
 
