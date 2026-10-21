@@ -40,6 +40,14 @@
       "automerge": true,
       "commitMessageExtra": "to {{#if isPinDigest}}{{{newDigestShort}}}{{else}}{{#if isMinor}}{{prettyNewMajor}}{{else}}{{#if isSingleVersion}}{{prettyNewVersion}}{{else}}{{#if newValue}}{{{newValue}}}{{else}}{{{newDigestShort}}}{{/if}}{{/if}}{{/if}}{{/if}}",
       "minimumReleaseAge": "1 days",
+    },
+    {
+      "description": "Automerge digest updates of the node image used as nodejs-source",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["node"],
+      "matchUpdateTypes": ["pin", "digest"],
+      "automerge": true,
+      "minimumReleaseAge": "1 days",
     }
   ]
 }
