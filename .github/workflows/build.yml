@@ -25,14 +25,17 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Cancel a superseded run for the same branch/PR so its ephemeral CI test
-# images in ghcr.io/.../fhem-docker-ci don't race with cleanup_test_images
-# sweeping images for that same branch. Release runs are never cancelled.
+# Run the whole workflow strictly one at a time across all branches, PRs and
+# releases. Parallel runs compete for runners and the shared GHA build cache;
+# serializing them also keeps the ephemeral CI test images in
+# ghcr.io/.../fhem-docker-ci from racing with cleanup_test_images.
+# 'queue: max' keeps every waiting run (up to 100) and processes them in
+# order instead of replacing the single pending run. It cannot be combined
+# with cancel-in-progress, so a superseded run is no longer cancelled
+# automatically - it is queued and runs as well.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'release' && github.run_id || (github.event.pull_request.number || github.ref) }}
-  # A 'labeled' run for any other label has all of its jobs skipped, so it must
-  # not cancel a real build that is still in flight - let it queue instead.
-  cancel-in-progress: ${{ github.event_name != 'release' && (github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')) }}
+  group: ${{ github.workflow }}
+  queue: max
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 env:
@@ -1036,8 +1039,8 @@ jobs:
     # ghcr.io/<owner>/fhem-docker-ci tag for this branch, not just the
     # current run's tags, so images left behind by earlier runs on the same
     # branch (e.g. superseded pushes) get cleaned up too. The concurrency
-    # group on this workflow ensures only one run per branch is ever
-    # in-flight, so this sweep can't race a still-running sibling run.
+    # group on this workflow ensures only one run is ever in-flight, so
+    # this sweep can't race a still-running sibling run.
     needs: [test_bats, test_integration_and_unit, test_bats_extended, trivy_scan]
     if: success()
     runs-on: ubuntu-latest
