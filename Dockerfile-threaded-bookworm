@@ -358,7 +358,7 @@ EOF
 # Node 18, which reached end-of-life in April 2025 and will never be updated
 # there. Only the node paths are copied -- never all of /usr/local, because the
 # perl base image keeps its own installation (perl, cpanm, cpm) in that prefix.
-FROM node:22-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS nodejs-source
+FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS nodejs-source
 
 FROM fhem-extended-python AS fhem-extended-python-nodejs
 
