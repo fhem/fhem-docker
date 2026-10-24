@@ -1,6 +1,6 @@
 services:
   fhem:
-    image: ghcr.io/fhem/fhem-minimal-docker:5-bookworm
+    image: ghcr.io/fhem/fhem-minimal-docker:5.5.1-bookworm
     restart: unless-stopped
     ports:
       - "8083:8083"
