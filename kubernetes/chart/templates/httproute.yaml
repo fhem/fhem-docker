@@ -1,0 +1,41 @@
+{{- if .Values.httpRoute.enabled -}}
+{{- $fullName := include "fhem.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml .Values.httpRoute.parentRefs | nindent 4 }}
+  {{- else if .Values.gateway.enabled }}
+  parentRefs:
+    - name: {{ $fullName }}
+  {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- if .Values.httpRoute.rules }}
+    {{- toYaml .Values.httpRoute.rules | nindent 4 }}
+    {{- else }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ $fullName }}
+          port: {{ $svcPort }}
+          weight: 1
+    {{- end }}
+{{- end }}
