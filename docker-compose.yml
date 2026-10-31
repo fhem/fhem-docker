@@ -40,7 +40,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   mail:
-    image: boky/postfix:5.1.0-alpine
+    image: boky/postfix:5.2.0-alpine
     restart: unless-stopped
     profiles:
       - mail
