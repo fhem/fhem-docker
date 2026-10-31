@@ -8,9 +8,15 @@ echo -e "\n\n"
 rm -rf ./failed_variants
 RETURNCODE=0
 
-for ID in $( docker images | grep '^fhem/*' | grep -v "<none>" | grep -P ' +[0-9]+\.[0-9]+.+' | awk '{print $3}' | uniq ); do
+# Use --format instead of parsing the table: newer Docker versions merge
+# repository and tag into one column, which shifts the awk field numbers.
+for ID in $( docker images --format '{{.Repository}} {{.Tag}} {{.ID}}' | awk '$1 ~ /^fhem\// && $2 != "<none>" {print $3}' | sort -u ); do
   echo "Booting up container for variant $ID ..."
-  CONTAINER=$( docker run -d -ti --health-interval=60s --health-timeout=10s --health-start-period=150s --health-retries=5 $ID )
+  CONTAINER=$( docker run -d -ti --health-interval=60s --health-timeout=10s --health-start-period=150s --health-retries=5 $ID ) || {
+    echo "Failed to start a container for variant $ID. Integration test FAILED!"
+    RETURNCODE=$(( RETURNCODE+3 ))
+    continue
+  }
   docker container ls | grep 'fhem/.*'
 
   echo -ne "Waiting for container ..."
