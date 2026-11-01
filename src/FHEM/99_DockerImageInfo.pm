@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use FHEM::Meta;
 use List::Util qw( first );
+use JSON::PP ();
+use HttpUtils;
 
 sub DockerImageInfo_Initialize {
     my ($hash) = @_;
@@ -12,7 +14,10 @@ sub DockerImageInfo_Initialize {
     $hash->{DefFn}     = \&DockerImageInfo_Define;
     $hash->{NotifyFn}  = \&DockerImageInfo_Notify;
     $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
-    $hash->{AttrList}  = $readingFnAttributes;
+    $hash->{SetFn}     = \&DockerImageInfo_Set;
+    $hash->{AttrFn}    = \&DockerImageInfo_Attr;
+    $hash->{RenameFn}  = \&DockerImageInfo_Rename;
+    $hash->{AttrList}  = q[updateCheckInterval updateCheckRepository updateCheckTag ] . $readingFnAttributes;
 
     # 99_ modules are always loaded by FHEM, even without a definition (fhem.cfg or configDB).
     # Create the definition after startup if it is missing, it is required by the health check.
@@ -128,6 +133,7 @@ sub DockerImageInfo_Notify
   if( defined first { $events->[$_] =~ /^INITIALIZED|REREADCFG$/ || $events->[$_] =~ /^ATTR\s.*\s(?:HTTPS|webname|DockerHealthCheck)\s.+/ } 0..$#{$events} ) {
     # Update available infos
     DockerImageInfo_GetImageInfo( $hash);
+    DockerImageInfo_UpdateCheckSchedule( $hash, 60 );
 
     return DockerImageInfo_UpdateHealthCheck( $hash);
   }
@@ -175,6 +181,7 @@ sub DockerImageInfo_UpdateHealthCheck
 
 sub DockerImageInfo_Undefine {
     my ( $hash, $def ) = @_;
+    RemoveInternalTimer( qq[DockerImageInfo_UpdateCheck:$hash->{NAME}] );
     unlink( $hash->{URL_FILE});
     delete $modules{'DockerImageInfo'}{defptr};
 }
@@ -220,6 +227,7 @@ sub DockerImageInfo_GetImageInfo {
         $imageInfo{$NAME} = $VAL;
         readingsBulkUpdateIfChanged( $hash, $NAME, $VAL );
     }
+    $hash->{helper}{imageInfo} = \%imageInfo;
 
     $VAL   = '[ ';
     @LINES = split( "\n", `sort --stable --unique /etc/sudoers.d/fhem*` );
@@ -276,6 +284,196 @@ sub DockerImageInfo_GetImageInfo {
     readingsBulkUpdateIfChanged( $hash, q[model], join( q[; ], @modelParts ) );
 
     readingsEndUpdate( $hash, 1 );
+}
+
+
+###################################
+# Check ghcr.io for a newer image
+
+my $DockerImageInfo_UpdateCheckIntervalDefault = 86400;    # once a day
+
+sub DockerImageInfo_Set {
+    my ( $hash, $name, $cmd, @args ) = @_;
+
+    return qq[Unknown argument $cmd, choose one of updateCheck:noArg]
+      if ( !defined($cmd) || $cmd ne q[updateCheck] );
+
+    DockerImageInfo_UpdateCheckStart( $hash );
+    return undef;
+}
+
+sub DockerImageInfo_Attr {
+    my ( $cmd, $name, $attrName, $attrVal ) = @_;
+    my $hash = $defs{$name};
+
+    if ( $attrName eq q[updateCheckInterval] ) {
+        return qq[$attrName must be 0 (disabled) or a number of seconds >= 3600]
+          if ( $cmd eq q[set] && ( $attrVal !~ m/^\d+$/x || ( $attrVal != 0 && $attrVal < 3600 ) ) );
+
+        # AttrFn runs before the attribute is stored, so pass the new interval
+        DockerImageInfo_UpdateCheckSchedule( $hash, 60, ( $cmd eq q[set] ) ? $attrVal : $DockerImageInfo_UpdateCheckIntervalDefault ) if ( $init_done );
+    }
+
+    return undef;
+}
+
+# the timer argument contains the device name, move the timer to the new name
+sub DockerImageInfo_Rename {
+    my ( $new, $old ) = @_;
+
+    RemoveInternalTimer( qq[DockerImageInfo_UpdateCheck:$old] );
+    DockerImageInfo_UpdateCheckSchedule( $defs{$new} ) if ( defined( $defs{$new} ) );
+    return;
+}
+
+# decode_json expects bytes, HttpUtils returns characters with "attr global encoding unicode"
+sub DockerImageInfo_DecodeJson {
+    my ($data) = @_;
+    return eval { JSON::PP->new->utf8( $unicodeEncoding ? 0 : 1 )->decode($data) };
+}
+
+# (Re)start the periodic update check, $delay seconds from now (default: the interval)
+sub DockerImageInfo_UpdateCheckSchedule {
+    my ( $hash, $delay, $interval ) = @_;
+    my $name     = $hash->{NAME};
+    my $timerArg = qq[DockerImageInfo_UpdateCheck:$name];
+
+    RemoveInternalTimer( $timerArg );
+
+    $interval //= AttrVal( $name, q[updateCheckInterval], $DockerImageInfo_UpdateCheckIntervalDefault );
+    return if ( !$interval );
+
+    InternalTimer( gettimeofday() + ( $delay // $interval ), \&DockerImageInfo_UpdateCheckTimer, $timerArg );
+    return;
+}
+
+sub DockerImageInfo_UpdateCheckTimer {
+    my ($timerArg) = @_;
+    my ( undef, $name ) = split( q[:], $timerArg, 2 );
+    my $hash = $defs{$name};
+    return if ( !defined($hash) );
+
+    DockerImageInfo_UpdateCheckSchedule( $hash );
+    DockerImageInfo_UpdateCheckStart( $hash );
+    return;
+}
+
+# Repository on ghcr.io and tag to compare with, derived from the image metadata unless set by attribute
+sub DockerImageInfo_UpdateCheckTarget {
+    my ($hash) = @_;
+    my $name   = $hash->{NAME};
+    my $info   = $hash->{helper}{imageInfo} // {};
+
+    my %repoByTitle = (
+        q[fhem]         => q[fhem/fhem-docker],
+        q[fhem-minimal] => q[fhem/fhem-minimal-docker],
+    );
+    my $title = $info->{q[image.title]} // q[];
+    $title =~ s/\s+$//x;
+    my $repo = AttrVal( $name, q[updateCheckRepository], $repoByTitle{$title} );
+
+    # 5.5.1-bookworm -> 5-bookworm, 5.3.0-beta4-threaded-bookworm -> 5-threaded-bookworm
+    my $tag = AttrVal( $name, q[updateCheckTag], undef );
+    if ( !defined($tag)
+        && ( $info->{q[image.version]} // q[] ) =~ m/^v?(\d+)\.\d+\.\d+(?:-(?:alpha|beta|rc)\d*)?(-[\w.-]+)$/x ) {
+        $tag = $1 . $2;
+    }
+
+    return ( $repo, $tag );
+}
+
+sub DockerImageInfo_UpdateCheckStart {
+    my ($hash) = @_;
+    my $name   = $hash->{NAME};
+
+    my ( $repo, $tag ) = DockerImageInfo_UpdateCheckTarget( $hash );
+    if ( !defined($repo) || !defined($tag) ) {
+        readingsSingleUpdate( $hash, q[update.state], q[error: unknown repository or tag, set attributes updateCheckRepository and updateCheckTag], 1 );
+        return;
+    }
+
+    readingsSingleUpdate( $hash, q[update.tag], qq[ghcr.io/$repo:$tag], 1 );
+
+    # anonymous pull token, required by ghcr.io also for public images
+    HttpUtils_NonblockingGet( {
+        url      => qq[https://ghcr.io/token?scope=repository:$repo:pull],
+        timeout  => 15,
+        sslargs  => { SSL_verify_mode => 1 },    # HttpUtils disables certificate verification by default
+        hash     => $hash,
+        repo     => $repo,
+        tag      => $tag,
+        callback => \&DockerImageInfo_UpdateCheckTokenCb,
+    } );
+    return;
+}
+
+sub DockerImageInfo_UpdateCheckTokenCb {
+    my ( $param, $err, $data ) = @_;
+    my $hash = $param->{hash};
+
+    my $token;
+    if ( !$err ) {
+        my $json = DockerImageInfo_DecodeJson($data);
+        $token = $json->{token} if ( ref($json) eq q[HASH] );
+        $err   = qq[no token received (HTTP $param->{code})] if ( !defined($token) );
+    }
+    return DockerImageInfo_UpdateCheckError( $hash, qq[token: $err] ) if ( $err );
+
+    # the image index carries the OCI annotations version, revision and created (DOCKER_METADATA_ANNOTATIONS_LEVELS=index)
+    HttpUtils_NonblockingGet( {
+        url      => qq[https://ghcr.io/v2/$param->{repo}/manifests/$param->{tag}],
+        timeout  => 15,
+        sslargs  => { SSL_verify_mode => 1 },    # HttpUtils disables certificate verification by default
+        hash     => $hash,
+        header   => {
+            q[Authorization] => qq[Bearer $token],
+            q[Accept]        => q[application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json],
+        },
+        callback => \&DockerImageInfo_UpdateCheckManifestCb,
+    } );
+    return;
+}
+
+sub DockerImageInfo_UpdateCheckManifestCb {
+    my ( $param, $err, $data ) = @_;
+    my $hash = $param->{hash};
+
+    return DockerImageInfo_UpdateCheckError( $hash, qq[manifest: $err] ) if ( $err );
+    return DockerImageInfo_UpdateCheckError( $hash, qq[manifest: HTTP $param->{code}] ) if ( $param->{code} != 200 );
+
+    my $json = DockerImageInfo_DecodeJson($data);
+    my $annotations = ( ref($json) eq q[HASH] ) ? $json->{annotations} // {} : {};
+
+    my %remote = map { $_ => $annotations->{qq[org.opencontainers.image.$_]} // q[] } qw(version revision created);
+    return DockerImageInfo_UpdateCheckError( $hash, q[manifest: no image annotations found] ) if ( $remote{revision} eq q[] );
+
+    my $local = $hash->{helper}{imageInfo} // {};
+    my $localRevision = $local->{q[image.revision]} // q[];
+    my $localCreated  = $local->{q[image.created]}  // q[];
+
+    # same commit = same image; otherwise newer if it was built later (ISO 8601 UTC compares as string)
+    my $state = q[current];
+    if ( $remote{revision} ne $localRevision ) {
+        $state = ( $remote{created} eq q[] )                                   ? q[unknown]
+               : ( $localCreated eq q[] || $remote{created} gt $localCreated ) ? q[available]
+               :                                                                  q[current];
+    }
+
+    readingsBeginUpdate( $hash );
+    readingsBulkUpdateIfChanged( $hash, q[update.version],  $remote{version} );
+    readingsBulkUpdateIfChanged( $hash, q[update.revision], $remote{revision} );
+    readingsBulkUpdateIfChanged( $hash, q[update.created],  $remote{created} );
+    readingsBulkUpdate( $hash, q[update.state], $state );
+    readingsEndUpdate( $hash, 1 );
+    return;
+}
+
+sub DockerImageInfo_UpdateCheckError {
+    my ( $hash, $msg ) = @_;
+
+    Log3 $hash->{NAME}, 3, qq[$hash->{NAME}: update check failed: $msg];
+    readingsSingleUpdate( $hash, q[update.state], qq[error: $msg], 1 );
+    return;
 }
 
 1;
@@ -338,6 +536,16 @@ sub DockerImageInfo_GetImageInfo {
   </ul>
   <br>
 
+  <a name="DockerImageInfoset"></a>
+  <b>Set</b>
+  <ul>
+      <li><i>updateCheck</i><br>
+          Checks once on ghcr.io whether a newer image is available (see attribute
+          <code>updateCheckInterval</code>).
+      </li>
+  </ul>
+  <br>
+
   <a name="DockerImageInfoattr"></a>
   <b>attr</b>
   <ul>
@@ -352,6 +560,26 @@ sub DockerImageInfo_GetImageInfo {
               Attribute is available in all definitions of type WEB.
               Default is, every definition is used for the healthcheck. 
               The behaviuor can be diabled with this attribute.
+          </li>
+          <li><i>updateCheckInterval</i> 0|&lt;seconds&gt;<br>
+              Interval of the check for a newer image on ghcr.io, at least 3600 seconds,
+              Default is <code>86400</code> (once a day), <code>0</code> disables the check.
+              The first check runs 60 seconds after FHEM start or after setting the attribute.
+              The check reads the manifest of the image tag anonymously from ghcr.io
+              (no image is downloaded, the TLS certificate is verified) and compares its revision (git commit) and build date with
+              the running image. Results are stored in the readings
+              <code>update.state</code> (<code>available</code>, <code>current</code>,
+              <code>unknown</code> or <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
+              <code>update.revision</code> and <code>update.created</code>.
+          </li>
+          <li><i>updateCheckTag</i> &lt;tag&gt;<br>
+              Tag to compare with. Default is the major version tag of the running image,
+              e.g. <code>5-bookworm</code> for <code>image.version=5.5.1-bookworm</code>.
+              Required for images without a release version (branch or PR builds).
+          </li>
+          <li><i>updateCheckRepository</i> &lt;owner/name&gt;<br>
+              Repository on ghcr.io. Default is <code>fhem/fhem-docker</code> or
+              <code>fhem/fhem-minimal-docker</code>, depending on <code>image.title</code>.
           </li>
       </ul>
   </ul>
@@ -411,6 +639,16 @@ sub DockerImageInfo_GetImageInfo {
     </ul>
   </ul>
 
+  <a name="DockerImageInfoset"></a>
+  <b>Set</b>
+  <ul>
+      <li><i>updateCheck</i><br>
+          Pr&uuml;ft einmalig auf ghcr.io, ob ein neueres Image verf&uuml;gbar ist (siehe Attribut
+          <code>updateCheckInterval</code>).
+      </li>
+  </ul>
+  <br>
+
   <a name="DockerImageInfoattr"></a>
   <b>attr</b>
   <ul>
@@ -424,6 +662,26 @@ sub DockerImageInfo_GetImageInfo {
               Das Attribute wird in allen Definition des Typs WEB bereitgestellt.
               Der Standardwert ist, dass jede WEB Definition für den Healthcheck verwendet wird.
               Mit diesem Attribut, kann der Healthcheck auf eine Webdefinition deaktiviert werden.
+          </li>
+          <li><i>updateCheckInterval</i> 0|&lt;Sekunden&gt;<br>
+              Intervall der Pr&uuml;fung auf ein neueres Image auf ghcr.io, mindestens 3600 Sekunden,
+              Standard ist <code>86400</code> (einmal t&auml;glich), <code>0</code> schaltet die Pr&uuml;fung ab.
+              Die erste Pr&uuml;fung erfolgt 60 Sekunden nach dem Start von FHEM bzw. nach dem Setzen des Attributs.
+              Die Pr&uuml;fung liest anonym nur das Manifest des Image-Tags von ghcr.io (es wird kein
+              Image heruntergeladen, das TLS-Zertifikat wird gepr&uuml;ft) und vergleicht Revision (Git-Commit) und Build-Datum mit dem
+              laufenden Image. Ergebnisse stehen in den Readings <code>update.state</code>
+              (<code>available</code>, <code>current</code>, <code>unknown</code> oder <code>error: ...</code>),
+              <code>update.tag</code>, <code>update.version</code>, <code>update.revision</code> und
+              <code>update.created</code>.
+          </li>
+          <li><i>updateCheckTag</i> &lt;Tag&gt;<br>
+              Tag, mit dem verglichen wird. Standard ist der Major-Tag des laufenden Images,
+              z. B. <code>5-bookworm</code> bei <code>image.version=5.5.1-bookworm</code>.
+              Bei Images ohne Release-Version (Branch- oder PR-Builds) erforderlich.
+          </li>
+          <li><i>updateCheckRepository</i> &lt;owner/name&gt;<br>
+              Repository auf ghcr.io. Standard ist <code>fhem/fhem-docker</code> bzw.
+              <code>fhem/fhem-minimal-docker</code>, abh&auml;ngig von <code>image.title</code>.
           </li>
       </ul>
   </ul>
@@ -466,7 +724,9 @@ sub DockerImageInfo_GetImageInfo {
         "strict": 0,
         "warnings": 0,
         "FHEM::Meta": 0.001006,
-        "List::Util" : 1.18
+        "List::Util" : 1.18,
+        "JSON::PP": 0,
+        "HttpUtils": 0
       },
       "recommends": {
       },
