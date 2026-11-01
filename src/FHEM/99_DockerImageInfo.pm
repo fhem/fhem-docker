@@ -290,6 +290,8 @@ sub DockerImageInfo_GetImageInfo {
 ###################################
 # Check ghcr.io for a newer image
 
+my $DockerImageInfo_UpdateCheckIntervalDefault = 86400;    # once a day
+
 sub DockerImageInfo_Set {
     my ( $hash, $name, $cmd, @args ) = @_;
 
@@ -309,7 +311,7 @@ sub DockerImageInfo_Attr {
           if ( $cmd eq q[set] && ( $attrVal !~ m/^\d+$/x || ( $attrVal != 0 && $attrVal < 3600 ) ) );
 
         # AttrFn runs before the attribute is stored, so pass the new interval
-        DockerImageInfo_UpdateCheckSchedule( $hash, 60, ( $cmd eq q[set] ) ? $attrVal : 0 ) if ( $init_done );
+        DockerImageInfo_UpdateCheckSchedule( $hash, 60, ( $cmd eq q[set] ) ? $attrVal : $DockerImageInfo_UpdateCheckIntervalDefault ) if ( $init_done );
     }
 
     return undef;
@@ -338,7 +340,7 @@ sub DockerImageInfo_UpdateCheckSchedule {
 
     RemoveInternalTimer( $timerArg );
 
-    $interval //= AttrVal( $name, q[updateCheckInterval], 0 );
+    $interval //= AttrVal( $name, q[updateCheckInterval], $DockerImageInfo_UpdateCheckIntervalDefault );
     return if ( !$interval );
 
     InternalTimer( gettimeofday() + ( $delay // $interval ), \&DockerImageInfo_UpdateCheckTimer, $timerArg );
@@ -396,6 +398,7 @@ sub DockerImageInfo_UpdateCheckStart {
     HttpUtils_NonblockingGet( {
         url      => qq[https://ghcr.io/token?scope=repository:$repo:pull],
         timeout  => 15,
+        sslargs  => { SSL_verify_mode => 1 },    # HttpUtils disables certificate verification by default
         hash     => $hash,
         repo     => $repo,
         tag      => $tag,
@@ -420,6 +423,7 @@ sub DockerImageInfo_UpdateCheckTokenCb {
     HttpUtils_NonblockingGet( {
         url      => qq[https://ghcr.io/v2/$param->{repo}/manifests/$param->{tag}],
         timeout  => 15,
+        sslargs  => { SSL_verify_mode => 1 },    # HttpUtils disables certificate verification by default
         hash     => $hash,
         header   => {
             q[Authorization] => qq[Bearer $token],
@@ -559,10 +563,10 @@ sub DockerImageInfo_UpdateCheckError {
           </li>
           <li><i>updateCheckInterval</i> 0|&lt;seconds&gt;<br>
               Interval of the check for a newer image on ghcr.io, at least 3600 seconds,
-              e.g. <code>86400</code> for once a day. Default is <code>0</code> (disabled).
+              Default is <code>86400</code> (once a day), <code>0</code> disables the check.
               The first check runs 60 seconds after FHEM start or after setting the attribute.
               The check reads the manifest of the image tag anonymously from ghcr.io
-              (no image is downloaded) and compares its revision (git commit) and build date with
+              (no image is downloaded, the TLS certificate is verified) and compares its revision (git commit) and build date with
               the running image. Results are stored in the readings
               <code>update.state</code> (<code>available</code>, <code>current</code>,
               <code>unknown</code> or <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
@@ -661,10 +665,10 @@ sub DockerImageInfo_UpdateCheckError {
           </li>
           <li><i>updateCheckInterval</i> 0|&lt;Sekunden&gt;<br>
               Intervall der Pr&uuml;fung auf ein neueres Image auf ghcr.io, mindestens 3600 Sekunden,
-              z. B. <code>86400</code> f&uuml;r einmal t&auml;glich. Standard ist <code>0</code> (aus).
+              Standard ist <code>86400</code> (einmal t&auml;glich), <code>0</code> schaltet die Pr&uuml;fung ab.
               Die erste Pr&uuml;fung erfolgt 60 Sekunden nach dem Start von FHEM bzw. nach dem Setzen des Attributs.
               Die Pr&uuml;fung liest anonym nur das Manifest des Image-Tags von ghcr.io (es wird kein
-              Image heruntergeladen) und vergleicht Revision (Git-Commit) und Build-Datum mit dem
+              Image heruntergeladen, das TLS-Zertifikat wird gepr&uuml;ft) und vergleicht Revision (Git-Commit) und Build-Datum mit dem
               laufenden Image. Ergebnisse stehen in den Readings <code>update.state</code>
               (<code>available</code>, <code>current</code>, <code>unknown</code> oder <code>error: ...</code>),
               <code>update.tag</code>, <code>update.version</code>, <code>update.revision</code> und
