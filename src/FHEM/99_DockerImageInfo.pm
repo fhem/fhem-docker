@@ -16,6 +16,7 @@ sub DockerImageInfo_Initialize {
     $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
     $hash->{SetFn}     = \&DockerImageInfo_Set;
     $hash->{AttrFn}    = \&DockerImageInfo_Attr;
+    $hash->{RenameFn}  = \&DockerImageInfo_Rename;
     $hash->{AttrList}  = q[updateCheckInterval updateCheckRepository updateCheckTag ] . $readingFnAttributes;
 
     # 99_ modules are always loaded by FHEM, even without a definition (fhem.cfg or configDB).
@@ -314,6 +315,21 @@ sub DockerImageInfo_Attr {
     return undef;
 }
 
+# the timer argument contains the device name, move the timer to the new name
+sub DockerImageInfo_Rename {
+    my ( $new, $old ) = @_;
+
+    RemoveInternalTimer( qq[DockerImageInfo_UpdateCheck:$old] );
+    DockerImageInfo_UpdateCheckSchedule( $defs{$new} ) if ( defined( $defs{$new} ) );
+    return;
+}
+
+# decode_json expects bytes, HttpUtils returns characters with "attr global encoding unicode"
+sub DockerImageInfo_DecodeJson {
+    my ($data) = @_;
+    return eval { JSON::PP->new->utf8( $unicodeEncoding ? 0 : 1 )->decode($data) };
+}
+
 # (Re)start the periodic update check, $delay seconds from now (default: the interval)
 sub DockerImageInfo_UpdateCheckSchedule {
     my ( $hash, $delay, $interval ) = @_;
@@ -394,7 +410,7 @@ sub DockerImageInfo_UpdateCheckTokenCb {
 
     my $token;
     if ( !$err ) {
-        my $json = eval { JSON::PP::decode_json($data) };
+        my $json = DockerImageInfo_DecodeJson($data);
         $token = $json->{token} if ( ref($json) eq q[HASH] );
         $err   = qq[no token received (HTTP $param->{code})] if ( !defined($token) );
     }
@@ -421,7 +437,7 @@ sub DockerImageInfo_UpdateCheckManifestCb {
     return DockerImageInfo_UpdateCheckError( $hash, qq[manifest: $err] ) if ( $err );
     return DockerImageInfo_UpdateCheckError( $hash, qq[manifest: HTTP $param->{code}] ) if ( $param->{code} != 200 );
 
-    my $json = eval { JSON::PP::decode_json($data) };
+    my $json = DockerImageInfo_DecodeJson($data);
     my $annotations = ( ref($json) eq q[HASH] ) ? $json->{annotations} // {} : {};
 
     my %remote = map { $_ => $annotations->{qq[org.opencontainers.image.$_]} // q[] } qw(version revision created);
@@ -434,7 +450,9 @@ sub DockerImageInfo_UpdateCheckManifestCb {
     # same commit = same image; otherwise newer if it was built later (ISO 8601 UTC compares as string)
     my $state = q[current];
     if ( $remote{revision} ne $localRevision ) {
-        $state = ( $localCreated eq q[] || $remote{created} gt $localCreated ) ? q[available] : q[current];
+        $state = ( $remote{created} eq q[] )                                   ? q[unknown]
+               : ( $localCreated eq q[] || $remote{created} gt $localCreated ) ? q[available]
+               :                                                                  q[current];
     }
 
     readingsBeginUpdate( $hash );
@@ -542,11 +560,12 @@ sub DockerImageInfo_UpdateCheckError {
           <li><i>updateCheckInterval</i> 0|&lt;seconds&gt;<br>
               Interval of the check for a newer image on ghcr.io, at least 3600 seconds,
               e.g. <code>86400</code> for once a day. Default is <code>0</code> (disabled).
+              The first check runs 60 seconds after FHEM start or after setting the attribute.
               The check reads the manifest of the image tag anonymously from ghcr.io
               (no image is downloaded) and compares its revision (git commit) and build date with
               the running image. Results are stored in the readings
-              <code>update.state</code> (<code>available</code>, <code>current</code> or
-              <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
+              <code>update.state</code> (<code>available</code>, <code>current</code>,
+              <code>unknown</code> or <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
               <code>update.revision</code> and <code>update.created</code>.
           </li>
           <li><i>updateCheckTag</i> &lt;tag&gt;<br>
@@ -643,10 +662,11 @@ sub DockerImageInfo_UpdateCheckError {
           <li><i>updateCheckInterval</i> 0|&lt;Sekunden&gt;<br>
               Intervall der Pr&uuml;fung auf ein neueres Image auf ghcr.io, mindestens 3600 Sekunden,
               z. B. <code>86400</code> f&uuml;r einmal t&auml;glich. Standard ist <code>0</code> (aus).
+              Die erste Pr&uuml;fung erfolgt 60 Sekunden nach dem Start von FHEM bzw. nach dem Setzen des Attributs.
               Die Pr&uuml;fung liest anonym nur das Manifest des Image-Tags von ghcr.io (es wird kein
               Image heruntergeladen) und vergleicht Revision (Git-Commit) und Build-Datum mit dem
               laufenden Image. Ergebnisse stehen in den Readings <code>update.state</code>
-              (<code>available</code>, <code>current</code> oder <code>error: ...</code>),
+              (<code>available</code>, <code>current</code>, <code>unknown</code> oder <code>error: ...</code>),
               <code>update.tag</code>, <code>update.version</code>, <code>update.revision</code> und
               <code>update.created</code>.
           </li>
