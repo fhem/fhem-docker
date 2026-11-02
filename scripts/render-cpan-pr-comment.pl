@@ -97,7 +97,8 @@ sub excluded_requirements_for {
         push @core, 'HiPi';
     }
 
-    my $is_bookworm = $dockerfile_name =~ /bookworm/;
+    # trixie keeps the bookworm SNMP exclusions until SNMP is verified there.
+    my $is_bookworm = $dockerfile_name =~ /bookworm|trixie/;
     if (
         ( $is_bookworm && ( $target eq 'linux/arm/v7' || $target eq 'linux/386' || $target eq 'linux/arm64' ) )
         || ( !$is_bookworm && $target eq 'linux/arm/v7' )

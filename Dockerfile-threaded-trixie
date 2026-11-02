@@ -1,0 +1,566 @@
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+# 
+# base layer with perl and some general preparations
+#
+FROM perl:5.40.5-slim-threaded-trixie@sha256:4dfa98e05e9aeb3dd65d3d68343b602a1f0476376710919c1ef354317e2e98a8 AS base
+
+ARG TARGETPLATFORM
+
+ENV LANG=en_US.UTF-8 \
+   LANGUAGE=en_US:en \
+   LC_ADDRESS=de_DE.UTF-8 \
+   LC_MEASUREMENT=de_DE.UTF-8 \
+   LC_MESSAGES=en_DK.UTF-8 \
+   LC_MONETARY=de_DE.UTF-8 \
+   LC_NAME=de_DE.UTF-8 \
+   LC_NUMERIC=de_DE.UTF-8 \
+   LC_PAPER=de_DE.UTF-8 \
+   LC_TELEPHONE=de_DE.UTF-8 \
+   LC_TIME=de_DE.UTF-8 \
+   TERM=xterm \
+   TZ=Europe/Berlin
+
+
+
+
+RUN <<EOF
+    set -x;
+    sed -i 's/^Components: main$/& contrib non-free/' /etc/apt/sources.list.d/debian.sources
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        locales 
+    LC_ALL=C c_rehash 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales 
+    echo 'de_DE@euro ISO-8859-15\nde_DE ISO-8859-1\nde_DE.UTF-8 UTF-8\nen_DK ISO-8859-1\nen_DK.ISO-8859-15 ISO-8859-15\nen_DK.UTF-8 UTF-8\nen_GB ISO-8859-1\nen_GB.ISO-8859-15 ISO-8859-15\nen_GB.UTF-8 UTF-8\nen_IE ISO-8859-1\nen_IE.ISO-8859-15 ISO-8859-15\nen_IE.UTF-8 UTF-8\nen_US ISO-8859-1\nen_US.ISO-8859-15 ISO-8859-15\nen_US.UTF-8 UTF-8\nes_ES@euro ISO-8859-15\nes_ES ISO-8859-1\nes_ES.UTF-8 UTF-8\nfr_FR@euro ISO-8859-15\nfr_FR ISO-8859-1\nfr_FR.UTF-8 UTF-8\nit_IT@euro ISO-8859-15\nit_IT ISO-8859-1\nit_IT.UTF-8 UTF-8\nnl_NL@euro ISO-8859-15\nnl_NL ISO-8859-1\nnl_NL.UTF-8 UTF-8\npl_PL ISO-8859-2\npl_PL.UTF-8 UTF-8' >/etc/locale.gen 
+    
+    LC_ALL=C locale-gen 
+    ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime 
+    echo "Europe/Berlin" > /etc/timezone 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive dpkg-reconfigure tzdata 
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
+    
+EOF
+
+
+
+#
+# Install all CPAN Modules, needed from FHEM and standard modules
+#
+
+FROM perl:5.40.5-threaded-trixie@sha256:6d8de0a389565b663acc8e3c14a8b07b7f60d1491d55e4a21b48dbf5e1a93255 AS build-cpan 
+
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG CPAN_CPM_CACHE_ID=perl-cpm-default
+# renovate: datasource=github-releases depName=cpm packageName=skaji/cpm
+ARG CPAN_CPM_VERSION=v1.1.6
+ARG CPAN_CPM_MIRROR=https://www.cpan.org
+
+COPY cpanfile /usr/src/app/core/cpanfile
+COPY scripts/export-installed-modules.pl /usr/local/bin/export-installed-modules.pl
+COPY scripts/verify-cpan-requirements.pl /usr/local/bin/verify-cpan-requirements.pl
+COPY scripts/cpm-install-with-retry.sh /usr/local/bin/cpm-install-with-retry
+
+# HiPi is part of the core cpanfile and pulls in Image::Imlib2, so libimlib2-dev
+# and libi2c-dev have to be installed before the core CPAN run, not after it.
+# Install Packages used for building cpan modules:
+RUN <<EOF
+  set -ex;
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+    libusb-dev \
+    libgd-dev \
+    libfann-dev \
+    pkg-config \
+    graphviz \
+    libimlib2-dev \
+    libi2c-dev \
+    python3-dev    
+  cpanm --notest "https://cpan.metacpan.org/authors/id/S/SK/SKAJI/App-cpm-${CPAN_CPM_VERSION}.tar.gz"
+  cpm --version
+  cpm --version | grep -F "cpm ${CPAN_CPM_VERSION}"
+  cat <<'SCRIPT' > /usr/local/bin/imlib2-config
+#!/bin/sh
+exec pkg-config imlib2 "$@"
+SCRIPT
+  chmod +x /usr/local/bin/imlib2-config
+  LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.]* ~/.??* 
+EOF
+
+
+
+
+#
+# Fixup modules which do not work on all platforms and install afterwards
+# Install Modules from CPAN
+#
+
+# JSON::XS isn't marked AS compatible with Perl 5.36, we prevent some output
+ENV PERL_CANARY_STABILITY_NOPROMPT=1 \
+    PERL_CPM_PREBUILT=1
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
+  set -x;
+  mkdir -p /usr/src/app/cpan-inventory /usr/src/app/cpan-logs /usr/src/app/cpan-verify/core /usr/src/app/cpan-verify/3rdparty /usr/src/app/cpan-verify/all;
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/core/cpanfile  
+  fi
+  # Math::Pari/Crypt::Random are unstable on linux/386 and linux/arm/v7.
+  if [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; then
+    sed -i '/Math::Pari/d' /usr/src/app/core/cpanfile
+    sed -i '/Crypt::Random/d' /usr/src/app/core/cpanfile
+  fi
+  # HiPi pulls in Image::Imlib2 and currently only builds reliably on amd64.
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
+    sed -i '/HiPi/d' /usr/src/app/core/cpanfile
+  fi
+  cpm_workers=1
+  core_status=0
+  cpm-install-with-retry /usr/src/app/cpan-logs/core-install.log cpm install --mirror=${CPAN_CPM_MIRROR} --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ || core_status=$?
+  cat /usr/src/app/cpan-logs/core-install.log
+  printf 'exit_code=%s\n' "$core_status" > /usr/src/app/cpan-verify/core/core-install-status.txt
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-inventory/core --label core
+  
+  rm -rf /root/.cpanm 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+EOF
+  
+  
+# Install Packages used for building 3rdparty cpan modules:
+RUN <<EOF
+  set -x;
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+  LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      libbluetooth-dev \
+      libgd-dev \
+      libdbus-1-dev \
+      libsodium-dev \
+      libsnmp-dev
+  LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.]* ~/.??* 
+EOF
+
+
+# Install all CPAN Modules, needed from 3rd party module repositorys 
+COPY 3rdParty/cpanfile /usr/src/app/3rdparty/cpanfile
+
+# Fixup modules which do not work on all platforms and install afterwards
+RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETARCH}${TARGETVARIANT},sharing=locked <<EOF
+  set -x;
+  if [ "${TARGETPLATFORM}" != "linux/amd64" ] && [ "${TARGETPLATFORM}" != "linux/386" ]; then
+    sed -i '/Device::Firmata::Constants/d' /usr/src/app/3rdparty/cpanfile
+  fi
+  # SNMP's CPAN module version must match the system Net-SNMP library. It is not
+  # usable on linux/arm64 with Debian bookworm's libsnmp-dev version. The exclusion
+  # is kept for trixie until SNMP has been verified against its libsnmp-dev there.
+  # linux/386 is not built from this Dockerfile, the perl trixie images lack it.
+  if [ "${TARGETPLATFORM}" = "linux/arm/v7" ] || [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm64" ]; then
+    sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
+  fi
+  cpm_workers=1
+  
+  thirdparty_status=0
+  cpm-install-with-retry /usr/src/app/cpan-logs/3rdparty-install.log cpm install --mirror=${CPAN_CPM_MIRROR} --cpanfile /usr/src/app/3rdparty/cpanfile --without-test --with-recommends --with-suggests --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained 3rdparty/ || thirdparty_status=$?
+  cat /usr/src/app/cpan-logs/3rdparty-install.log
+  printf 'exit_code=%s\n' "$thirdparty_status" > /usr/src/app/cpan-verify/3rdparty/3rdparty-install-status.txt
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/3rdparty --label 3rdparty
+  perl /usr/local/bin/export-installed-modules.pl --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-inventory/all --label all
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --log /usr/src/app/cpan-logs/core-install.log --lib /usr/src/app/core/lib/perl5 --output-dir /usr/src/app/cpan-verify/core --label core
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/3rdparty --label 3rdparty
+  perl /usr/local/bin/verify-cpan-requirements.pl --cpanfile /usr/src/app/core/cpanfile --cpanfile /usr/src/app/3rdparty/cpanfile --log /usr/src/app/cpan-logs/core-install.log --log /usr/src/app/cpan-logs/3rdparty-install.log --lib /usr/src/app/core/lib/perl5 --lib /usr/src/app/3rdparty/lib/perl5 --output-dir /usr/src/app/cpan-verify/all --label all
+  core_status=$(sed -n 's/^exit_code=//p' /usr/src/app/cpan-verify/core/core-install-status.txt | tail -n 1)
+  core_status=${core_status:-0}
+  printf 'core_exit_code=%s\n3rdparty_exit_code=%s\n' "$core_status" "$thirdparty_status" > /usr/src/app/cpan-verify/all/install-status.txt
+  rm -rf /root/.cpanm 
+EOF
+
+
+FROM base AS base-cpan 
+
+RUN <<EOF
+    # android-libadb \
+    set -x;
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+        adb \
+        avahi-daemon \
+        avrdude \
+        bluez \
+        curl \
+        bind9-dnsutils \
+        etherwake \
+        fonts-liberation \
+        i2c-tools \
+        inetutils-ping \
+        jq \
+        libcap-ng-utils \
+        libcap2-bin \
+        lsb-release \
+        mariadb-client \
+        net-tools \
+        netcat-traditional \
+        openssh-client \
+        procps \
+        sendemail \
+        sqlite3 \
+        subversion \
+        sudo \
+        telnet \
+        unzip \
+        usbutils \
+        wget \
+        libarchive13t64 \
+        bash \
+        libgd3 \
+        librsvg2-2 \
+        iproute2 \
+        libpq5 \
+        libfann2
+    # The upstream Perl base image ships a C header toolchain (libc6-dev and
+    # friends) so that XS modules can be compiled inside the container. This
+    # image carries no C compiler, so those headers can never be used -- but
+    # they keep dragging kernel and OpenSSL CVEs (linux-libc-dev, libssl-dev)
+    # into every image scan, and a rebuilt upstream tag only picks up their
+    # fixes once the base image is repinned here. Drop the headers; the
+    # matching runtime libraries (libc6, libssl3t64, zlib1g, libarchive13t64) stay
+    # installed.
+    # Their auto-installed companions (libc-dev-bin, libnsl-dev, libtirpc-dev,
+    # rpcsvc-proto) are taken by the autoremove below.
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get purge -qqy \
+        linux-libc-dev \
+        libc6-dev \
+        libcrypt-dev \
+        libssl-dev \
+        zlib1g-dev
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
+EOF
+
+COPY --from=build-cpan /usr/src/app/core/lib/perl5 /usr/src/app/core/lib/perl5
+
+#
+# Standard FHEM Layer
+#
+FROM base-cpan AS fhem-core
+
+ENV PERL5LIB=/usr/src/app/core/lib/perl5
+
+# Install base environment and FHEM Docker module
+COPY src/entry.sh src/health-check.sh src/ssh_known_hosts.txt /
+COPY src/FHEM/99_DockerImageInfo.pm /fhem/FHEM/
+
+# FHEM specific ENVs
+ENV LOGFILE=./log/fhem-%Y-%m-%d.log \
+   TELNETPORT=7072 \
+   FHEM_UID=6061 \
+   FHEM_GID=6061 \
+   FHEM_PERM_DIR=0750 \
+   FHEM_PERM_FILE=0640 \
+   UMASK=0037 \
+   BLUETOOTH_GID=6001 \
+   GPIO_GID=6002 \
+   I2C_GID=6003 \
+   TIMEOUT=10 \
+   CONFIGTYPE=fhem.cfg
+
+# Image metadata lives in the final stages below, not here.
+# BUILD_DATE, IMAGE_VERSION, IMAGE_VCS_REF and L_USAGE get a new value on every
+# single build, and every layer above the one consuming them is invalidated with
+# them (https://github.com/moby/moby/issues/20136). The expensive apt layers
+# therefore build on this stage, while the metadata is applied afterwards.
+
+RUN chmod 755 /*.sh /usr/local/bin/*
+
+VOLUME [ "/opt/fhem" ]
+
+EXPOSE 8083
+
+HEALTHCHECK --interval=20s --timeout=10s --start-period=60s --retries=5 CMD /health-check.sh
+
+WORKDIR "/opt/fhem"
+ENTRYPOINT [ "/entry.sh" ]
+CMD [ "start" ]
+
+
+
+#
+# Add additional Perl and System layers
+#
+
+FROM fhem-core AS fhem-extended
+
+ENV PERL5LIB=${PERL5LIB}:/usr/src/app/3rdparty/lib/perl5
+
+# Add extended system layer
+RUN <<EOF
+    set -x;
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      libsox-fmt-all \
+      alsa-utils \
+      dfu-programmer \
+      espeak \
+      ffmpeg \
+      lame \
+      libttspico-utils \
+      mp3wrap \
+      mpg123 \
+      mplayer \
+      normalize-audio \
+      snmp \
+      snmp-mibs-downloader \
+      sox \
+      vorbis-tools \
+      gstreamer1.0-tools
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/*
+EOF
+
+COPY --from=build-cpan /usr/src/app/3rdparty/lib/perl5 /usr/src/app/3rdparty/lib/perl5
+
+#
+# Add additional Python layer
+#
+
+FROM fhem-extended AS fhem-extended-python
+
+RUN <<EOF 
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update 
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+      python3 \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
+      python3-pychromecast \
+      speedtest-cli \
+      yt-dlp
+    ln -s ../../bin/speedtest-cli /usr/local/bin/speedtest-cli 
+    # trixie dropped youtube-dl; yt-dlp is its maintained fork and only ships
+    # /usr/bin/yt-dlp, so keep the old command name for existing setups.
+    ln -s ../../bin/yt-dlp /usr/local/bin/youtube-dl
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean 
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.[!.] ~/.??* ~/* 
+EOF
+
+#
+# Add nodejs app layer
+#
+# Node.js comes from the official image instead of apt: Debian bookworm ships
+# Node 18, which reached end-of-life in April 2025 and will never be updated
+# there. The bookworm based node image is used on purpose: node:22-trixie-slim
+# is not published for linux/arm/v7, and the node binary only needs glibc,
+# libstdc++ and (on 32-bit arm) libatomic, which trixie provides in newer versions.
+# Only the node paths are copied -- never all of /usr/local, because the
+# perl base image keeps its own installation (perl, cpanm, cpm) in that prefix.
+FROM node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS nodejs-source
+
+FROM fhem-extended-python AS fhem-extended-python-nodejs
+
+ARG IMAGE_LAYER_NODEJS_EXT="0"
+
+COPY --from=nodejs-source /usr/local/bin/node /usr/local/bin/node
+COPY --from=nodejs-source /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+RUN <<EOF
+    set -e
+    # node links against libatomic on 32-bit arm. Installing the deb would have
+    # pulled that in as a package dependency; a COPY resolves no dependencies,
+    # so it has to be named here.
+    # PERL5LIB points at XS modules built for the image perl in /usr/local. dpkg
+    # maintainer scripts run Debian's /usr/bin/perl instead, which has the same
+    # archname but another version, so it picks up e.g. Text::Iconv from there and
+    # aborts. On linux/arm/v7 this left x11-common, mplayer and ffmpeg unconfigured.
+    unset PERL5LIB
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get update
+    LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends libatomic1
+    LC_ALL=C apt-get autoremove -qqy && LC_ALL=C apt-get clean
+    ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
+    ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+    node --version
+    npm --version
+    if [ "${IMAGE_LAYER_NODEJS_EXT}" != "0" ]; then
+           npm install -g --unsafe-perm --production \
+            alexa-cookie2 \
+            alexa-fhem \
+            gassistant-fhem \
+            homebridge \
+            homebridge-fhem \
+            tradfri-fhem
+    fi
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* ~/.npm
+EOF
+
+#
+#
+# Layer only for bash unit testing
+#
+#
+#
+# Final images: the volatile metadata is applied as the very last layer,
+# so a new build date cannot invalidate anything underneath it.
+#
+
+FROM fhem-core AS with-fhem
+
+# Arguments to instantiate AS variables
+ARG PLATFORM="linux"
+ARG TAG=""
+ARG IMAGE_VCS_REF=""
+ARG IMAGE_VERSION=""
+ARG BUILD_DATE=""
+
+# Re-usable variables during build
+ARG L_AUTHORS=""
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem-minimal"
+ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
+ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
+ARG L_VENDOR="FHEM"
+ARG L_LICENSES="MIT"
+ARG L_TITLE="fhem-minimal"
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian trixie Perl image."
+
+ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
+ARG L_URL_FHEM="https://fhem.de/"
+ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
+ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
+ARG L_VENDOR_FHEM="FHEM e.V."
+ARG L_LICENSES_FHEM="GPL-2.0"
+ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
+
+# non-standard labels
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
+
+# annotation labels according to
+# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.authors=${L_AUTHORS}
+LABEL org.opencontainers.image.url=${L_URL}
+LABEL org.opencontainers.image.documentation=${L_USAGE}
+LABEL org.opencontainers.image.source=${L_VCS_URL}
+LABEL org.opencontainers.image.version=${IMAGE_VERSION}
+LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
+LABEL org.opencontainers.image.vendor=${L_VENDOR}
+LABEL org.opencontainers.image.licenses=${L_LICENSES}
+LABEL org.opencontainers.image.title=${L_TITLE} 
+LABEL org.opencontainers.image.description=${L_DESCR}
+
+RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+
+FROM fhem-extended-python-nodejs AS with-fhem-extended-python-nodejs
+
+# Arguments to instantiate AS variables
+ARG PLATFORM="linux"
+ARG TAG=""
+ARG IMAGE_VCS_REF=""
+ARG IMAGE_VERSION=""
+ARG BUILD_DATE=""
+
+# Re-usable variables during build
+ARG L_AUTHORS=""
+# Landing page of this image variant. Deliberately not per platform: a multi-arch
+# image is one repository with one manifest, so no per-platform repository exists.
+ARG L_URL="https://hub.docker.com/r/fhem/fhem"
+ARG L_USAGE="https://github.com/fhem/fhem-docker/blob/${IMAGE_VCS_REF}/README.md"
+ARG L_VCS_URL="https://github.com/fhem/fhem-docker/"
+ARG L_VENDOR="FHEM"
+ARG L_LICENSES="MIT"
+ARG L_TITLE="fhem"
+ARG L_DESCR="A basic Docker image for FHEM house automation system, based on Debian trixie Perl image."
+
+ARG L_AUTHORS_FHEM="https://fhem.de/MAINTAINER.txt"
+ARG L_URL_FHEM="https://fhem.de/"
+ARG L_USAGE_FHEM="https://fhem.de/#Documentation"
+ARG L_VCS_URL_FHEM="https://svn.fhem.de/"
+ARG L_VENDOR_FHEM="FHEM e.V."
+ARG L_LICENSES_FHEM="GPL-2.0"
+ARG L_DESCR_FHEM="FHEM (TM) is a GPL'd perl server for house automation. It is used to automate some common tasks in the household like switching lamps / shutters / heating / etc. and to log events like temperature / humidity / power consumption."
+
+# non-standard labels
+LABEL org.fhem.authors=${L_AUTHORS_FHEM}
+LABEL org.fhem.url=${L_URL_FHEM}
+LABEL org.fhem.documentation=${L_USAGE_FHEM}
+LABEL org.fhem.source=${L_VCS_URL_FHEM}
+LABEL org.fhem.vendor=${L_VENDOR_FHEM}
+LABEL org.fhem.licenses=${L_LICENSES_FHEM}
+LABEL org.fhem.description=${L_DESCR_FHEM}
+
+# annotation labels according to
+# https://github.com/opencontainers/image-spec/blob/v1.0.1/annotations.md#pre-defined-annotation-keys
+LABEL org.opencontainers.image.created=${BUILD_DATE}
+LABEL org.opencontainers.image.authors=${L_AUTHORS}
+LABEL org.opencontainers.image.url=${L_URL}
+LABEL org.opencontainers.image.documentation=${L_USAGE}
+LABEL org.opencontainers.image.source=${L_VCS_URL}
+LABEL org.opencontainers.image.version=${IMAGE_VERSION}
+LABEL org.opencontainers.image.revision=${IMAGE_VCS_REF}
+LABEL org.opencontainers.image.vendor=${L_VENDOR}
+LABEL org.opencontainers.image.licenses=${L_LICENSES}
+LABEL org.opencontainers.image.title=${L_TITLE} 
+LABEL org.opencontainers.image.description=${L_DESCR}
+
+RUN echo "org.opencontainers.image.created=${BUILD_DATE}\norg.opencontainers.image.authors=${L_AUTHORS}\norg.opencontainers.image.url=${L_URL}\norg.opencontainers.image.documentation=${L_USAGE}\norg.opencontainers.image.source=${L_VCS_URL}\norg.opencontainers.image.version=${IMAGE_VERSION}\norg.opencontainers.image.revision=${IMAGE_VCS_REF}\norg.opencontainers.image.vendor=${L_VENDOR}\norg.opencontainers.image.licenses=${L_LICENSES}\norg.opencontainers.image.title=${L_TITLE}\norg.opencontainers.image.description=${L_DESCR}\norg.fhem.authors=${L_AUTHORS_FHEM}\norg.fhem.url=${L_URL_FHEM}\norg.fhem.documentation=${L_USAGE_FHEM}\norg.fhem.source=${L_VCS_URL_FHEM}\norg.fhem.version=${FHEM_VERSION}\norg.fhem.vendor=${L_VENDOR_FHEM}\norg.fhem.licenses=${L_LICENSES_FHEM}\norg.fhem.description=${L_DESCR_FHEM}" > /image_info
+
+FROM with-fhem AS with-fhem-bats
+# renovate: datasource=github-tags depName=bats-core packageName=bats-core/bats-core
+ADD https://github.com/bats-core/bats-core.git#v1.10.0 /tmp/bats
+RUN <<EOF
+    /tmp/bats/install.sh /opt/bats 
+    ln -s /opt/bats/bin/bats /usr/local/bin/bats 
+    rm -r /tmp/bats
+EOF
+
+# renovate: datasource=github-tags depName=bats-support packageName=bats-core/bats-support
+ADD https://github.com/bats-core/bats-support.git#v0.3.0 /opt/bats/test_helper/bats-support
+# renovate: datasource=github-tags depName=bats-assert packageName=bats-core/bats-assert
+ADD https://github.com/bats-core/bats-assert.git#v2.1.0 /opt/bats/test_helper/bats-assert
+ADD https://github.com/bats-core/bats-file.git /opt/bats/test_helper/bats-file
+ADD https://github.com/grayhemp/bats-mock.git /opt/bats/test_helper/bats-mock
+
+
+
+WORKDIR /code/
+
+ENTRYPOINT [ "/usr/local/bin/bats" ]
+
+
+#
+#
+# Layer for bash integration testing
+#
+#
+FROM with-fhem-extended-python-nodejs AS with-fhem-bats-extended-python-nodejs
+
+COPY --from=with-fhem-bats /opt/bats /opt/bats/
+RUN ln -s /opt/bats/bin/bats /usr/local/bin/bats 
+
+WORKDIR /code/
+
+ENTRYPOINT [ "/usr/local/bin/bats" ]
+
+FROM scratch AS cpan-inventory
+
+COPY --from=build-cpan /usr/src/app/cpan-inventory/ /
+COPY --from=build-cpan /usr/src/app/cpan-verify/ /verify/
+COPY --from=build-cpan /usr/src/app/cpan-logs/ /logs/

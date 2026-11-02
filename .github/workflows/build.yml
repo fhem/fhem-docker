@@ -156,8 +156,14 @@ jobs:
     if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
         platform: [arm/v7, amd64, arm64, 386]
+        # The perl trixie images are not published for linux/386, so 386 stays on bookworm.
+        exclude:
+          - dockerfile: -trixie
+            platform: 386
+          - dockerfile: -threaded-trixie
+            platform: 386
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
@@ -217,6 +223,22 @@ jobs:
             platform: 386
             runner: ubuntu-latest
             setup_qemu: "true"
+          - dockerfile: -trixie
+            platform: arm/v7
+            runner: ubuntu-24.04-arm
+            setup_qemu: "true"
+          - dockerfile: -trixie
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
+          - dockerfile: -threaded-trixie
+            platform: arm/v7
+            runner: ubuntu-24.04-arm
+            setup_qemu: "true"
+          - dockerfile: -threaded-trixie
+            platform: arm64
+            runner: ubuntu-24.04-arm
+            setup_qemu: "false"
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -581,7 +603,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -758,7 +780,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -800,9 +822,9 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -869,7 +891,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -905,7 +927,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -1080,9 +1102,9 @@ jobs:
     needs: [test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     env:
-        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -1246,7 +1268,8 @@ jobs:
           context: .
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64,386
+          # linux/386 only exists for bookworm, the perl trixie images lack it.
+          platforms: ${{ contains(matrix.dockerfile, 'trixie') && 'linux/amd64,linux/arm/v7,linux/arm64' || 'linux/386,linux/amd64,linux/arm/v7,linux/arm64,386' }}
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem
           cache-from: | 
@@ -1284,9 +1307,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: [-bookworm, -threaded-bookworm, -trixie, -threaded-trixie]
     env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
