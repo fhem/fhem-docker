@@ -473,6 +473,8 @@ jobs:
             --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/core-install.log" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/3rdparty-install.log" \
             --dockerfile "${{ matrix.dockerfile }}" \
             --platform "${{ matrix.platform }}" \
             --status-json "${CPAN_STATUS_FILE}"
