@@ -118,6 +118,12 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" != "linux/amd64" ]; then
     sed -i '/HiPi/d' /usr/src/app/core/cpanfile
   fi
+  # GCC 14 (trixie) turns several old C warnings into errors by default, see
+  # https://gcc.gnu.org/gcc-14/porting_to.html. Older XS modules no longer build
+  # then, e.g. Image::LibRSVG 0.07 fails with -Wincompatible-pointer-types.
+  # Downgrade them to warnings again for all MakeMaker builds; perl's own
+  # optimize flags are kept. cpm passes PERL_MM_OPT on to "perl Makefile.PL".
+  export PERL_MM_OPT="OPTIMIZE=\"$(perl -MConfig -e 'print $Config{optimize}') -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch\""
   cpm_workers=1
   core_status=0
   cpm-install-with-retry /usr/src/app/cpan-logs/core-install.log cpm install --mirror=${CPAN_CPM_MIRROR} --without-test --with-suggests --with-recommends --cpanfile /usr/src/app/core/cpanfile --show-build-log-on-failure --configure-timeout=360 --build-timeout=7200 --workers=$cpm_workers --local-lib-contained core/ || core_status=$?
@@ -161,6 +167,12 @@ RUN --mount=type=cache,target=/root/.perl-cpm,id=${CPAN_CPM_CACHE_ID}-${TARGETAR
   if [ "${TARGETPLATFORM}" = "linux/arm/v7" ] || [ "${TARGETPLATFORM}" = "linux/386" ] || [ "${TARGETPLATFORM}" = "linux/arm64" ]; then
     sed -i '/SNMP/d' /usr/src/app/3rdparty/cpanfile
   fi
+  # GCC 14 (trixie) turns several old C warnings into errors by default, see
+  # https://gcc.gnu.org/gcc-14/porting_to.html. Older XS modules no longer build
+  # then, e.g. Image::LibRSVG 0.07 fails with -Wincompatible-pointer-types.
+  # Downgrade them to warnings again for all MakeMaker builds; perl's own
+  # optimize flags are kept. cpm passes PERL_MM_OPT on to "perl Makefile.PL".
+  export PERL_MM_OPT="OPTIMIZE=\"$(perl -MConfig -e 'print $Config{optimize}') -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch\""
   cpm_workers=1
   
   thirdparty_status=0
