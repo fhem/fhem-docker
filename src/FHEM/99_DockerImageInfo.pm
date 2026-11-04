@@ -6,6 +6,7 @@ use FHEM::Meta;
 use List::Util qw( first );
 use JSON::PP ();
 use HttpUtils;
+use FHEM::Core::Timer::Helper ();
 
 sub DockerImageInfo_Initialize {
     my ($hash) = @_;
@@ -16,7 +17,6 @@ sub DockerImageInfo_Initialize {
     $hash->{UndefFn}   = \&DockerImageInfo_Undefine;
     $hash->{SetFn}     = \&DockerImageInfo_Set;
     $hash->{AttrFn}    = \&DockerImageInfo_Attr;
-    $hash->{RenameFn}  = \&DockerImageInfo_Rename;
     $hash->{AttrList}  = q[updateCheckInterval updateCheckRepository updateCheckTag ] . $readingFnAttributes;
 
     # 99_ modules are always loaded by FHEM, even without a definition (fhem.cfg or configDB).
@@ -181,7 +181,8 @@ sub DockerImageInfo_UpdateHealthCheck
 
 sub DockerImageInfo_Undefine {
     my ( $hash, $def ) = @_;
-    RemoveInternalTimer( qq[DockerImageInfo_UpdateCheck:$hash->{NAME}] );
+    DockerImageInfo_UpdateCheckStop();
+    RemoveInternalTimer($hash);    # status timer
     unlink( $hash->{URL_FILE});
     delete $modules{'DockerImageInfo'}{defptr};
 }
@@ -290,8 +291,6 @@ sub DockerImageInfo_GetImageInfo {
 ###################################
 # Check ghcr.io for a newer image
 
-my $DockerImageInfo_UpdateCheckIntervalDefault = 86400;    # once a day
-
 sub DockerImageInfo_Set {
     my ( $hash, $name, $cmd, @args ) = @_;
 
@@ -302,55 +301,47 @@ sub DockerImageInfo_Set {
     return undef;
 }
 
-sub DockerImageInfo_Attr {
-    my ( $cmd, $name, $attrName, $attrVal ) = @_;
-    my $hash = $defs{$name};
-
-    if ( $attrName eq q[updateCheckInterval] ) {
-        return qq[$attrName must be 0 (disabled) or a number of seconds >= 3600]
-          if ( $cmd eq q[set] && ( $attrVal !~ m/^\d+$/x || ( $attrVal != 0 && $attrVal < 3600 ) ) );
-
-        # AttrFn runs before the attribute is stored, so pass the new interval
-        DockerImageInfo_UpdateCheckSchedule( $hash, 60, ( $cmd eq q[set] ) ? $attrVal : $DockerImageInfo_UpdateCheckIntervalDefault ) if ( $init_done );
-    }
-
-    return undef;
-}
-
-# the timer argument contains the device name, move the timer to the new name
-sub DockerImageInfo_Rename {
-    my ( $new, $old ) = @_;
-
-    RemoveInternalTimer( qq[DockerImageInfo_UpdateCheck:$old] );
-    DockerImageInfo_UpdateCheckSchedule( $defs{$new} ) if ( defined( $defs{$new} ) );
-    return;
-}
-
 # decode_json expects bytes, HttpUtils returns characters with "attr global encoding unicode"
 sub DockerImageInfo_DecodeJson {
     my ($data) = @_;
     return eval { JSON::PP->new->utf8( $unicodeEncoding ? 0 : 1 )->decode($data) };
 }
 
+sub DockerImageInfo_Attr {
+    my ( $cmd, $name, $attrName, $attrVal ) = @_;
+
+    return undef if ( $attrName ne q[updateCheckInterval] );
+    return qq[$attrName must be 0 (disabled) or a number of seconds >= 3600]
+      if ( $cmd eq q[set] && ( $attrVal !~ m/^\d+$/x || ( $attrVal != 0 && $attrVal < 3600 ) ) );
+
+    # AttrFn runs before the attribute is stored, so pass the new interval
+    DockerImageInfo_UpdateCheckSchedule( $defs{$name}, 60, ( $cmd eq q[set] ) ? $attrVal : 86400 ) if ( $init_done );
+    return undef;
+}
+
+# The module can only be defined once, so a fixed key and timer argument are enough.
+# They do not contain the device name and are therefore not affected by a rename.
+sub DockerImageInfo_UpdateCheckStop {
+    FHEM::Core::Timer::Helper::removeTimer( q[DockerImageInfo], \&DockerImageInfo_UpdateCheckTimer );
+    return;
+}
+
 # (Re)start the periodic update check, $delay seconds from now (default: the interval)
 sub DockerImageInfo_UpdateCheckSchedule {
     my ( $hash, $delay, $interval ) = @_;
-    my $name     = $hash->{NAME};
-    my $timerArg = qq[DockerImageInfo_UpdateCheck:$name];
 
-    RemoveInternalTimer( $timerArg );
+    DockerImageInfo_UpdateCheckStop();
 
-    $interval //= AttrVal( $name, q[updateCheckInterval], $DockerImageInfo_UpdateCheckIntervalDefault );
+    $interval //= AttrVal( $hash->{NAME}, q[updateCheckInterval], 86400 );    # once a day
     return if ( !$interval );
 
-    InternalTimer( gettimeofday() + ( $delay // $interval ), \&DockerImageInfo_UpdateCheckTimer, $timerArg );
+    FHEM::Core::Timer::Helper::addTimer( q[DockerImageInfo], gettimeofday() + ( $delay // $interval ),
+        \&DockerImageInfo_UpdateCheckTimer, q[DockerImageInfo_UpdateCheck] );
     return;
 }
 
 sub DockerImageInfo_UpdateCheckTimer {
-    my ($timerArg) = @_;
-    my ( undef, $name ) = split( q[:], $timerArg, 2 );
-    my $hash = $defs{$name};
+    my $hash = $modules{DockerImageInfo}{defptr};
     return if ( !defined($hash) );
 
     DockerImageInfo_UpdateCheckSchedule( $hash );
@@ -445,19 +436,14 @@ sub DockerImageInfo_UpdateCheckManifestCb {
     my $annotations = ( ref($json) eq q[HASH] ) ? $json->{annotations} // {} : {};
 
     my %remote = map { $_ => $annotations->{qq[org.opencontainers.image.$_]} // q[] } qw(version revision created);
-    return DockerImageInfo_UpdateCheckError( $hash, q[manifest: no image annotations found] ) if ( $remote{revision} eq q[] );
+    return DockerImageInfo_UpdateCheckError( $hash, q[manifest: no image annotations found] ) if ( $remote{revision} eq q[] || $remote{created} eq q[] );
 
     my $local = $hash->{helper}{imageInfo} // {};
     my $localRevision = $local->{q[image.revision]} // q[];
     my $localCreated  = $local->{q[image.created]}  // q[];
 
     # same commit = same image; otherwise newer if it was built later (ISO 8601 UTC compares as string)
-    my $state = q[current];
-    if ( $remote{revision} ne $localRevision ) {
-        $state = ( $remote{created} eq q[] )                                   ? q[unknown]
-               : ( $localCreated eq q[] || $remote{created} gt $localCreated ) ? q[available]
-               :                                                                  q[current];
-    }
+    my $state = ( $remote{revision} ne $localRevision && $remote{created} gt $localCreated ) ? q[available] : q[current];
 
     readingsBeginUpdate( $hash );
     readingsBulkUpdateIfChanged( $hash, q[update.version],  $remote{version} );
@@ -568,8 +554,8 @@ sub DockerImageInfo_UpdateCheckError {
               The check reads the manifest of the image tag anonymously from ghcr.io
               (no image is downloaded, the TLS certificate is verified) and compares its revision (git commit) and build date with
               the running image. Results are stored in the readings
-              <code>update.state</code> (<code>available</code>, <code>current</code>,
-              <code>unknown</code> or <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
+              <code>update.state</code> (<code>available</code>, <code>current</code>
+              or <code>error: ...</code>), <code>update.tag</code>, <code>update.version</code>,
               <code>update.revision</code> and <code>update.created</code>.
           </li>
           <li><i>updateCheckTag</i> &lt;tag&gt;<br>
@@ -670,7 +656,7 @@ sub DockerImageInfo_UpdateCheckError {
               Die Pr&uuml;fung liest anonym nur das Manifest des Image-Tags von ghcr.io (es wird kein
               Image heruntergeladen, das TLS-Zertifikat wird gepr&uuml;ft) und vergleicht Revision (Git-Commit) und Build-Datum mit dem
               laufenden Image. Ergebnisse stehen in den Readings <code>update.state</code>
-              (<code>available</code>, <code>current</code>, <code>unknown</code> oder <code>error: ...</code>),
+              (<code>available</code>, <code>current</code> oder <code>error: ...</code>),
               <code>update.tag</code>, <code>update.version</code>, <code>update.revision</code> und
               <code>update.created</code>.
           </li>
@@ -726,7 +712,8 @@ sub DockerImageInfo_UpdateCheckError {
         "FHEM::Meta": 0.001006,
         "List::Util" : 1.18,
         "JSON::PP": 0,
-        "HttpUtils": 0
+        "HttpUtils": 0,
+        "FHEM::Core::Timer::Helper": 0
       },
       "recommends": {
       },
