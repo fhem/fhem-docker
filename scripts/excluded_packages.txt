@@ -69,3 +69,5 @@ RPi::DHT$
 tradfri$
 Test2::FHEM::Command$
 Test2::FHEM::SIGNALduino::RDmsg$
+# Scanner (Perl::PrereqScanner::NotQuiteLite) misreads "no changes" inside a string as a "no <module>" statement
+changes$
