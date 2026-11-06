@@ -40,7 +40,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   mail:
-    image: boky/postfix:5.1.0-alpine
+    image: boky/postfix:5.2.0-alpine
     restart: unless-stopped
     profiles:
       - mail
@@ -57,7 +57,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   alexa-fhem:
-    image: ghcr.io/fhem/alexa-fhem:5.2.1
+    image: ghcr.io/fhem/alexa-fhem:5.2.2
     restart: unless-stopped
     profiles:
       - alexa
@@ -73,7 +73,7 @@ services:
       TZ: ${TZ:-Europe/Berlin}
 
   alexa-cookie-service:
-    image: ghcr.io/fhem/alexa-cookie-service:0.4.8
+    image: ghcr.io/fhem/alexa-cookie-service:0.4.9
     restart: unless-stopped
     profiles:
       - alexa
