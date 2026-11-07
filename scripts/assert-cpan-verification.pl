@@ -7,6 +7,7 @@ use JSON::PP qw(decode_json);
 
 my @reports;
 my @status_files;
+my @logs;
 my $status_json = q[];
 my $dockerfile  = q[];
 my $platform    = q[];
@@ -14,10 +15,11 @@ my $platform    = q[];
 GetOptions(
     'report=s@'      => \@reports,
     'status-file=s@' => \@status_files,
+    'log=s@'         => \@logs,
     'status-json=s'  => \$status_json,
     'dockerfile=s'   => \$dockerfile,
     'platform=s'     => \$platform,
-) or die "Usage: $0 --report <path> [--report <path> ...] --status-file <path> [--status-file <path> ...] [--status-json <path> --dockerfile <name> --platform <name>]\n";
+) or die "Usage: $0 --report <path> [--report <path> ...] --status-file <path> [--status-file <path> ...] [--log <path> ...] [--status-json <path> --dockerfile <name> --platform <name>]\n";
 
 die "At least one --report or --status-file is required\n" unless @reports || @status_files;
 
@@ -34,6 +36,26 @@ sub read_file {
     my $content = do { local $/; <$fh> };
     close($fh) or return ( undef, "Cannot close $path: $!" );
     return ( $content, undef );
+}
+
+# cpm reports every distribution it could not install as "FAIL install <dist>"
+# (or "FAIL resolve <module>") right before it dumps the full build.log. That
+# dump easily exceeds the BuildKit step log limit, so these lines are read back
+# from the captured install log instead of relying on the build output.
+sub cpm_failures_for {
+    my ($label) = @_;
+    my @failures;
+    my %seen;
+    for my $log ( grep { m{(?:\A|/)\Q$label\E-install\.log\z} } @logs ) {
+        open( my $fh, '<', $log ) or next;
+        while ( my $line = <$fh> ) {
+            next unless $line =~ /\AFAIL (install|resolve) (\S+)/;
+            my $failure = "$1 $2";
+            push @failures, $failure unless $seen{$failure}++;
+        }
+        close($fh);
+    }
+    return @failures;
 }
 
 sub entry_line {
@@ -140,7 +162,10 @@ for my $status_file (@status_files) {
     if ( $install_exit_code != 0 ) {
         push @output, "$status_file recorded cpm install exit code $install_exit_code";
         my $label = $status_file =~ m{/([^/]+)-install-status\.txt\z} ? $1 : $status_file;
-        add_reason("$label: cpm install exit code $install_exit_code");
+        my @failures = cpm_failures_for($label);
+        push @output, "  cpm: FAIL $_" for @failures;
+        my $failed = @failures ? ' (FAIL ' . shorten( join( ', ', @failures ) ) . ')' : q[];
+        add_reason("$label: cpm install exit code $install_exit_code$failed");
         $exit_code = 1;
     }
 }
