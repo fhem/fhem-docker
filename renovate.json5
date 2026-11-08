@@ -9,6 +9,11 @@
   ],
   "packageRules": [
     {
+      "description": "Patch updates are merged automatically (specific rules below override this)",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
       "matchManagers": ["docker-compose"],
       "pinDigests": false
     },
