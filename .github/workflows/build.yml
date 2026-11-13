@@ -150,14 +150,75 @@ jobs:
           path: cpanfile
           overwrite: true
 
+  variants:
+    # Decides which image variants this run builds. Releases are split into two
+    # series by their major version: releases below TRIXIE_MIN_MAJOR (v5.x)
+    # build only the bookworm images, releases from TRIXIE_MIN_MAJOR on (v6.x)
+    # build only the trixie images. Pushes, pull requests and manual runs build
+    # every variant, so both stay tested.
+    runs-on: ubuntu-latest
+    outputs:
+      dockerfiles: ${{ steps.select.outputs.dockerfiles }}
+      cpan_matrix: ${{ steps.select.outputs.cpan_matrix }}
+    steps:
+      - name: Select image variants
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          TRIXIE_MIN_MAJOR: "6"
+        run: |
+          set -euo pipefail
+          bookworm='["-bookworm","-threaded-bookworm"]'
+          trixie='["-trixie","-threaded-trixie"]'
+          if [ "$EVENT_NAME" = "release" ]; then
+            if [[ ! "$RELEASE_TAG" =~ ^v?([0-9]+) ]]; then
+              echo "::error::Release tag '${RELEASE_TAG}' does not start with a major version"
+              exit 1
+            fi
+            major="${BASH_REMATCH[1]}"
+            if [ "$major" -ge "$TRIXIE_MIN_MAJOR" ]; then
+              dockerfiles="$trixie"
+            else
+              dockerfiles="$bookworm"
+            fi
+          else
+            dockerfiles=$(jq -cn --argjson a "$bookworm" --argjson b "$trixie" '$a + $b')
+          fi
+          # cpan_build runs on the non-amd64 platforms only (amd64 is built in
+          # build_test_images). The perl trixie images lack linux/386.
+          cpan_matrix=$(jq -cn --argjson d "$dockerfiles" '
+            [ {platform: "arm/v7", runner: "ubuntu-24.04-arm", setup_qemu: "true"},
+              {platform: "arm64",  runner: "ubuntu-24.04-arm", setup_qemu: "false"},
+              {platform: "386",    runner: "ubuntu-latest",    setup_qemu: "true"} ] as $p
+            | { include: [ $d[] as $f | $p[]
+                           | select(.platform != "386" or ($f | contains("trixie") | not))
+                           | {dockerfile: $f} + . ] }')
+          echo "dockerfiles=${dockerfiles}" >> "$GITHUB_OUTPUT"
+          echo "cpan_matrix=${cpan_matrix}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Image variants"
+            echo ""
+            echo "Event: \`${EVENT_NAME}\` ${RELEASE_TAG:+(release \`${RELEASE_TAG}\`)}"
+            echo ""
+            echo "Dockerfiles: \`${dockerfiles}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   base_build:
     # Actions cannot filter 'labeled' by label name, so drop runs triggered by
     # any other label instead of spending a full multi-arch build on them.
     if: github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'publishImage')
+    needs: [variants]
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
         platform: [arm/v7, amd64, arm64, 386]
+        # The perl trixie images are not published for linux/386, so 386 stays on bookworm.
+        exclude:
+          - dockerfile: -trixie
+            platform: 386
+          - dockerfile: -threaded-trixie
+            platform: 386
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repository
@@ -188,35 +249,10 @@ jobs:
           tags: baseonly
 
   cpan_build:
-    needs: [get_dependencies, base_build]
+    needs: [variants, get_dependencies, base_build]
     runs-on: ${{ matrix.runner }}
     strategy:
-      matrix:
-        include:
-          - dockerfile: -bookworm
-            platform: arm/v7
-            runner: ubuntu-24.04-arm
-            setup_qemu: "true"
-          - dockerfile: -bookworm
-            platform: arm64
-            runner: ubuntu-24.04-arm
-            setup_qemu: "false"
-          - dockerfile: -bookworm
-            platform: 386
-            runner: ubuntu-latest
-            setup_qemu: "true"
-          - dockerfile: -threaded-bookworm
-            platform: arm/v7
-            runner: ubuntu-24.04-arm
-            setup_qemu: "true"
-          - dockerfile: -threaded-bookworm
-            platform: arm64
-            runner: ubuntu-24.04-arm
-            setup_qemu: "false"
-          - dockerfile: -threaded-bookworm
-            platform: 386
-            runner: ubuntu-latest
-            setup_qemu: "true"
+      matrix: ${{ fromJSON(needs.variants.outputs.cpan_matrix) }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -437,6 +473,8 @@ jobs:
             --report "${CPAN_ARTIFACT_DIR}/verify/core/core-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/3rdparty/3rdparty-result.json" \
             --report "${CPAN_ARTIFACT_DIR}/verify/all/all-result.json" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/core-install.log" \
+            --log "${CPAN_ARTIFACT_DIR}/logs/3rdparty-install.log" \
             --dockerfile "${{ matrix.dockerfile }}" \
             --platform "${{ matrix.platform }}" \
             --status-json "${CPAN_STATUS_FILE}"
@@ -577,11 +615,11 @@ jobs:
     # Builds every image variant needed by the decoupled test jobs exactly once
     # and pushes them to GHCR under a run-specific, ephemeral tag so the test
     # jobs can pull instead of rebuilding.
-    needs: [get_dependencies, base_build]
+    needs: [variants, get_dependencies, base_build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -754,11 +792,11 @@ jobs:
             CPAN_CPM_MIRROR=${{ env.CPAN_CPM_MIRROR }}
 
   test_bats:
-    needs: [build_test_images]
+    needs: [variants, build_test_images]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -795,14 +833,14 @@ jobs:
           command: timeout 1m docker run --rm --net=host -e GITHUB_RUN_ID=$GITHUB_RUN_ID -v "${PWD}/src/tests/bats:/code" bats-withfhem:latest -T -t . --filter-tags 'hostMode,!extendedOnly'
 
   test_integration_and_unit:
-    needs: [build_test_images]
+    needs: [variants, build_test_images]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -865,11 +903,11 @@ jobs:
           docker container rm $CONTAINER --force --volumes
 
   test_bats_extended:
-    needs: [build_test_images]
+    needs: [variants, build_test_images]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -901,11 +939,11 @@ jobs:
 
   trivy_scan:
     # Own check so Trivy results show up as a dedicated status, separate from the test jobs
-    needs: [build_test_images]
+    needs: [variants, build_test_images]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
@@ -1077,12 +1115,12 @@ jobs:
 
   published_build:
     runs-on: ubuntu-latest
-    needs: [test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
+    needs: [variants, test_bats, test_integration_and_unit, test_bats_extended, cpan_build]
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     env:
-        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+        TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Checkout this repository
@@ -1246,7 +1284,8 @@ jobs:
           context: .
           load: false  
           file: ./Dockerfile${{ matrix.dockerfile }}
-          platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64,386
+          # linux/386 only exists for bookworm, the perl trixie images lack it.
+          platforms: ${{ contains(matrix.dockerfile, 'trixie') && 'linux/amd64,linux/arm/v7,linux/arm64' || 'linux/386,linux/amd64,linux/arm/v7,linux/arm64,386' }}
           push: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage') }}
           target: with-fhem
           cache-from: | 
@@ -1279,14 +1318,14 @@ jobs:
     # (same condition as its push: input) - regular PRs without the
     # publishImage label don't produce a published image to scan here, but
     # still get the pre-merge trivy_scan check.
-    needs: [published_build]
+    needs: [variants, published_build]
     if: needs.published_build.result == 'success' && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'publishImage'))
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dockerfile: [-bookworm, -threaded-bookworm]
+        dockerfile: ${{ fromJSON(needs.variants.outputs.dockerfiles) }}
     env:
-      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
+      TAG_LATEST: ${{ (contains(matrix.dockerfile,'threaded') || contains(matrix.dockerfile,'trixie') || github.event.release.prerelease == 1) && 'false' || 'auto' }}
     steps:
       - name: Checkout this repository
         uses: actions/checkout@v7
