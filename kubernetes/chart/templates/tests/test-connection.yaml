@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "fhem.fullname" . }}-test-connection"
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: test-connection
+      image: busybox:1.36
+      command: ['nc']
+      args: ['-z', '-v', '-w', '5', '{{ include "fhem.fullname" . }}', '{{ .Values.service.port }}']
+  restartPolicy: Never
