@@ -25,12 +25,21 @@ For normal FHEM-SVN setups and slim, controlled deployments, use the minimal ima
 
 This is the recommended default for new setups. It contains the required FHEM Perl runtime environment; install only the additional dependencies your own setup actually needs. It is based on Debian bookworm and Perl 5.40.5. Python and NodeJS are not part of the minimal image; add them explicitly when your setup needs them. Supported platforms are `linux/amd64`, `linux/arm/v7`, `linux/arm64` and `linux/i386`.
 
+The same image is also built on Debian trixie. The trixie images have their own release series: they are published from the 6.x releases, while the 5.x releases keep providing the bookworm images.
+
+    docker pull ghcr.io/fhem/fhem-minimal-docker:6-trixie
+    docker pull ghcr.io/fhem/fhem-minimal-docker:6-threaded-trixie
+
+The trixie variants support `linux/amd64`, `linux/arm/v7` and `linux/arm64`. `linux/i386` stays on bookworm, because the official Perl trixie images are not published for that platform. The `latest` tag keeps pointing to the bookworm variant for now.
+
 #### Standard image
 
 Use the regular image only when you intentionally need the compatibility image with multiple bundled runtime environments:
 
     docker pull ghcr.io/fhem/fhem-docker:5-bookworm
     docker pull ghcr.io/fhem/fhem-docker:5-threaded-bookworm
+    docker pull ghcr.io/fhem/fhem-docker:6-trixie
+    docker pull ghcr.io/fhem/fhem-docker:6-threaded-trixie
 
 This image bundles additional runtime environments in the FHEM container. That is useful for compatibility with existing deployments, but it is an anti-pattern for new setups when the same functionality can run as sidecars or explicit image extensions. Some bundled runtime versions can also age independently of the FHEM runtime. Supported platforms are `linux/amd64`, `linux/arm/v7` and `linux/arm64`. `linux/i386` is available for the minimal image only, because the bundled Node.js runtime is not published for that platform.
 
