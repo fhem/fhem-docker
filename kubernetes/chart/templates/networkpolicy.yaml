@@ -1,0 +1,48 @@
+{{- $policyTypes := list "Ingress" "Egress" -}}
+{{- if and .Values.networkPolicy .Values.networkPolicy.policyTypes -}}
+  {{- $policyTypes = .Values.networkPolicy.policyTypes -}}
+{{- end -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "fhem.fullname" . }}
+  labels:
+    {{- include "fhem.labels" . | nindent 4 }}
+  {{- with .Values.networkPolicy }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+spec:
+  podSelector:
+    {{- if and .Values.networkPolicy .Values.networkPolicy.podSelector }}
+    {{- toYaml .Values.networkPolicy.podSelector | nindent 4 }}
+    {{- else }}
+    matchLabels:
+      {{- include "fhem.selectorLabels" . | nindent 6 }}
+    {{- end }}
+  policyTypes:
+    {{- toYaml $policyTypes | nindent 4 }}
+  {{- if has "Ingress" $policyTypes }}
+    {{- if and .Values.networkPolicy (hasKey .Values.networkPolicy "ingress") }}
+      {{- if or .Values.networkPolicy.ingress (kindIs "slice" .Values.networkPolicy.ingress) }}
+  ingress:
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+      {{- end }}
+    {{- else }}
+  ingress:
+    - {}
+    {{- end }}
+  {{- end }}
+  {{- if has "Egress" $policyTypes }}
+    {{- if and .Values.networkPolicy (hasKey .Values.networkPolicy "egress") }}
+      {{- if or .Values.networkPolicy.egress (kindIs "slice" .Values.networkPolicy.egress) }}
+  egress:
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+      {{- end }}
+    {{- else }}
+  egress:
+    - {}
+    {{- end }}
+  {{- end }}
